@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Polarizzazione Luce 3D - Multi-Filtro</title>
+    <!-- Icona Sito -->
+    <link rel="icon" type="image/svg+xml" href="iconaPOL.svg">
+    <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; color: #fff; display: flex; height: 100vh; }
+        #ui-container {
+            width: 360px;
+            background: #1e1e1e;
+            padding: 20px;
+            border-right: 1px solid #444;
+            overflow-y: auto;
+            flex-shrink: 0;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+        #view-area {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #canvas-container { width: 100%; height: 100%; display: block; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
+        input[type=range] { width: 100%; accent-color: #fff; }
+        .value-display { float: right; font-weight: normal; color: #aaa; }
+        h1 { font-size: 1.2em; margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 10px; color: #fff; }
+        
+        /* Etichette 3D */
+        .label-3d {
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            border: 1px solid #555;
+            white-space: nowrap;
+        }
+
+        /* Footer Contatto Autore */
+        #author-footer {
+            margin-top: 50px;
+            margin-left: auto;
+            width: fit-content;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            padding: 5px 10px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            transition: all 0.2s;
+            user-select: none;
+            text-align: center;
+        }
+
+        #author-footer:hover {
+            color: #aaa;
+            border-color: #444;
+            background-color: #222;
+        }
+
+        #author-footer a {
+            color: #5588FF;
+            text-decoration: none;
+            display: block;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui-container">
+    
+    <div class="control-group">
+        <label style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #FF5555;">
+            Polarizer 1
+            <input type="checkbox" id="check-pol1" checked style="width: auto;">
+        </label>
+        <label style="font-size: 0.8em; color: #FF5555;">Angle: <span id="val-pol1">0°</span></label>
+        <input type="range" id="angle-pol1" min="0" max="360" value="0">
+    </div>
+
+    <div class="control-group">
+        <label style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #55FF55;">
+            Polarizer 2
+            <input type="checkbox" id="check-pol2" style="width: auto;">
+        </label>
+        <label style="font-size: 0.8em; color: #55FF55;">Angle: <span id="val-pol2">45°</span></label>
+        <input type="range" id="angle-pol2" min="0" max="360" value="45">
+    </div>
+
+    <div class="control-group">
+        <label style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #5588FF;">
+            Polarizer 3
+            <input type="checkbox" id="check-pol3" checked style="width: auto;">
+        </label>
+        <label style="font-size: 0.8em; color: #5588FF;">Angle: <span id="val-pol3">90°</span></label>
+        <input type="range" id="angle-pol3" min="0" max="360" value="90">
+    </div>
+
+    <div class="control-group" id="group-viz-mode">
+        <label>Display Mode</label>
+        <div style="margin-top: 5px;">
+            <label style="font-weight: normal; margin-right: 10px; cursor: pointer;">
+                <input type="radio" name="viz-mode" value="wave" checked> Waves (E Field)
+            </label>
+            <label style="font-weight: normal; cursor: pointer;">
+                <input type="radio" name="viz-mode" value="ray"> Ray / Intensity
+            </label>
+        </div>
+    </div>
+
+    <div class="control-group" id="group-animation" style="border-top: 1px solid #555; padding-top: 15px;">
+        <label>Animation speed</label>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button id="btn-play-pause" style="width: 40px; height: 30px; cursor: pointer; background: #fff; border: none; border-radius: 4px; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 1.2em;">&#10074;&#10074;</button>
+            <div style="flex-grow: 1;">
+                <input type="range" id="speed-slider" min="0" max="0.5" step="0.01" value="0.15" style="width: 100%;">
+            </div>
+        </div>
+    </div>
+
+    <div class="control-group" style="border-top: 1px solid #555; padding-top: 15px;">
+        <label>Ambient Brightness</label>
+        <input type="range" id="exposure-slider" min="0.1" max="3.0" step="0.1" value="1.5">
+    </div>
+
+    <!-- Controllo specifico 2D -->
+    <div class="control-group" id="group-light-radius" style="display: none; border-top: 1px solid #555; padding-top: 15px;">
+        <label>Light Radius</label>
+        <input type="range" id="radius-slider" min="50" max="300" value="150">
+        
+        <label style="margin-top: 10px;">Gamma Correction (Visual)</label>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: #aaa;">
+            <span>Linear</span>
+            <span>Sqrt</span>
+        </div>
+        <input type="range" id="contrast-slider" min="0" max="1" step="0.01" value="0">
+    </div>
+
+    <div class="control-group" style="border-top: 1px solid #555; padding-top: 15px;">
+        <button id="btn-toggle-view" style="width: 100%; padding: 10px; cursor: pointer; background: #0088ff; color: white; border: none; border-radius: 4px; font-weight: bold;">2D Mode</button>
+    </div>
+
+    <div style="margin-top: 10px; font-size: 0.8em; color: #888; border-top: 1px solid #555; padding-top: 10px;">
+        Note: Intensity values are shown directly on filters.
+    </div>
+
+    <!-- Footer Autore -->
+    <div id="author-footer" onclick="toggleAuthorInfo()" data-expanded="false">
+        contact the author
+    </div>
+</div>
+
+<div id="view-area">
+    <div id="canvas-container" style="position: absolute; top: 0; left: 0; z-index: 0; width: 100%; height: 100%;"></div>
+    <canvas id="canvas-2d" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; background: transparent;"></canvas>
+    <div id="tooltip" style="position: absolute; display: none; background: rgba(0, 0, 0, 0.8); color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 12px; pointer-events: none; border: 1px solid #888; z-index: 100;"></div>
+
+    <!-- Mirino -->
+    <div id="crosshair" style="display: none; position: absolute; width: 40px; height: 40px; cursor: move; z-index: 50; touch-action: none; user-select: none;">
+        <!-- Crocino (Bianco con bordo Nero) -->
+        <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #fff; transform: translateX(-50%); box-shadow: 0 0 0 1px #000;"></div>
+        <div style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #fff; transform: translateY(-50%); box-shadow: 0 0 0 1px #000;"></div>
+        <!-- Cerchio (Bianco con bordo Nero) -->
+        <div style="position: absolute; width: 100%; height: 100%; border: 2px solid #fff; border-radius: 50%; box-sizing: border-box; box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000;"></div>
+        <!-- Label Intensità (Nero con bordo Bianco + Ombra) -->
+        <div id="crosshair-label" style="position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 14px; white-space: nowrap; border: 1px solid #fff; box-shadow: 0 0 2px #000;">0%</div>
+    </div>
+</div>
+
+<!-- Three.js Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<!-- CSS2DRenderer per le etichette -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+<!-- RGBELoader per HDRI -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+
+<!-- Fat Lines (Line2) scripts -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/Line2.js"></script>
+
+<script>
+    // Configurazione Scena
+    const scene = new THREE.Scene();
+    const sceneGroup = new THREE.Group(); // Gruppo per oggetti 3D
+    scene.add(sceneGroup);
+
+    // Sfondo iniziale (verrà sostituito dall'HDRI)
+    scene.background = new THREE.Color(0x111111); 
+
+    // Caricamento HDRI
+    new THREE.RGBELoader()
+        .setDataType(THREE.UnsignedByteType) 
+        .load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/kloofendal_48d_partly_cloudy_puresky_1k.hdr', function (texture) {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            scene.background = texture;
+            scene.environment = texture;
+            
+            // Regolazione esposizione se necessario
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = parseFloat(document.getElementById('exposure-slider').value);
+        });
+
+    const viewArea = document.getElementById('view-area');
+    const width = viewArea.clientWidth;
+    const height = viewArea.clientHeight;
+
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.set(30, 20, 50);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    renderer.shadowMap.enabled = true;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    // Renderer 2D per Etichette
+    const labelRenderer = new THREE.CSS2DRenderer();
+    labelRenderer.setSize(width, height);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0px';
+    labelRenderer.domElement.style.pointerEvents = 'none'; // Lascia passare i click al canvas
+    document.getElementById('canvas-container').appendChild(labelRenderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    // Luci
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(20, 30, 20);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    // Variabili Stato
+    const state = {
+        pol1Angle: 0,
+        pol2Angle: 45,
+        pol3Angle: 90,
+        activePol1: true,
+        activePol2: false,
+        activePol3: true,
+        mode: 'wave',
+        time: 0,
+        speed: 0.15,
+        isRunning: true,
+        viewMode: '3d',
+        zoom2D: 1.0,
+        pan2D: { x: 0, y: 0 },
+        lightRadius2D: 150,
+        contrast: 0
+    };
+
+    // Costanti geometriche
+    const Z_START = -80;
+    const Z_POL1 = -15;
+    const Z_POL2 = 5;
+    const Z_POL3 = 25;
+    const Z_END = 80;
+    
+    const WAVE_COLOR = 0xffffff;
+    const POLARIZER_COLOR = 0x888888;
+    const POLARIZER_OPACITY = 0.5;
+
+    // --- Oggetti ---
+
+    // Helper creazione Polarizzatore
+    function createPolarizer(zPosition, idLabel, colorHex, id) {
+        const group = new THREE.Group();
+        group.position.z = zPosition;
+        group.userData = { isPolarizer: true, id: id }; // Identificativo per il raycasting
+        sceneGroup.add(group);
+
+        // Cornice Originale (BoxGeometry)
+        const frameGeo = new THREE.BoxGeometry(8, 8, 0.2);
+        const frameMat = new THREE.MeshStandardMaterial({ 
+            color: 0x444444, 
+            roughness: 0.2, 
+            metalness: 0.5,
+            transparent: true,
+            opacity: 0.7 
+        });
+        const frame = new THREE.Mesh(frameGeo, frameMat);
+        group.add(frame);
+
+        // Perimetro (Segmenti Colorati) - Usiamo Line2 per gestire lo spessore
+        const size = 4.0; 
+        // Punti piatti [x,y,z, x,y,z...]
+        const positions = [
+            -size, -size, 0.11, // Z leggermente offset per evitare z-fighting
+             size, -size, 0.11,
+             size,  size, 0.11,
+            -size,  size, 0.11,
+            -size, -size, 0.11  // Chiudi il loop
+        ];
+
+        const borderGeo = new THREE.LineGeometry();
+        borderGeo.setPositions(positions);
+
+        const borderMat = new THREE.LineMaterial({ 
+            color: colorHex, 
+            linewidth: 3, // Spessore normale
+            resolution: new THREE.Vector2(window.innerWidth, window.innerHeight)
+        });
+
+        const border = new THREE.Line2(borderGeo, borderMat);
+        border.computeLineDistances();
+        group.add(border);
+        
+        // Salviamo riferimenti per l'hover
+        group.userData.borderMat = borderMat;
+        group.userData.baseColor = colorHex;
+
+        // Vetro
+        const glassGeo = new THREE.PlaneGeometry(7, 7);
+        const glassMat = new THREE.MeshPhysicalMaterial({ 
+            color: POLARIZER_COLOR, 
+            transparent: true, 
+            opacity: POLARIZER_OPACITY, 
+            side: THREE.DoubleSide,
+            roughness: 0.1,
+            metalness: 0.1,
+            transmission: 0.2, 
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.1
+        });
+        const glass = new THREE.Mesh(glassGeo, glassMat);
+        group.add(glass);
+
+        // Linee Griglia (Trasmissione)
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x000000 });
+        for (let i = -3; i <= 3; i+=0.8) {
+            const points = [new THREE.Vector3(i, -3.4, 0.11), new THREE.Vector3(i, 3.4, 0.11)];
+            const geo = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.Line(geo, lineMat);
+            group.add(line);
+        }
+
+        // Pallino oscillante (Sfera) - visibile da entrambi i lati (z=0)
+        const dotGeo = new THREE.SphereGeometry(0.35, 16, 16);
+        const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const dot = new THREE.Mesh(dotGeo, dotMat);
+        dot.position.z = 0; 
+        group.add(dot);
+
+        // Etichetta Intensità
+        const div = document.createElement('div');
+        div.className = 'label-3d';
+        div.textContent = 'I = 100%';
+        div.id = idLabel;
+        // Converti hex number (es. 0xFF5555) in stringa CSS (#FF5555)
+        const cssColor = '#' + colorHex.toString(16).padStart(6, '0');
+        div.style.color = cssColor;
+        div.style.borderColor = cssColor; // Opzionale: colora anche il bordo
+        
+        const label = new THREE.CSS2DObject(div);
+        label.position.set(0, 5, 0);
+        group.add(label);
+
+        return { group, dot, labelDiv: div, labelObj: label };
+    }
+
+    const pol1 = createPolarizer(Z_POL1, 'lbl-pol1', 0xFF5555, 1);
+    const pol2 = createPolarizer(Z_POL2, 'lbl-pol2', 0x55FF55, 2);
+    const pol3 = createPolarizer(Z_POL3, 'lbl-pol3', 0x5588FF, 3);
+
+    // --- Gestione Dinamica Segmenti ---
+    const zones = [
+        { start: Z_START, end: Z_POL1, unpol: null, linear: null, ray: null },
+        { start: Z_POL1, end: Z_POL2, unpol: null, linear: null, ray: null },
+        { start: Z_POL2, end: Z_POL3, unpol: null, linear: null, ray: null },
+        { start: Z_POL3, end: Z_END, unpol: null, linear: null, ray: null }
+    ];
+
+    // Inizializzazione oggetti per le zone
+    zones.forEach((zone, idx) => {
+        // Onda Caotica (Non Polarizzata) - Sostituisce il fascio statico
+        // Usiamo una sola mesh che rappresenterà la somma vettoriale E(z,t)
+        // Usiamo Line2 per linee più spesse
+        const uGeo = new THREE.LineGeometry();
+        const uMat = new THREE.LineMaterial({ 
+            color: WAVE_COLOR, 
+            opacity: 0.9, 
+            transparent: true, 
+            linewidth: 2, // Spessore in pixel
+            resolution: new THREE.Vector2(width, height) // Necessario per LineMaterial
+        });
+        const uWave = new THREE.Line2(uGeo, uMat);
+        sceneGroup.add(uWave);
+        zone.unpol = { mesh: uWave, geo: uGeo, mat: uMat };
+        
+        // Onda lineare
+        const lGeo = new THREE.LineGeometry();
+        const lMat = new THREE.LineMaterial({ 
+            color: WAVE_COLOR, 
+            linewidth: 2, // Spessore in pixel
+            resolution: new THREE.Vector2(width, height)
+        });
+        const lWave = new THREE.Line2(lGeo, lMat);
+        sceneGroup.add(lWave);
+        zone.linear = { mesh: lWave, geo: lGeo, mat: lMat };
+
+        // Raggio (Core + Glow)
+        const rGroup = new THREE.Group();
+        sceneGroup.add(rGroup);
+        
+        // Core (Cilindro solido interno)
+        // Ruotiamo la geometria di 90 gradi sull'asse X perché CylinderGeometry è orientata su Y per default,
+        // ma noi stendiamo il raggio su Z. Invece di ruotare la mesh ogni volta, ruotiamo la geometria base.
+        const coreGeo = new THREE.CylinderGeometry(0.2, 0.2, 1, 32, 1, true); // 32 segmenti per più rotondità
+        coreGeo.rotateX(Math.PI / 2); // Ora è orientato su Z
+        
+        // Usa AdditiveBlending e depthWrite: false per evitare occlusioni scure e z-fighting
+        const coreMat = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, 
+            transparent: true, 
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide 
+        });
+        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        rGroup.add(coreMesh);
+        rGroup.core = coreMesh;
+
+        // Glow (Piani incrociati con texture sfumata)
+        // Generazione Texture Glow Procedurale
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 1;
+        const context = canvas.getContext('2d');
+        const gradient = context.createLinearGradient(0, 0, 64, 0);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 64, 1);
+        const glowTexture = new THREE.CanvasTexture(canvas);
+        glowTexture.wrapS = THREE.ClampToEdgeWrapping;
+        glowTexture.wrapT = THREE.ClampToEdgeWrapping; // Importante per continuità Z
+
+        const glowMat = new THREE.MeshBasicMaterial({ 
+            map: glowTexture,
+            color: WAVE_COLOR, 
+            transparent: true, 
+            opacity: 0.4, // Opacità ridotta per evitare saturazione eccessiva con Additive
+            blending: THREE.AdditiveBlending, 
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+
+        // Piano 1 (Orizzontale visualmente, ma ruotato per essere "X" cross)
+        const planeGeo = new THREE.PlaneGeometry(2.5, 1); // Larghezza 2.5 (glow), Lunghezza 1 (aggiornata dopo)
+        // PlaneGeometry è XY. Per averlo lungo Z, dobbiamo ruotarlo? 
+        // No, meglio: PlaneGeometry(width, height). 
+        // Se mappiamo Width -> X e Height -> Z.
+        // Ruotiamo la geometria:
+        // Plane è nel piano XY. Height è Y. Ruotiamo -90 su X per avere Height su Z.
+        planeGeo.rotateX(-Math.PI / 2); 
+        // Ora width è X, "height" (lunghezza raggio) è Z.
+        
+        // Creiamo due piani incrociati per effetto volumetrico da ogni angolazione
+        const glowPlane1 = new THREE.Mesh(planeGeo.clone(), glowMat);
+        const glowPlane2 = new THREE.Mesh(planeGeo.clone(), glowMat);
+        glowPlane2.rotation.z = Math.PI / 2; // Ruota di 90 gradi sull'asse Z (lungo il raggio)
+
+        rGroup.add(glowPlane1);
+        rGroup.add(glowPlane2);
+        
+        rGroup.glow1 = glowPlane1;
+        rGroup.glow2 = glowPlane2;
+        
+        // Assegna il gruppo alla zona
+        zone.ray = rGroup;
+    });
+
+    function createRay(zStart, zEnd) {
+        // Geometria iniziale fittizia
+        const geo = new THREE.BoxGeometry(0.2, 0.2, 1);
+        const mat = new THREE.MeshBasicMaterial({ color: WAVE_COLOR, transparent: true, opacity: 0.8 });
+        const mesh = new THREE.Mesh(geo, mat);
+        sceneGroup.add(mesh);
+        return mesh;
+    }
+
+    function updateRayMesh(rayGroup, zStart, zEnd, opacity) {
+        const len = zEnd - zStart;
+        // Rimosso l'overlap artificiale perché ora usiamo il merging delle zone.
+        // Manteniamo una tolleranza infinitesimale per evitare gap di arrotondamento.
+        const displayLen = len + 0.005; 
+        
+        if (len <= 0.001) { rayGroup.visible = false; return; }
+        
+        const midZ = (zStart + zEnd) / 2;
+
+        // Update Core
+        rayGroup.core.scale.set(1, 1, displayLen); 
+        rayGroup.core.position.set(0, 0, midZ);
+        rayGroup.core.material.opacity = opacity;
+
+        // Update Glow Planes
+        rayGroup.glow1.scale.set(1, 1, displayLen);
+        rayGroup.glow1.position.set(0, 0, midZ);
+        rayGroup.glow1.material.opacity = opacity * 0.5; 
+
+        rayGroup.glow2.scale.set(1, 1, displayLen);
+        rayGroup.glow2.position.set(0, 0, midZ);
+        rayGroup.glow2.material.opacity = opacity * 0.5;
+        
+        rayGroup.visible = true;
+    }
+
+    // --- Logica Fisica Aggiornata ---
+
+    function updateUIValues() {
+        document.getElementById('val-pol1').innerText = state.pol1Angle + "°";
+        document.getElementById('val-pol2').innerText = state.pol2Angle + "°";
+        document.getElementById('val-pol3').innerText = state.pol3Angle + "°";
+    }
+
+    function updatePhysics() {
+        updateUIValues();
+
+        const radPol1 = state.pol1Angle * Math.PI / 180;
+        const radPol2 = state.pol2Angle * Math.PI / 180;
+        const radPol3 = state.pol3Angle * Math.PI / 180;
+
+        // Posiziona i Polarizzatori (Dentro/Fuori asse) con Animazione
+        // Se attivo, target x=0. Se inattivo, target x=15 (fuori dal fascio).
+        const offPos = 15;
+        const lerpFactor = 0.1;
+
+        const targetX1 = state.activePol1 ? 0 : offPos;
+        pol1.group.position.x += (targetX1 - pol1.group.position.x) * lerpFactor;
+
+        const targetX2 = state.activePol2 ? 0 : offPos;
+        pol2.group.position.x += (targetX2 - pol2.group.position.x) * lerpFactor;
+
+        const targetX3 = state.activePol3 ? 0 : offPos;
+        pol3.group.position.x += (targetX3 - pol3.group.position.x) * lerpFactor;
+
+        // Ruota i polarizzatori
+        pol1.group.rotation.z = -radPol1;
+        pol2.group.rotation.z = -radPol2;
+        pol3.group.rotation.z = -radPol3;
+
+        // --- Calcolo Propagazione ---
+        
+        // Il filtro è "attivo" fisicamente solo se interseca il raggio.
+        // Il vetro è largo 7 (semilarghezza 3.5).
+        // Usiamo una soglia leggermente tollerante.
+        const activationThreshold = 3.6; 
+
+        // Lista dei filtri in ordine
+        const filters = [
+            { id: 1, active: Math.abs(pol1.group.position.x) < activationThreshold, angle: radPol1, z: Z_POL1, obj: pol1 },
+            { id: 2, active: Math.abs(pol2.group.position.x) < activationThreshold, angle: radPol2, z: Z_POL2, obj: pol2 },
+            { id: 3, active: Math.abs(pol3.group.position.x) < activationThreshold, angle: radPol3, z: Z_POL3, obj: pol3 }
+        ];
+
+        // 1. Pre-calcolo Stati per ogni Zona
+        // zone[0]: Start -> Pol1 (Initial State)
+        // zone[1]: Pol1 -> Pol2 (After Filter 1)
+        // zone[2]: Pol2 -> Pol3 (After Filter 2)
+        // zone[3]: Pol3 -> End   (After Filter 3)
+        
+        let currentState = { polarized: false, angle: 0, intensity: 1.0 };
+        const zoneStates = []; // Array parallelo a zones
+
+        // Per ogni "confine" (filtro), calcoliamo lo stato della zona SUCCESSIVA
+        // Lo stato della zona 0 è quello iniziale.
+        zoneStates.push({ ...currentState });
+
+        filters.forEach((filter, idx) => {
+            // Calcola effetto del filtro sullo stato corrente
+            let outputIntensity = currentState.intensity;
+            
+            if (filter.active) {
+                if (!currentState.polarized) {
+                    // Da Unpolarized a Linear
+                    outputIntensity = currentState.intensity * 0.5;
+                    currentState = { polarized: true, angle: filter.angle, intensity: outputIntensity };
+                } else {
+                    // Da Linear a Linear (Malus)
+                    let theta = currentState.angle - filter.angle;
+                    let trans = Math.cos(theta);
+                    outputIntensity = currentState.intensity * Math.pow(trans, 2);
+                    currentState = { polarized: true, angle: filter.angle, intensity: outputIntensity };
+                }
+            }
+            // Se non attivo, currentState non cambia (la zona successiva ha lo stesso stato)
+            
+            zoneStates.push({ ...currentState }); // Stato della zona successiva (idx + 1)
+
+            // Aggiornamenti UI Filtro
+            if (filter.active) {
+                filter.obj.labelObj.visible = true; // Use Object3D visibility
+                filter.obj.labelDiv.innerText = `I = ${Math.round(outputIntensity * 100)}%`;
+                
+                if (state.mode === 'wave') {
+                    filter.obj.dot.visible = true;
+                    const amp = 2.5 * Math.sqrt(outputIntensity); 
+                    updateDot(filter.obj.dot, amp, 0, state.time, filter.angle, filter.z);
+                } else {
+                    filter.obj.dot.visible = false;
+                }
+            } else {
+                filter.obj.labelObj.visible = false;
+                filter.obj.dot.visible = false;
+            }
+        });
+
+        // 2. Rendering con Unione Zone (Merging)
+        // Se due zone adiacenti hanno lo stesso stato (e siamo in modalità Ray),
+        // le renderizziamo come un unico segmento lungo per evitare discontinuità.
+        
+        let masterIdx = 0;
+        let renderStart = zones[0].start;
+        let renderEnd = zones[0].end;
+        
+        // Reset visibilità iniziale
+        zones.forEach(z => {
+            z.ray.visible = false;
+            z.unpol.mesh.visible = false;
+            z.linear.mesh.visible = false;
+        });
+
+        // Loop attraverso le zone
+        for (let i = 0; i < zones.length; i++) {
+            const isLast = (i === zones.length - 1);
+            let merged = false;
+
+            if (!isLast && state.mode === 'ray') {
+                // Controlla se la prossima zona ha lo stesso stato della corrente
+                // (Stessa intensità è sufficiente per il raggio, il colore è bianco fisso)
+                const s1 = zoneStates[i];
+                const s2 = zoneStates[i+1];
+                // Usiamo una tolleranza minima per float comparison
+                if (Math.abs(s1.intensity - s2.intensity) < 0.001) {
+                    // Merge! Estendiamo la fine del blocco corrente alla fine della prossima zona
+                    renderEnd = zones[i+1].end;
+                    merged = true;
+                    // Continua il loop senza renderizzare ora, renderizzeremo al prossimo giro o alla fine del chain
+                }
+            }
+
+            if (!merged) {
+                // Rendering del blocco accumulato (da renderStart a renderEnd)
+                // Usiamo l'oggetto 3D della zona 'masterIdx'
+                const masterZone = zones[masterIdx];
+                const masterState = zoneStates[masterIdx];
+                
+                // Aggiorniamo la visuale usando coordinate custom
+                updateZoneVisuals(masterZone, masterState, renderStart, renderEnd);
+
+                // Setup per il prossimo blocco
+                if (!isLast) {
+                    masterIdx = i + 1;
+                    renderStart = zones[i+1].start;
+                    renderEnd = zones[i+1].end;
+                }
+            }
+        }
+    }
+
+    function updateZoneVisuals(zone, waveState, customStart, customEnd) {
+        const isWave = state.mode === 'wave';
+        
+        // Usa le coordinate passate o quelle di default della zona
+        const zStart = (customStart !== undefined) ? customStart : zone.start;
+        const zEnd = (customEnd !== undefined) ? customEnd : zone.end;
+
+        if (isWave) {
+            if (!waveState.polarized) {
+                zone.unpol.mesh.visible = true;
+                const baseAmp = 2.0 * Math.sqrt(waveState.intensity); 
+                updateChaoticWaveGeometry(zone.unpol.geo, zStart, zEnd, baseAmp, state.time);
+            } else {
+                zone.linear.mesh.visible = true;
+                const amp = 2.5 * Math.sqrt(waveState.intensity);
+                updateWaveGeometry(zone.linear.geo, zStart, zEnd, amp, waveState.angle, state.time);
+            }
+        } else {
+            // Mode RAY
+            zone.ray.visible = true;
+            updateRayMesh(zone.ray, zStart, zEnd, 0.8 * waveState.intensity);
+        }
+    }
+
+    function updateWaveGeometry(geometry, startZ, endZ, amplitude, angle, time) {
+        const positions = [];
+        const length = endZ - startZ;
+        const segmentCount = Math.floor(length * 5); 
+        
+        const oscX = Math.sin(angle);
+        const oscY = Math.cos(angle);
+        const k = 0.8; 
+
+        for (let i = 0; i <= segmentCount; i++) {
+            const t = i / segmentCount;
+            const z = startZ + t * length;
+            const phase = k * z - time * 5;
+            const val = amplitude * Math.sin(phase);
+            // LineGeometry usa un array piatto [x,y,z, x,y,z...]
+            positions.push(val * oscX, val * oscY, z);
+        }
+        geometry.setPositions(positions);
+    }
+
+    // Generatore di Numeri Casuali Pseudo-Deterministici per Coerenza spaziale
+    // (Non necessario se usiamo somma di sinusoidi, che è intrinsecamente continua)
+    
+    function updateChaoticWaveGeometry(geometry, startZ, endZ, amplitude, time) {
+        const positions = [];
+        const length = endZ - startZ;
+        const segmentCount = Math.floor(length * 5); 
+        
+        // Parametri onda portante
+        const k0 = 0.8; 
+        const w0 = 5.0;
+
+        // Parametri per il "rumore" (somma di sinusoidi a bassa frequenza)
+        // Usiamo frequenze leggermente diverse per Ex e Ey per scorrelarli
+        
+        for (let i = 0; i <= segmentCount; i++) {
+            const tParam = i / segmentCount;
+            const z = startZ + tParam * length;
+            
+            // Tempo ritardato (l'onda viaggia verso +Z)
+            // t_ret = t - z/v. Qui v ~ w0/k0. 
+            // Usiamo fase = k0*z - w0*t
+            const phaseBase = k0 * z - time * w0;
+            
+            // Generazione componenti Aleatorie Lente (Inviluppo)
+            // Simula il rumore gaussiano filtrato passa-basso
+            // Usiamo coordinate spaziali e temporali per coerenza
+            // Le frequenze di "rumore" devono essere molto più basse di w0
+            
+            // Rumore per Ex
+            const noiseX_1 = Math.cos(0.15 * z - 0.7 * time + 1.2);
+            const noiseX_2 = Math.cos(0.22 * z - 1.1 * time + 3.4);
+            const EnvX = (noiseX_1 + 0.5 * noiseX_2); // Inviluppo X
+
+            // Rumore per Ey (fasi e frequenze diverse -> indipendente)
+            const noiseY_1 = Math.cos(0.18 * z - 0.8 * time + 5.1);
+            const noiseY_2 = Math.cos(0.25 * z - 1.3 * time + 2.8);
+            const EnvY = (noiseY_1 + 0.5 * noiseY_2); // Inviluppo Y
+
+            // Costruzione onda modulata (AM/PM implicita)
+            // Ex = EnvX * cos(phase) - ma questo è solo AM. 
+            // Per avere fase casuale, usiamo IQ: I*cos - Q*sin
+            // Qui sopra EnvX funge da "I". Aggiungiamo una componente "Q".
+            
+            const QX = Math.sin(0.13 * z - 0.65 * time + 0.5);
+            const QY = Math.sin(0.19 * z - 0.85 * time + 4.2);
+
+            // Campo Elettrico Istantaneo
+            // Ex = I * cos(wt) - Q * sin(wt)
+            const Ex = amplitude * (EnvX * Math.cos(phaseBase) - QX * Math.sin(phaseBase)) * 0.7; // 0.7 fattore scala
+            const Ey = amplitude * (EnvY * Math.cos(phaseBase) - QY * Math.sin(phaseBase)) * 0.7;
+
+            positions.push(Ex, Ey, z);
+        }
+        geometry.setPositions(positions);
+    }
+
+    function updateDot(dot, amplitude, phaseShift, time, angle, zPosition) {
+        const k = 0.8;
+        const phase = k * zPosition - time * 5;
+        const val = amplitude * Math.sin(phase);
+        dot.position.set(0, val, 0); 
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        if (state.isRunning) {
+            state.time += state.speed;
+        }
+
+        // Renderizza SEMPRE la scena 3D (per lo sfondo)
+        // Ma nascondi gli oggetti 3D se in modalità 2D
+        sceneGroup.visible = (state.viewMode === '3d');
+        controls.enabled = (state.viewMode === '3d');
+
+        if (state.viewMode === '3d') {
+            updatePhysics();
+            controls.update();
+            labelRenderer.domElement.style.display = 'block';
+        } else {
+            labelRenderer.domElement.style.display = 'none'; // Nascondi etichette 3D in 2D
+            render2D();
+            updateCrosshair();
+        }
+        
+        renderer.render(scene, camera);
+        if (state.viewMode === '3d') {
+            labelRenderer.render(scene, camera);
+        }
+    }
+
+    // --- Logica 2D ---
+    const canvas2D = document.getElementById('canvas-2d');
+    const ctx2D = canvas2D.getContext('2d');
+    
+    // Canvas offscreen per la mappa di luce
+    const simW = 800; 
+    const simH = 800;
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = simW;
+    offCanvas.height = simH;
+    const offCtx = offCanvas.getContext('2d');
+
+    // Filtri in coordinate WORLD (centrati su 0,0)
+    let filters2D = [
+        { id: 1, x: -75, y: -75, w: 200, h: 200, color: '#FF5555' },
+        { id: 2, x: -25, y: -25, w: 200, h: 200, color: '#55FF55' },
+        { id: 3, x: 25, y: 25, w: 200, h: 200, color: '#5588FF' }
+    ];
+    let dragTarget = null;
+    let hoveredFilter2D = null; // Stato hover per 2D
+    let dragOffset = { x: 0, y: 0 };
+    
+    // Mirino State
+    const crosshair = {
+        el: document.getElementById('crosshair'),
+        label: document.getElementById('crosshair-label'),
+        x: 400, 
+        y: 150,
+        dragging: false,
+        dragOffset: { x: 0, y: 0 }
+    };
+    // Applica pos iniziale
+    crosshair.el.style.left = crosshair.x + 'px';
+    crosshair.el.style.top = crosshair.y + 'px';
+
+    function resizeCanvas2D() {
+        const viewArea = document.getElementById('view-area');
+        canvas2D.width = viewArea.clientWidth;
+        canvas2D.height = viewArea.clientHeight;
+    }
+    resizeCanvas2D();
+
+    function render2D() {
+        updateUIValues();
+        ctx2D.clearRect(0, 0, canvas2D.width, canvas2D.height);
+        ctx2D.imageSmoothingEnabled = false; // Pixel art style per zoom nitido
+
+        const cx = canvas2D.width / 2;
+        const cy = canvas2D.height / 2;
+        const lightRadius = state.lightRadius2D;
+
+        // 1. Calcolo Mappa Luce (Pixel Manipulation) su Offscreen Canvas
+        // Questo avviene in "World Space" fisso
+        const imgData = offCtx.createImageData(simW, simH);
+        const data = imgData.data;
+
+        // Pre-calcolo geometrie ruotate (in World Space)
+        const localFilters = filters2D.map(f => {
+            const angleDeg = (f.id === 1 ? state.pol1Angle : (f.id === 2 ? state.pol2Angle : state.pol3Angle));
+            const angleRad = angleDeg * Math.PI / 180;
+            // Centro rect in World Space (x,y sono top-left, quindi centro è x+w/2)
+            const fcx = f.x + f.w/2;
+            const fcy = f.y + f.h/2;
+            
+            return {
+                id: f.id,
+                angle: angleRad, 
+                cx: fcx,
+                cy: fcy,
+                w: f.w,
+                h: f.h,
+                cos: Math.cos(-angleRad),
+                sin: Math.sin(-angleRad),
+                color: f.color
+            };
+        });
+
+        // Loop Pixel su offscreen canvas (centrato in simW/2, simH/2 -> World 0,0)
+        for (let y = 0; y < simH; y++) {
+            for (let x = 0; x < simW; x++) {
+                // Coordinate World
+                const wx = x - simW/2;
+                const wy = y - simH/2;
+                
+                let intensity = 1.0;
+                let polarized = false;
+                let currentAngle = 0;
+
+                for (const f of localFilters) {
+                    const dx = wx - f.cx;
+                    const dy = wy - f.cy;
+                    
+                    const rx = dx * f.cos + dy * f.sin;
+                    const ry = -dx * f.sin + dy * f.cos;
+                    
+                    if (Math.abs(rx) <= f.w/2 && Math.abs(ry) <= f.h/2) {
+                        if (!polarized) {
+                            intensity *= 0.5;
+                            polarized = true;
+                            currentAngle = f.angle;
+                        } else {
+                            const theta = currentAngle - f.angle;
+                            intensity *= Math.pow(Math.cos(theta), 2);
+                            currentAngle = f.angle;
+                        }
+                    }
+                }
+
+                const idx = (y * simW + x) * 4;
+                
+                // Applicazione Contrasto Visivo (mix tra Lineare e Radice Quadrata)
+                // Questo altera solo la visualizzazione, non il valore fisico calcolato dal mirino
+                let visualIntensity = intensity;
+                if (state.contrast > 0) {
+                     visualIntensity = intensity * (1 - state.contrast) + Math.sqrt(intensity) * state.contrast;
+                }
+
+                data[idx] = 0;     // R (Nero)
+                data[idx+1] = 0;   // G
+                data[idx+2] = 0;   // B
+                data[idx+3] = Math.floor((1.0 - visualIntensity) * 255); // Alpha proporzionale alla luce bloccata
+            }
+        }
+        offCtx.putImageData(imgData, 0, 0);
+
+        // 2. Disegno Offscreen su Main con Trasformazioni (Zoom/Pan)
+        ctx2D.save();
+        
+        const panX = state.pan2D.x;
+        const panY = state.pan2D.y;
+        const zoom = state.zoom2D;
+
+        // Trasformazione Mondo -> Schermo
+        ctx2D.translate(cx + panX, cy + panY);
+        ctx2D.scale(zoom, zoom);
+        
+        // Disegno Luce (Cerchio Solido Bianco con bordi netti)
+        // Per comportarsi come una "luce" che illumina lo sfondo HDRI dietro
+        ctx2D.globalCompositeOperation = "screen";
+        ctx2D.beginPath();
+        ctx2D.arc(0, 0, lightRadius, 0, Math.PI * 2);
+        
+        // Riempi con bianco solido per avere un bordo netto tagliato di netto
+        ctx2D.fillStyle = 'rgba(255, 255, 255, 1.0)';
+        ctx2D.fill();
+
+        // Resettiamo a Source-Over normale, per stampare la mappa di oscuramento dei Filtri. 
+        // I filtri si comporteranno da ombre scurenti nere.
+        ctx2D.globalCompositeOperation = "source-over";
+
+        // Disegna Mappa Luce (I filtri come ombre nere)
+        // L'immagine offscreen copre da -simW/2 a +simW/2
+        ctx2D.drawImage(offCanvas, -simW/2, -simH/2);
+
+        // Disegno Cornici Filtri (in World Space)
+        ctx2D.font = "14px Arial";
+        
+        filters2D.forEach(f => {
+            const isHovered = (f === hoveredFilter2D);
+            const angleDeg = (f.id === 1 ? state.pol1Angle : (f.id === 2 ? state.pol2Angle : state.pol3Angle));
+            const angleRad = angleDeg * Math.PI / 180;
+            const visualRotation = -angleRad;
+
+            ctx2D.save();
+            const rcx = f.x + f.w/2;
+            const rcy = f.y + f.h/2;
+            ctx2D.translate(rcx, rcy);
+            ctx2D.rotate(visualRotation);
+            
+            // Stile in base all'hover
+            ctx2D.lineWidth = isHovered ? 8 : 5;
+            
+            if (isHovered) {
+                // Colore "acceso" (più luminoso)
+                const c = new THREE.Color(f.color);
+                c.offsetHSL(0, 0, 0.2); 
+                ctx2D.strokeStyle = c.getStyle();
+                ctx2D.fillStyle = c.getStyle(); // Anche il testo si accende
+            } else {
+                ctx2D.strokeStyle = f.color;
+                ctx2D.fillStyle = f.color;
+            }
+            
+            // Rimuoviamo shadow/glow
+            ctx2D.shadowBlur = 0;
+
+            // Rect
+            ctx2D.strokeRect(-f.w/2, -f.h/2, f.w, f.h);
+            
+            // Label
+            // fillStyle già settato sopra
+            ctx2D.font = isHovered ? "bold 18px Arial" : "bold 16px Arial";
+            ctx2D.fillText(`P${f.id}`, -f.w/2 + 5, -f.h/2 + 20);
+            
+            // Asse
+            ctx2D.beginPath();
+            ctx2D.moveTo(0, -f.h/2 + 10);
+            ctx2D.lineTo(0, f.h/2 - 10);
+            ctx2D.strokeStyle = f.color;
+            ctx2D.lineWidth = 3;
+            ctx2D.setLineDash([5, 5]);
+            ctx2D.stroke();
+            
+            ctx2D.restore();
+        });
+        
+        ctx2D.restore();
+    }
+
+    // Input Handling 2D Aggiornato (World Space)
+    // Nota: e.clientX/Y sono relativi al viewport. In 2D il canvas inizia a (360,0).
+    // Dobbiamo usare coordinate relative al canvas.
+    function getCanvasCoords(clientX, clientY) {
+        const rect = canvas2D.getBoundingClientRect();
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+
+    function getMouseWorld(mx, my) {
+        // mx, my sono coordinate locali del canvas (0,0 in top-left del canvas)
+        const cx = canvas2D.width / 2;
+        const cy = canvas2D.height / 2;
+        return {
+            x: (mx - cx - state.pan2D.x) / state.zoom2D,
+            y: (my - cy - state.pan2D.y) / state.zoom2D
+        };
+    }
+
+    // Helper Hit Test
+    function getFilterAt(worldX, worldY) {
+        for (let i = filters2D.length - 1; i >= 0; i--) {
+            const f = filters2D[i];
+            
+            const angleDeg = (f.id === 1 ? state.pol1Angle : (f.id === 2 ? state.pol2Angle : state.pol3Angle));
+            const angleRad = angleDeg * Math.PI / 180;
+            const visualRotation = -angleRad;
+            
+            const cx = f.x + f.w/2;
+            const cy = f.y + f.h/2;
+            
+            const dx = worldX - cx;
+            const dy = worldY - cy;
+            
+            // Ruota il punto mouse nel sistema di coordinate del rettangolo
+            const rx = dx * Math.cos(-visualRotation) - dy * Math.sin(-visualRotation);
+            const ry = dx * Math.sin(-visualRotation) + dy * Math.cos(-visualRotation);
+            
+            if (Math.abs(rx) <= f.w/2 && Math.abs(ry) <= f.h/2) {
+                return f;
+            }
+        }
+        return null;
+    }
+
+    canvas2D.addEventListener('mousedown', (e) => {
+        const c = getCanvasCoords(e.clientX, e.clientY);
+        const m = getMouseWorld(c.x, c.y);
+        
+        const hit = getFilterAt(m.x, m.y);
+        if (hit) {
+            dragTarget = hit;
+            dragOffset.x = m.x - hit.x;
+            dragOffset.y = m.y - hit.y;
+        }
+    });
+
+    // Listener MouseMove sul Canvas per Hover e Cursore
+    canvas2D.addEventListener('mousemove', (e) => {
+        // Se c'è un trascinamento in corso (filtri o mirino), disabilita hover
+        if (dragTarget || crosshair.dragging) {
+            hoveredFilter2D = null;
+            canvas2D.style.cursor = 'grabbing'; 
+            return;
+        }
+
+        const c = getCanvasCoords(e.clientX, e.clientY);
+        const m = getMouseWorld(c.x, c.y);
+
+        const hit = getFilterAt(m.x, m.y);
+        
+        if (hit !== hoveredFilter2D) {
+            hoveredFilter2D = hit;
+            canvas2D.style.cursor = hit ? 'pointer' : 'default';
+        }
+    });
+
+    // Spostato su window per evitare che il drag si blocchi se il mouse esce dal canvas (es. sopra mirino o UI)
+    window.addEventListener('mousemove', (e) => {
+        // Gestione drag Filtri
+        if (dragTarget) {
+            const c = getCanvasCoords(e.clientX, e.clientY);
+            const m = getMouseWorld(c.x, c.y);
+            dragTarget.x = m.x - dragOffset.x;
+            dragTarget.y = m.y - dragOffset.y;
+        }
+    });
+
+    // Zoom con rotella
+    canvas2D.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY * -0.001;
+        state.zoom2D = Math.min(Math.max(0.1, state.zoom2D + delta), 5.0);
+        // Nascondi tooltip allo zoom
+        document.getElementById('tooltip').style.display = 'none';
+    });
+
+    // (Listener mouseup rimosso perché gestito più sotto)
+
+    // Funzione Helper Calcolo Intensità
+    function calculateIntensity(worldX, worldY) {
+        let intensity = 1.0;
+        let polarized = false;
+        let currentAngle = 0;
+
+        // Ordine filtri 1 -> 2 -> 3
+        const sortedFilters = filters2D.slice().sort((a,b) => a.id - b.id);
+
+        for (const f of sortedFilters) {
+            const angleDeg = (f.id === 1 ? state.pol1Angle : (f.id === 2 ? state.pol2Angle : state.pol3Angle));
+            const angleRad = angleDeg * Math.PI / 180;
+            
+            const cx = f.x + f.w/2;
+            const cy = f.y + f.h/2;
+            // Per ruotare il sistema di coordinate locale, dobbiamo ruotare il punto 
+            // nella direzione opposta alla rotazione visiva del filtro.
+            // La rotazione visiva è -angleRad.
+            // Quindi dobbiamo ruotare di -(-angleRad) = +angleRad.
+            const cos = Math.cos(angleRad);
+            const sin = Math.sin(angleRad);
+            
+            const dx = worldX - cx;
+            const dy = worldY - cy;
+            
+            const rx = dx * cos - dy * sin;
+            const ry = dx * sin + dy * cos;
+            
+            if (Math.abs(rx) <= f.w/2 && Math.abs(ry) <= f.h/2) {
+                if (!polarized) {
+                    intensity *= 0.5;
+                    polarized = true;
+                    currentAngle = angleRad;
+                } else {
+                    const theta = currentAngle - angleRad;
+                    intensity *= Math.pow(Math.cos(theta), 2);
+                    currentAngle = angleRad;
+                }
+            }
+        }
+        return intensity;
+    }
+
+    // Ispezione Intensità (Tasto Destro)
+    canvas2D.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const c = getCanvasCoords(e.clientX, e.clientY);
+        const m = getMouseWorld(c.x, c.y);
+        const intensity = calculateIntensity(m.x, m.y);
+        const percent = Math.round(intensity * 100);
+        showTooltip(e.clientX, e.clientY, `Intensity: ${percent}%`);
+    });
+
+    // Nascondi tooltip al click sinistro
+    canvas2D.addEventListener('mousedown', () => {
+        document.getElementById('tooltip').style.display = 'none';
+    });
+
+    function showTooltip(x, y, text) {
+        const t = document.getElementById('tooltip');
+        t.innerText = text;
+        t.style.left = x + 10 + 'px';
+        t.style.top = y + 10 + 'px';
+        t.style.display = 'block';
+    }
+
+    // Gestione Mirino
+    function updateCrosshair() {
+        if (state.viewMode !== '2d') return;
+        
+        // Calcola coord mondo del centro mirino (aggiunto offset +20 per centrare)
+        // crosshair.x/y sono coordinate RELATIVE al view-area (dato che è absolute dentro view-area)
+        
+        // Per getMouseWorld, che ora si aspetta coord locali canvas:
+        // crosshair.x è left, crosshair.y è top dentro #view-area.
+        // #canvas-2d è 0,0 dentro #view-area.
+        // Quindi crosshair.x/y SONO già coordinate canvas locali.
+        
+        const centerX = crosshair.x + 20; 
+        const centerY = crosshair.y + 20;
+
+        const m = getMouseWorld(centerX, centerY);
+        const intensity = calculateIntensity(m.x, m.y);
+        
+        crosshair.label.innerText = Math.round(intensity * 100) + "%";
+        
+        // Posiziona DOM element
+        crosshair.el.style.left = crosshair.x + 'px';
+        crosshair.el.style.top = crosshair.y + 'px';
+    }
+
+    // Gestione Drag Mirino con Pointer Events
+    crosshair.el.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        crosshair.dragging = true;
+        crosshair.el.setPointerCapture(e.pointerId);
+        
+        // crosshair.x/y sono relativi al parent (#view-area)
+        // e.clientX/Y sono globali.
+        // Per calcolare l'offset correttamente:
+        // Quando sposto il mouse, voglio che: nuovaPosCross = mousePos + offset
+        // Offset = posCross - mousePos
+        // Però mousePos deve essere nello stesso spazio di posCross se vogliamo che sia pulito?
+        // No, basta che usiamo lo stesso riferimento nel move.
+        // Se nel move usiamo e.clientX (globale), allora crosshair.x = e.clientX + offset.
+        // Però crosshair.x è relativo a #view-area. 
+        // e.clientX è globale. 
+        // Quindi dobbiamo compensare la posizione del #view-area.
+        // MA crosshair.dragOffset serviva proprio a mantenere la distanza relativa mouse-oggetto.
+        
+        // Modo semplice: offset = current_local_x - current_global_mouse_x
+        // Nel move: new_local_x = current_global_mouse_x + offset
+        // Questo funziona anche se i sistemi di riferimento sono diversi, finché la relazione è lineare (solo traslazione).
+        // Poiché #view-area non si muove durante il drag, è costante.
+        
+        crosshair.dragOffset.x = crosshair.x - e.clientX;
+        crosshair.dragOffset.y = crosshair.y - e.clientY;
+        e.stopPropagation(); 
+    });
+
+    crosshair.el.addEventListener('pointermove', (e) => {
+        if (crosshair.dragging) {
+            e.preventDefault();
+            let newX = e.clientX + crosshair.dragOffset.x;
+            let newY = e.clientY + crosshair.dragOffset.y;
+            
+            // Clamp dentro l'area
+            const viewArea = document.getElementById('view-area');
+            newX = Math.max(0, Math.min(newX, viewArea.clientWidth - 40));
+            newY = Math.max(0, Math.min(newY, viewArea.clientHeight - 40));
+            
+            crosshair.x = newX;
+            crosshair.y = newY;
+            updateCrosshair();
+        }
+    });
+
+    function endCrosshairDrag(e) {
+        crosshair.dragging = false;
+        if (e.pointerId) crosshair.el.releasePointerCapture(e.pointerId);
+    }
+    
+    crosshair.el.addEventListener('pointerup', endCrosshairDrag);
+    crosshair.el.addEventListener('pointercancel', endCrosshairDrag);
+
+    // Gestione globale rilascio filtri
+    window.addEventListener('mouseup', () => {
+        dragTarget = null; 
+    });
+
+
+    // --- Interazione 3D (Click e Hover su Filtri) ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hoveredObject = null;
+
+    function getIntersects(event, objects) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        
+        raycaster.setFromCamera(mouse, camera);
+        return raycaster.intersectObjects(objects, true);
+    }
+
+    function onMouseMove3D(event) {
+        if (state.viewMode !== '3d') return;
+        
+        // Se stiamo trascinando (es. ruotando camera), niente hover
+        if (event.buttons > 0) {
+            if (hoveredObject) {
+                 // Reset forzato
+                const mat = hoveredObject.userData.borderMat;
+                const baseColor = hoveredObject.userData.baseColor;
+                mat.linewidth = 3;
+                mat.color.setHex(baseColor);
+                document.body.style.cursor = 'default';
+                hoveredObject = null;
+            }
+            return;
+        }
+
+        const objectsToTest = [pol1.group, pol2.group, pol3.group];
+        const intersects = getIntersects(event, objectsToTest);
+        
+        let targetGroup = null;
+
+        if (intersects.length > 0) {
+            // Risali al gruppo principale
+            let target = intersects[0].object;
+            while (target && (!target.userData || !target.userData.isPolarizer)) {
+                target = target.parent;
+            }
+            if (target && target.userData && target.userData.isPolarizer) {
+                targetGroup = target;
+            }
+        }
+
+        // Gestione cambio stato hover
+        if (targetGroup !== hoveredObject) {
+            // Reset precedente
+            if (hoveredObject) {
+                const mat = hoveredObject.userData.borderMat;
+                const baseColor = hoveredObject.userData.baseColor;
+                mat.linewidth = 3;
+                mat.color.setHex(baseColor);
+                document.body.style.cursor = 'default';
+            }
+
+            hoveredObject = targetGroup;
+
+            // Attiva nuovo
+            if (hoveredObject) {
+                const mat = hoveredObject.userData.borderMat;
+                // Colore più luminoso: possiamo usare HSL per aumentare la luminosità
+                const c = new THREE.Color(hoveredObject.userData.baseColor);
+                c.offsetHSL(0, 0, 0.2); // Aumenta luminosità
+                
+                mat.linewidth = 8; // Spessore aumentato
+                mat.color.copy(c);
+                document.body.style.cursor = 'pointer';
+            }
+        }
+    }
+
+    function onMouseClick3D(event) {
+        if (state.viewMode !== '3d') return;
+        if (hoveredObject) {
+            const id = hoveredObject.userData.id;
+            const checkbox = document.getElementById(`check-pol${id}`);
+            if (checkbox) checkbox.click();
+        }
+    }
+
+    const canvasContainer = document.getElementById('canvas-container');
+    canvasContainer.addEventListener('mousemove', onMouseMove3D);
+    canvasContainer.addEventListener('click', onMouseClick3D);
+
+
+    // Event Listeners
+    
+    // Previene conflitti tra UI e Canvas (stop propagation su click/drag nell'interfaccia)
+    const uiContainer = document.getElementById('ui-container');
+    ['mousedown', 'touchstart', 'pointerdown', 'wheel'].forEach(evt => {
+        uiContainer.addEventListener(evt, (e) => e.stopPropagation(), { passive: false });
+    });
+
+    document.getElementById('btn-toggle-view').addEventListener('click', (e) => {
+        const checks = document.querySelectorAll('input[type="checkbox"]');
+        const grpViz = document.getElementById('group-viz-mode');
+        const grpAnim = document.getElementById('group-animation');
+        const grpRad = document.getElementById('group-light-radius');
+        const cross = document.getElementById('crosshair');
+
+        if (state.viewMode === '3d') {
+            // SWITCH TO 2D
+            state.viewMode = '2d';
+            e.target.innerText = "3D Mode";
+            // document.getElementById('canvas-container').style.display = 'none'; // Manteniamo visibile per sfondo
+            document.getElementById('canvas-2d').style.display = 'block';
+            cross.style.display = 'block';
+            
+            // UI Update
+            checks.forEach(c => c.style.display = 'none');
+            grpViz.style.display = 'none';
+            grpAnim.style.display = 'none';
+            grpRad.style.display = 'block';
+            
+            resizeCanvas2D();
+            updateCrosshair();
+        } else {
+            // SWITCH TO 3D
+            state.viewMode = '3d';
+            e.target.innerText = "2D Mode";
+            // document.getElementById('canvas-container').style.display = 'block';
+            document.getElementById('canvas-2d').style.display = 'none';
+            cross.style.display = 'none';
+            
+            // UI Update
+            checks.forEach(c => c.style.display = 'inline-block');
+            grpViz.style.display = 'block';
+            grpAnim.style.display = 'block';
+            grpRad.style.display = 'none';
+        }
+    });
+
+    document.getElementById('radius-slider').addEventListener('input', (e) => {
+        state.lightRadius2D = parseInt(e.target.value);
+    });
+
+    // Helper per aggiornare l'esposizione combinata (Sfondo 3D)
+    function updateExposure() {
+        const baseExp = parseFloat(document.getElementById('exposure-slider').value);
+        // Quando contrast è 0 (Lineare), multiplier = 1 (nessun cambiamento)
+        // Quando contrast è 1 (Sqrt), multiplier = 2.5 (schiarisce lo sfondo per compensare)
+        const contrastMultiplier = 1.0 + (state.contrast * 1.5);
+        renderer.toneMappingExposure = baseExp * contrastMultiplier;
+    }
+
+    document.getElementById('contrast-slider').addEventListener('input', (e) => {
+        state.contrast = parseFloat(e.target.value);
+        updateExposure(); // Aggiorna lo sfondo 3D
+    });
+
+    document.getElementById('btn-play-pause').addEventListener('click', (e) => {
+        state.isRunning = !state.isRunning;
+        e.target.innerHTML = state.isRunning ? "&#10074;&#10074;" : "&#9658;";
+    });
+
+    document.getElementById('speed-slider').addEventListener('input', (e) => {
+        state.speed = parseFloat(e.target.value);
+    });
+    
+    document.getElementById('exposure-slider').addEventListener('input', (e) => {
+        updateExposure(); // Usa la nuova funzione combinata
+    });
+
+    document.getElementById('angle-pol1').addEventListener('input', (e) => state.pol1Angle = parseInt(e.target.value));
+    document.getElementById('angle-pol2').addEventListener('input', (e) => state.pol2Angle = parseInt(e.target.value));
+    
+    document.getElementById('check-pol1').addEventListener('change', (e) => state.activePol1 = e.target.checked);
+    document.getElementById('check-pol2').addEventListener('change', (e) => state.activePol2 = e.target.checked);
+    document.getElementById('check-pol3').addEventListener('change', (e) => state.activePol3 = e.target.checked);
+    document.getElementById('angle-pol3').addEventListener('input', (e) => state.pol3Angle = parseInt(e.target.value));
+
+    document.querySelectorAll('input[name="viz-mode"]').forEach(r => {
+        r.addEventListener('change', (e) => { 
+            if(e.target.checked) {
+                state.mode = e.target.value; 
+                // Forza aggiornamento immediato
+                updatePhysics();
+            }
+        });
+    });
+
+    window.addEventListener('resize', () => {
+        const viewArea = document.getElementById('view-area');
+        const width = viewArea.clientWidth;
+        const height = viewArea.clientHeight;
+
+        if (state.viewMode === '3d') {
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            labelRenderer.setSize(width, height);
+            
+            // Aggiorna risoluzione per Line2 (Fat Lines)
+            zones.forEach(zone => {
+                if(zone.unpol && zone.unpol.mat) zone.unpol.mat.resolution.set(width, height);
+                if(zone.linear && zone.linear.mat) zone.linear.mat.resolution.set(width, height);
+            });
+            
+            // Aggiorna risoluzione bordi polarizzatori
+            [pol1, pol2, pol3].forEach(p => {
+                if (p.group.userData.borderMat) {
+                    p.group.userData.borderMat.resolution.set(width, height);
+                }
+            });
+
+        } else {
+            resizeCanvas2D();
+        }
+    });
+
+    animate();
+
+    // Funzione per decifrare e mostrare contatti autore
+    function toggleAuthorInfo() {
+        const footer = document.getElementById('author-footer');
+        const isExpanded = footer.getAttribute('data-expanded') === 'true';
+        
+        if (isExpanded) {
+            // Ripristina stato iniziale
+            footer.innerHTML = "contact the author";
+            footer.setAttribute('data-expanded', 'false');
+        } else {
+            // Decifra e mostra
+            const revEmail = "moc.liamg@ecsidocram";
+            const email = reverseString(revEmail);
+            const name = "Marco Discendenti";
+            
+            footer.innerHTML = `<a href="mailto:${email}">${email}</a>`;
+            footer.setAttribute('data-expanded', 'true');
+        }
+    }
+
+    function reverseString(str) {
+        return str.split("").reverse().join("");
+    }
+
+</script>
+</body>
+</html>

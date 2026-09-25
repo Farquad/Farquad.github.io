@@ -1,0 +1,176 @@
+Come è concepita la simulazione, dal punto di vista fisico
+==========================================================
+
+Questa simulazione non risolve le equazioni di Maxwell su una griglia (come farebbe un metodo FDTD). Parte invece dalla soluzione esatta di quelle equazioni per cariche puntiformi, e la valuta punto per punto sullo schermo.
+
+L'idea è: se si conosce la traiettoria di ogni carica, il campo elettromagnetico in un punto e in un istante è completamente determinato. Maxwell più le condizioni al contorno all'infinito (nessuna onda in ingresso) hanno una soluzione unica. La simulazione valuta quella soluzione nei punti del piano e la disegna come frecce, linee di campo e mappa di potenziale.
+
+Il selettore "Space", nella card Dynamics, sceglie in quale spazio vivono le equazioni:
+
+  3D section  (default)  la soluzione di Liénard–Wiechert in tre dimensioni spaziali,
+                         mostrata in sezione sul piano z = 0;
+  2D Maxwell             l'elettrodinamica di uno spazio con due sole dimensioni spaziali,
+                         dove lo schermo è tutto lo spazio.
+
+Non sono due approssimazioni della stessa fisica: sono due teorie diverse, e il confronto fra le due è il punto del selettore. La prima parte del documento descrive il modo 3D; la sezione "Il modo 2D Maxwell" descrive il secondo.
+
+
+Legame con le equazioni di Maxwell
+----------------------------------
+
+Le equazioni di Maxwell nello spazio vuoto legano il campo elettrico E, il campo magnetico B, la densità di carica ρ e la densità di corrente J:
+
+    ∇ · E  =  ρ / ε₀                         (legge di Gauss)
+    ∇ · B  =  0                              (assenza di monopoli magnetici)
+    ∇ × E  = − ∂B / ∂t                       (legge di Faraday)
+    ∇ × B  =  μ₀ J + μ₀ ε₀ ∂E / ∂t           (Ampère–Maxwell)
+
+Per una carica puntiforme q che si muove lungo r_q(t) si ha
+
+    ρ(r, t)  =  q  δ(r − r_q(t))
+    J(r, t)  =  q  v_q(t)  δ(r − r_q(t))
+
+La soluzione ritardata di questo problema è il potenziale scalare di Liénard–Wiechert
+
+    φ(r, t)  =  (1 / 4πϵ₀)  q / [ R (1 − n · β) ]_rit
+
+e il campo elettrico
+
+    E(r, t)  =  (1 / 4πϵ₀)  {  q (1 − β²)(n − β) / [ (1 − n · β)³ R² ]
+                            +  q  n × [(n − β) × a] / [ c² (1 − n · β)³ R ]  }_rit
+
+Tutte le quantità tra parentesi graffe sono valutate al tempo ritardato t_rit, definito da
+
+    |r − r_q(t_rit)|  =  c (t − t_rit)
+
+cioè: il segnale che arriva in r all'istante t è partito dalla carica quando la luce ha avuto il tempo di coprire la distanza R. È la causalità imposta dalle equazioni di Maxwell: nulla si propaga più veloce di c.
+
+Il primo termine decade come 1/R². È il campo di Coulomb, deformato dalla velocità (campo di velocità, o "near field"). A riposo (v = 0, a = 0) si riduce esattamente a
+
+    E  =  (1 / 4πϵ₀)  q n / R²
+
+che è la legge di Coulomb, cioè il limite statico della legge di Gauss.
+
+Il secondo termine decade come 1/R ed è proporzionale all'accelerazione. È il campo di radiazione: l'onda elettromagnetica che si stacca dalla carica. Nasce dal accoppiamento tra Faraday e il termine di corrente di spostamento di Ampère–Maxwell (μ₀ ε₀ ∂E/∂t). Senza quel termine non esisterebbero onde, e il campo seguirebbe istantaneamente la carica.
+
+
+Sezione 2D di un campo 3D, non elettrodinamica piana
+----------------------------------------------------
+
+(Questa sezione descrive il modo "3D section".)
+
+Lo schermo è bidimensionale, ma le formule usate sono quelle di Maxwell in tre dimensioni spaziali. Non è un campo "riadattato al 2D", e la divergenza non viene mai calcolata come operatore nel piano.
+
+Due teorie diverse danno due fisiche diverse:
+
+  Elettromagnetismo 3D  ("3D section")
+      Gauss su una sfera di area 4πR²  →  E ~ 1/R²
+      potenziale coulombiano           →  φ ~ 1/R
+      fronti d'onda                    →  sfere, ritardo |r − r_q| = c Δt
+      legge di Gauss                   →  ∇₃D · E = ρ/ε₀
+
+  Elettromagnetismo in 2D spaziali  ("2D Maxwell")
+      Gauss su un cerchio di lunghezza 2πR  →  E ~ 1/R
+      potenziale                            →  φ ~ ln R
+      fronti d'onda                         →  cerchi, con scia di Huygens 2D
+      legge di Gauss                        →  ∇₂D · E = ρ/ε₀
+
+Nel modo 3D il termine di velocità è esplicitamente ~ 1/R² e il potenziale a riposo è K q / R. Sono le firme della carica puntiforme nello spazio 3D, non della carica puntiforme nel piano. Il ritardo usa R = √(Δx² + Δy²): per un moto che resta nel piano z = 0, quella distanza coincide con la distanza euclidea 3D, quindi il punto (x, y) sullo schermo è il punto (x, y, 0) del campo vero.
+
+Perché funziona come sezione. Se ogni carica si muove nel piano z = 0, per simmetria Ez = 0 su quel piano. Il vettore disegnato (Ex, Ey) è quindi esattamente il campo 3D ristretto alla sezione, non una proiezione approssimata né un oggetto definito da equazioni 2D.
+
+Conseguenza sulla divergenza, importante. Lontano dalle cariche, in 3D, ∇₃D · E = 0: le linee di campo non nascono né muoiono, ma possono uscire dalla sezione. Il campo piano (Ex, Ey) di una carica 3D è del tipo r̂ / R². La sua divergenza bidimensionale non è zero nel vuoto:
+
+    ∇₂D · E  =  ∂Ex/∂x + ∂Ey/∂y  ~  −1/R³   (fuori dall'origine)
+
+Le linee disegnate nel piano sembrano indebolirsi o "sparire" allontanandosi, perché parte del flusso di Gauss se ne va in direzione z. In una vera elettrodinamica 2D si avrebbe invece E ~ 1/R e ∇₂D · E = 0 ovunque tranne che sulle cariche: le linee resterebbero conservate nel foglio.
+
+La simulazione non calcola affatto un operatore di divergenza (né 2D né 3D). Non c'è una griglia su cui si aggiornano E e B. Si valuta in ogni pixel la formula chiusa, e si disegna. La legge di Gauss è soddisfatta dalla formula, non come vincolo imposto sul canvas.
+
+
+Il modo "2D Maxwell"
+--------------------
+
+Interpretazione. Una carica puntiforme in 2+1 dimensioni è un filo rettilineo infinito perpendicolare allo schermo. Questa sola frase spiega tutto il resto: il ln R del potenziale, il fatto che il potenziale non si annulli all'infinito (quello di un filo infinito diverge: serve un raggio di riferimento), la radiazione che decade come 1/√R invece che come 1/R, e il fatto che il flusso di Gauss resti nel foglio.
+
+Statica. A riposo il campo e il potenziale sono
+
+    E  =  K₂ q n̂ / R
+    φ  =  − K₂ q ln(R / L₀)
+
+Il segno di φ cambia attraversando R = L₀: è corretto, non è un bug. La costante additiva del logaritmo è arbitraria e viene assorbita in L₀, una lunghezza di schermo fissa (400 px). È fissa di proposito: se dipendesse dallo zoom, dalla velocità della luce o dalla media del fotogramma, tutta la mappa di potenziale slitterebbe quando l'utente zooma o muove uno slider.
+
+Elettrodinamica. Il Green ritardato del d'Alembertiano in 2+1 dimensioni è
+
+    G(R, τ)  =  (c / 2π) · Θ(cτ − R) / √(c²τ² − R²)
+
+La differenza decisiva rispetto al 3D sta nella funzione a gradino Θ: contribuisce ogni evento *dentro* il cono di luce passato, non solo quelli sul bordo. In tre dimensioni il Green è una delta sul cono, e il campo in un punto dipende da un solo istante del passato, t_rit. In due dimensioni il campo dipende da tutta la storia della carica anteriore a t_rit, pesata con 1/σ dove σ = √(c²τ² − R²).
+
+Questo è il fallimento del principio di Huygens in dimensione spaziale pari. La conseguenza visibile è che un'accelerazione improvvisa non produce un guscio netto che passa e se ne va, ma un fronte seguito da una *scia* che riempie l'interno del cerchio di luce e si spegne lentamente. È la ragione principale per cui questo modo esiste.
+
+Ponendo τ = t − t', R(t') = |r − r_q(t')|, P = τv − R e u = c²τ − R·v, il codice valuta
+
+    φ(r,t)  =   K₂ q c  ∫ dt'/σ                            da −∞ a t_rit
+    E(r,t)  = − K₂ q c  ∫ F(t') dt'/σ                       da −∞ a t_rit
+    F(t')   =   τ a / u  +  P (c² − v² + R·a) / u²
+
+I due integrali condividono gli stessi pesi di quadratura, quindi E e φ escono dallo stesso ciclo. Il nucleo F è regolare ovunque, anche esattamente sul cono; l'unica singolarità è l'1/σ, che è integrabile ed è eliminata analiticamente da un cambio di variabile.
+
+Moto uniforme. Per una linea di carica in moto rettilineo uniforme il campo è
+
+    E  =  K₂ q √(1 − β²) (n̂ − β) / [ R (1 − n̂·β)² ]
+
+Si noti √(1 − β²) = 1/γ, non 1/γ² come nel caso puntiforme 3D: l'esponente del fattore relativistico dipende dalla dimensione.
+
+Storia finita. L'integrale va a t' = −∞, ma il buffer della storia comincia a un istante t₀. Il pezzo antecedente viene risolto in forma chiusa assumendo che la carica fosse ferma nella sua posizione iniziale (che è anche la condizione iniziale vera: le cariche nascono ferme). Con R₀ la distanza da quella posizione e ξ = R₀/(c(t − t₀)):
+
+    E_pre  =  K₂ q (R̂₀ / R₀) ( 1 − √(1 − ξ²) )
+    φ_pre  =  K₂ q ( ln(L₀ / R₀) − arccosh(1/ξ) )
+
+Grazie a questo termine il risultato non dipende dalla lunghezza della storia: per una carica ferma, quadratura più pre-storia danno il campo statico esatto con qualunque buffer. Senza, comparirebbe un anello con gradiente discontinuo al raggio R = c(t − t₀), cioè proprio ai bordi dello schermo.
+
+Cosa cambia nell'interfaccia. In 2D lo slider "Radiation Strength" sparisce: la radiazione non è un termine additivo separato da riscalare, sta dentro il Green. "Speed of Light" resta. Il passaggio fra i due modi avviene a caldo, senza azzerare cariche o storia.
+
+Confronto visivo. Con una coppia + / −, in 2D le linee di campo collegano davvero le due cariche, perché il flusso è conservato nel foglio; passando a 3D con lo stesso setup le linee si indeboliscono e si perdono, perché parte del flusso esce lungo z. Con una carica oscillante, in 3D si vede un guscio d'onda netto, in 2D un fronte con la scia dietro.
+
+
+Cosa fa in concreto il codice
+-----------------------------
+
+1. Tempo ritardato
+   Ogni carica memorizza la propria storia (posizione, velocità, accelerazione). Per ogni punto dello schermo si cerca l'istante passato in cui la "sfera di luce" centrata su quel punto interseca la traiettoria, risolvendo c(t − t') = R(t') con il metodo di Newton. Tra un fotogramma e l'altro lo stato viene interpolato con una spline di Hermite, così velocità e accelerazione restano coerenti.
+
+2. Campo elettrico
+   In 3D, dal moto ritardato si valutano i due contributi di Liénard–Wiechert (campo di velocità ~ 1/R² e campo di radiazione legato ad a). In 2D si valuta l'integrale sulla storia descritto sopra, con una quadratura composita: un cambio di variabile che assorbe la singolarità vicino al cono, e pannelli a larghezza crescente per la coda, infittiti quanto basta a risolvere il periodo di oscillazione. La costante K del codice gioca il ruolo di 1/(4πϵ₀) in unità di visualizzazione; K₂ = K / 90 px è la sua controparte 2D, scelta perché a R = 90 px i due modi abbiano intensità simile e il passaggio mostri il cambio di *decadimento* (1/R contro 1/R²) invece di un salto di luminosità. Il campo totale è la somma dei contributi di tutte le cariche: è il principio di sovrapposizione, conseguenza della linearità di Maxwell nel vuoto.
+
+3. Potenziale ("Voltage")
+   In 3D la mappa colorata è il potenziale scalare di Liénard–Wiechert, φ ~ q / [R − R · v / c]; a cariche ferme diventa il potenziale coulombiano K q / R. In 2D è il potenziale logaritmico descritto sopra, riferito a L₀.
+
+4. Due regimi
+   In modalità statica si ignora la storia e si usa solo Coulomb. In modalità elettrodinamica si attivano ritardo, velocità e accelerazione: appaiono le onde. La velocità della luce c è un parametro regolabile (molto più bassa di 3·10⁸ m/s) perché sullo schermo le onde siano visibili. Un secondo parametro, "Radiation Strength", scala l'ampiezza del termine radiativo, altrimenti troppo debole o troppo forte rispetto al campo vicino.
+
+5. Moto delle cariche
+   Le traiettorie non sono integrate dalla forza di Lorentz. Oscillazioni orizzontali, verticali o circolari sono imposte analiticamente (x = A sin(ωt), con a = −ω² x). Il trascinamento col mouse è una molla smorzata (integrazione Velocity Verlet), con un tetto di velocità a 0,9 c per non superare la luce. Il campo è quindi la risposta elettromagnetica a un moto assegnato, non una dinamica autocoerente carica–campo.
+
+
+Cosa è fedele alla fisica, e cosa è una scelta di visualizzazione
+-----------------------------------------------------------------
+
+Fedele:
+  - causalità e ritardo luminoso;
+  - recupero della legge statica a riposo (Coulomb in 3D, logaritmica in 2D);
+  - distorsione relativistica del campo di una carica in moto uniforme, con l'esponente giusto in ciascuna dimensione;
+  - emissione di radiazione solo se c'è accelerazione;
+  - scia di Huygens all'interno del cono di luce nel modo 2D;
+  - sovrapposizione lineare;
+  - potenziali ritardati esatti in entrambi i modi.
+
+Semplificazioni didattiche:
+  - nel modo 3D si mostra solo la sezione z = 0 del campo (moto e osservazione vincolati al piano);
+  - si visualizza E, non B (in 3D B_rit = n × E / c, e il vettore di Poynting S = E × B / μ₀ porta via l'energia dell'onda);
+  - le cariche non si influenzano tramite la forza di Lorentz e non irradiano per reazione di radiazione;
+  - K, K₂, L₀, c e l'ampiezza del termine radiativo sono unità di schermo, non costanti SI;
+  - vicino alle cariche il campo è azzerato per evitare la singolarità;
+  - nel modo 2D la quadratura ha un limite noto: se l'ampiezza dell'oscillazione è minima e la frequenza massima, il periodo scende sotto la decina di fotogrammi, e allora né la storia (campionata una volta per fotogramma) né la quadratura riescono a rappresentarlo; il campo lontano diventa rumoroso.
+
+In sintesi: la simulazione è un visualizzatore di soluzioni esatte dei potenziali ritardati, in due spazi diversi a scelta. Mostra, in tempo reale, come il campo elettrico "non sa" dove la carica è adesso ma solo dove era un tempo R/c fa; e come la stessa causalità produca, a seconda del numero di dimensioni spaziali, un'onda che passa e se ne va (3D) oppure un'onda che si lascia dietro una scia (2D).

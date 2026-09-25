@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Simulazione Gravitazionale 2D</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0f172a;
+            font-family: sans-serif;
+            color: white;
+            touch-action: none; /* Prevent default browser pinch/scroll */
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 20px;
+            z-index: 10;
+            width: 250px;
+        }
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch;
+        }
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #2563eb;
+        }
+        button.danger {
+            background-color: #ef4444;
+        }
+        button.danger:hover {
+            background-color: #dc2626;
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            font-size: 14px;
+            gap: 5px;
+        }
+        .checkbox-label {
+            flex-direction: row;
+            align-items: center;
+            cursor: pointer;
+        }
+        input[type=range], input[type=checkbox] {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="ui">
+        <label>
+            Velocità di lancio: <span id="speedValue">7000</span> m/s
+            <input type="range" id="speedInput" min="1000" max="15000" step="100" value="7000">
+        </label>
+        <button id="fireButton">Spara</button>
+        <div class="controls-group">
+            <label>
+                Velocità Sim.: <span id="simSpeedValue">1.0</span>x
+                <input type="range" id="simSpeedInput" min="0" max="100" step="1" value="70">
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="trailToggle" checked>
+                Traccia Orbite
+            </label>
+            <button id="clearButton" class="danger">Pulisci Tutto</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Impostazioni per il resize
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            render();
+        }
+        window.addEventListener('resize', resize);
+
+        // Parametri vista (Pan & Zoom)
+        let scale = 0.05; // Zoom iniziale per vedere il pianeta (molto grande)
+        let offsetX = 0;
+        let offsetY = 0;
+
+        function initView() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            offsetX = canvas.width / 2;
+            offsetY = canvas.height * 0.8; // Centra il cannone nello schermo iniziale
+            
+            // Il raggio del pianeta R è 6371000. Regoliamo la scala in modo da vedere il pianeta intero e un po' di spazio
+            scale = Math.min(canvas.width, canvas.height) / (6371000 * 3);
+        }
+        initView();
+
+        // Controllo Pan & Zoom (Mouse)
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                offsetX += e.clientX - lastX;
+                offsetY += e.clientY - lastY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
+            
+            // Zoom puntando al cursore del mouse
+            const hx = (e.clientX - offsetX) / scale;
+            const hy = (e.clientY - offsetY) / scale;
+
+            scale *= zoomAmount;
+
+            offsetX = e.clientX - hx * scale;
+            offsetY = e.clientY - hy * scale;
+        }, { passive: false });
+
+        // Controllo Pan & Zoom (Touch / Pinch)
+        let initialPinchDistance = null;
+        let initialScale = 1;
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                isDragging = false;
+                initialPinchDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                initialScale = scale;
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && isDragging) {
+                offsetX += e.touches[0].clientX - lastX;
+                offsetY += e.touches[0].clientY - lastY;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            } else if (e.touches.length === 2 && initialPinchDistance) {
+                const currentDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                
+                const ratio = currentDistance / initialPinchDistance;
+                
+                // Centro del pinch
+                const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                
+                const hx = (cx - offsetX) / scale;
+                const hy = (cy - offsetY) / scale;
+
+                scale = initialScale * ratio;
+
+                offsetX = cx - hx * scale;
+                offsetY = cy - hy * scale;
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (e.touches.length === 0) {
+                isDragging = false;
+                initialPinchDistance = null;
+            } else if (e.touches.length === 1) {
+                isDragging = true;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+                initialPinchDistance = null;
+            }
+        });
+
+        // Parametri Fisici
+        const G = 6.67430e-11; // Costante gravitazionale (m^3 kg^-1 s^-2)
+        const M = 5.972e24;    // Massa del pianeta (simile alla Terra) in kg
+        const R = 6371000;     // Raggio del pianeta in metri (Terra)
+        const GM = G * M;
+        const mountainHeight = 1000000;  // Altezza del monte
+        const mountainBaseW = 1200000; // Larghezza base del monte
+
+        // Simulazione
+        const dt = 10; // Delta tempo in secondi per frame di calcolo (velocità simulazione)
+        const baseStepsPerFrame = 10; // Quanti passi calcolare per singolo frame visivo
+        let stepAccumulator = 0; // Per gestire sim speed < 1
+        
+        let simSpeedMultiplier = 1.0;
+        let showTrails = true;
+
+        class Explosion {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.life = 1.0;
+                this.maxSize = Math.max(300000, 20 / scale);
+            }
+            update() {
+                this.life -= 0.03;
+            }
+            draw(ctx) {
+                if (this.life <= 0) return;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.maxSize * (1.5 - this.life), 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 230, 100, ${this.life})`;
+                ctx.fill();
+                
+                // Alone interno
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.maxSize * (1.0 - this.life) * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.life})`;
+                ctx.fill();
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.active = true;
+                this.path = []; // Storia per disegnare l'orbita
+                this.pathTimer = 0;
+                this.radius = Math.max(100000, 3 / scale);
+            }
+
+            update() {
+                if (!this.active) return;
+
+                const r2 = this.x * this.x + this.y * this.y;
+                const r = Math.sqrt(r2);
+
+                // Controllo collisione col pianeta base
+                let collision = false;
+                if (r <= R) {
+                    collision = true;
+                    const ratio = R / r;
+                    this.x *= ratio;
+                    this.y *= ratio;
+                }
+                
+                // Controllo collisione col cannone/monte
+                // Approssimazione bounding box alto (il monte)
+                if (!collision && this.y > -R - mountainHeight && this.y < -R && Math.abs(this.x) < mountainBaseW/2) {
+                    // Controllo più preciso triangolo monte:
+                    const mountainPy = (R + mountainHeight + this.y) / mountainHeight; 
+                    if (Math.abs(this.x) < (mountainBaseW/2) * mountainPy) {
+                        collision = true;
+                        this.y -= 10000; // Alza leggermente sulla superficie
+                    }
+                }
+
+                if (collision) {
+                    this.active = false;
+                    explosions.push(new Explosion(this.x, this.y));
+                    return;
+                }
+
+                // Forza gravitazionale (Newton) a = -GM / r^2 (diretta verso il centro)
+                const a = -GM / r2;
+                const ax = a * (this.x / r);
+                const ay = a * (this.y / r);
+
+                // Aggiornamento velocità (Eulero semi-implicito)
+                this.vx += ax * dt;
+                this.vy += ay * dt;
+
+                // Aggiornamento posizione
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+
+                // Salva percorso visivo
+                this.pathTimer++;
+                if (this.pathTimer % 5 === 0) {
+                    this.path.push({x: this.x, y: this.y});
+                    if (this.path.length > 2000) this.path.shift(); // Limite lunghezza orbita
+                }
+            }
+
+            draw(ctx) {
+                // Aggiorna raggio dinamico in base allo zoom
+                this.radius = Math.max(100000, 3 / scale);
+
+                // Disegna scia
+                if (showTrails && this.path.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.path[0].x, this.path[0].y);
+                    for (let p of this.path) {
+                        ctx.lineTo(p.x, p.y);
+                    }
+                    if (this.active) ctx.lineTo(this.x, this.y);
+                    
+                    // Stesso spessore della pallina (diametro)
+                    ctx.lineWidth = this.radius * 2; 
+                    // Opacità ridotta
+                    ctx.strokeStyle = this.active ? 'rgba(239, 68, 68, 0.3)' : 'rgba(100, 116, 139, 0.2)';
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.stroke();
+                }
+
+                // Disegna proiettile
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.active ? '#ef4444' : '#64748b';
+                ctx.fill();
+            }
+        }
+
+        let projectiles = [];
+        let explosions = [];
+
+        // UI
+        const speedInput = document.getElementById('speedInput');
+        const speedValue = document.getElementById('speedValue');
+        const fireButton = document.getElementById('fireButton');
+        const simSpeedInput = document.getElementById('simSpeedInput');
+        const simSpeedValue = document.getElementById('simSpeedValue');
+        const trailToggle = document.getElementById('trailToggle');
+        const clearButton = document.getElementById('clearButton');
+
+        speedInput.addEventListener('input', () => {
+            speedValue.textContent = speedInput.value;
+        });
+
+        fireButton.addEventListener('click', () => {
+            const v = parseFloat(speedInput.value);
+            // Cannone posto sopra il monte
+            projectiles.push(new Projectile(0, -R - mountainHeight - 50000, v, 0));
+        });
+
+        simSpeedInput.addEventListener('input', () => {
+            const val = parseFloat(simSpeedInput.value);
+            if (val <= 70) {
+                // Il 70% dello slider mappa valori da 0.1 a 1.0
+                simSpeedMultiplier = 0.1 + (val / 70) * 0.9;
+            } else {
+                // Il 30% dello slider mappa valori da 1.0 a 5.0
+                simSpeedMultiplier = 1.0 + ((val - 70) / 30) * 4.0;
+            }
+            simSpeedValue.textContent = simSpeedMultiplier.toFixed(1);
+        });
+
+        trailToggle.addEventListener('change', () => {
+            showTrails = trailToggle.checked;
+        });
+
+        clearButton.addEventListener('click', () => {
+            projectiles = [];
+            explosions = [];
+        });
+
+        // Loop di render e aggiornamento
+        function render() {
+            // Aggiorna fisica
+            stepAccumulator += baseStepsPerFrame * simSpeedMultiplier;
+            let stepsThisFrame = Math.floor(stepAccumulator);
+            stepAccumulator -= stepsThisFrame;
+
+            for (let i = 0; i < stepsThisFrame; i++) {
+                for (let p of projectiles) {
+                    p.update();
+                }
+            }
+
+            // Aggiorna esplosioni
+            explosions.forEach(e => e.update());
+            explosions = explosions.filter(e => e.life > 0);
+
+            // Pulisci canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Applica trasformazioni telecamera
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+
+            // Disegna pianeta (senza atmosfera)
+            ctx.beginPath();
+            ctx.arc(0, 0, R, 0, Math.PI * 2);
+            ctx.fillStyle = '#10b981'; // Colore base pianeta
+            ctx.fill();
+
+            // Disegna il monte al polo nord
+            ctx.beginPath();
+            // La base ora si addentra abbondantemente (100.000 m) all'interno del pianeta
+            ctx.moveTo(-mountainBaseW / 2, -R + 100000); 
+            ctx.lineTo(0, -R - mountainHeight); 
+            ctx.lineTo(mountainBaseW / 2, -R + 100000); 
+            ctx.fill();
+
+            // Disegna il cannone (sulla sommità del monte)
+            ctx.save();
+            ctx.translate(0, -R - mountainHeight);
+            ctx.fillStyle = '#94a3b8';
+            // Base cannone (dal suolo fino all'altezza della canna)
+            ctx.fillRect(-150000, -50000, 300000, 50000);
+            // Canna verso destra (centrata orizzontalmente sull'asse y = -50000)
+            ctx.fillRect(0, -90000, 500000, 80000);
+            ctx.restore();
+
+            // Disegna proiettili
+            for (let p of projectiles) {
+                p.draw(ctx);
+            }
+
+            // Disegna esplosioni
+            for (let e of explosions) {
+                e.draw(ctx);
+            }
+
+            ctx.restore();
+
+            requestAnimationFrame(render);
+        }
+
+        render();
+    </script>
+</body>
+</html>

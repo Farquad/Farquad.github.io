@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fizeau Experiment Simulation</title>
+    <link rel="icon" type="image/svg+xml" href="IcoGearSmile.svg">
+    <link href="https://fonts.cdnfonts.com/css/computer-modern" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #222;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            margin-top: 5px;
+            margin-bottom: 20px;
+            font-family: 'Computer Modern', serif;
+            font-variant: small-caps;
+            font-weight: normal;
+            font-size: 2.5em;
+        }
+        #canvas-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 2px solid #444;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+        }
+        #controls {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #333;
+            border-radius: 8px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            width: 800px;
+            box-sizing: border-box;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1;
+        }
+        label {
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            display: block;
+            width: 100%;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+        .value-display {
+            color: #fff;
+            font-weight: bold;
+        }
+        .legend {
+            margin-top: 15px;
+            font-size: 0.8em;
+            color: #aaa;
+            text-align: center;
+            max-width: 800px;
+        }
+        .marker {
+            /* No specific style needed, just a hook for hover */
+        }
+        .marker-glow {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            top: 5px; /* Center on the 10px high triangle */
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: -1;
+            /* Force ring style always to prevent flash on mouseout */
+            background-color: transparent !important;
+            box-shadow: none !important;
+            border: 2px solid currentColor;
+        }
+        .marker:hover .marker-glow {
+            opacity: 1;
+        }
+
+        #author-footer {
+            margin-top: 10px;
+            font-size: 10px;
+            color: #888;
+            cursor: pointer;
+            padding: 2px 5px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            transition: all 0.2s;
+            user-select: none;
+            text-align: right;
+        }
+
+        #author-footer:hover {
+            color: #fff;
+            border-color: #555;
+            background: rgba(50, 50, 50, 0.8);
+        }
+
+        #author-footer a {
+            color: #4da6ff;
+            text-decoration: none;
+            display: block;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Fizeau Experiment</h1>
+    
+    <div id="canvas-container">
+        <canvas id="simCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <div id="controls">
+        <div class="control-group" style="flex: 1.5;">
+            <label for="wheelSpeed">
+                Toothed Wheel Speed (Log Slider, Actual Speed): <span id="wheelSpeedVal" class="value-display">0.05</span>
+            </label>
+            <div style="position: relative; width: 100%; margin-bottom: 25px;">
+                <input type="range" id="wheelSpeed" min="0" max="1000" step="1" value="0" style="width: 100%; margin: 0; display: block;">
+                
+                <!-- Markers with labels below -->
+                <!-- Eclipse Label -->
+                <div id="eclipsesLabel" style="position: absolute; top: 25px; left: 0; color: #aaa; font-size: 0.8em; z-index: 5; display: none;">
+                    Eclipses &rarr;
+                </div>
+
+                <div id="idealSpeedMarker" class="marker" style="position: absolute; bottom: -10px; left: 0; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid #FF0000; color: #FF0000; transform: translateX(-50%); cursor: pointer; z-index: 10;" title="1st Eclipse (Click to set)">
+                    <div class="marker-glow" style="background-color: #FF0000; box-shadow: 0 0 10px #FF0000;"></div>
+                    <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #FF0000; white-space: nowrap;">1st</div>
+                </div>
+                <div id="idealSpeedMarker2" class="marker" style="position: absolute; bottom: -10px; left: 0; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid #FFA500; color: #FFA500; transform: translateX(-50%); cursor: pointer; z-index: 9;" title="2nd Eclipse (Click to set)">
+                    <div class="marker-glow" style="background-color: #FFA500; box-shadow: 0 0 10px #FFA500;"></div>
+                    <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #FFA500; white-space: nowrap;">2nd</div>
+                </div>
+                <div id="idealSpeedMarker3" class="marker" style="position: absolute; bottom: -10px; left: 0; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid #FFFF00; color: #FFFF00; transform: translateX(-50%); cursor: pointer; z-index: 8;" title="3rd Eclipse (Click to set)">
+                    <div class="marker-glow" style="background-color: #FFFF00; box-shadow: 0 0 10px #FFFF00;"></div>
+                    <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #FFFF00; white-space: nowrap;">3rd</div>
+                </div>
+                <div id="idealSpeedMarker4" class="marker" style="position: absolute; bottom: -10px; left: 0; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid #00FF00; color: #00FF00; transform: translateX(-50%); cursor: pointer; z-index: 7;" title="4th Eclipse (Click to set)">
+                     <div class="marker-glow" style="background-color: #00FF00; box-shadow: 0 0 10px #00FF00;"></div>
+                     <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #00FF00; white-space: nowrap;">4th</div>
+                </div>
+                <div id="idealSpeedMarker5" class="marker" style="position: absolute; bottom: -10px; left: 0; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid #00FFFF; color: #00FFFF; transform: translateX(-50%); cursor: pointer; z-index: 6;" title="5th Eclipse (Click to set)">
+                     <div class="marker-glow" style="background-color: #00FFFF; box-shadow: 0 0 10px #00FFFF;"></div>
+                     <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #00FFFF; white-space: nowrap;">5th</div>
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label for="lightSpeed">
+                Light Speed (Simulated): <span id="lightSpeedVal" class="value-display">4</span>
+            </label>
+            <input type="range" id="lightSpeed" min="0.1" max="20" step="0.1" value="4">
+        </div>
+        <div class="control-group" style="flex: 0; align-self: center;">
+            <button id="togglePause" style="padding: 8px 16px; cursor: pointer; font-size: 1.2em; width: 50px;">&#10074;&#10074;</button>
+        </div>
+    </div>
+
+    <div class="legend">
+        Light starts from the source (bottom), reflects off the semi-silvered mirror, passes through the toothed wheel (if there's a gap), reaches the distant mirror, and returns. If it finds a gap on return, it reaches the observer. Adjust the wheel speed to find the eclipses where the observer sees no light. The markers indicate the theoretical speeds for the first 5 eclipses based on current configuration.
+    </div>
+    
+    <div style="width: 100%; max-width: 800px; display: flex; justify-content: flex-end;">
+        <div id="author-footer" onclick="toggleAuthorInfo()" data-expanded="false" title="Contact the Author">
+            Contact the Author
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Configuration
+        const CONFIG = {
+            sourceX: 200,
+            sourceY: 350,
+            mirror45X: 200,
+            mirror45Y: 200,
+            wheelX: 400,
+            wheelY: 200, 
+            distantMirrorX: 700,
+            distantMirrorY: 200,
+            observerX: 100,
+            observerY: 200,
+            
+            wheelTeethWidth: 10,
+            wheelGapHeight: 20, 
+            returnOffset: 6,    
+        };
+
+        // State
+        let state = {
+            packets: [],
+            // Initial offset to center a tooth on the beam (y=200)
+            // Tooth is [0, 20] in relative coords. Center is 10.
+            // relativeY = (y - offset) % 40. We want relativeY = 10.
+            // 10 = (200 - offset) % 40. => 200 - offset = 10 + 40k. => offset = 190.
+            // 190 % 40 = 30. Equivalent to -10.
+            wheelOffset: -10, 
+            wheelSpeed: 0.05, // Initial Speed
+            lightSpeed: 4,
+            emitting: true,
+            paused: false,
+            mode: 'slow-motion', // 'slow-motion' or 'real-time'
+            lastTime: 0,
+            simulationTime: 0, // Cumulative time for physics
+            observerSeeingLight: false,
+            observerColor: null, // Color of light at observer
+            totalWheelOffset: 0, // Cumulative wheel rotation for trace
+            gaugeY: CONFIG.observerY - CONFIG.returnOffset, // Vertical position of efficiency gauge (default lowest/aligned with beam)
+            trace: [], // History of light intensity at observer {y, color, intensity}
+            staticRandomOffset: null // Stores random offset when speed is 0 in real-time mode
+        };
+
+        // DOM Elements
+        const wheelSpeedSlider = document.getElementById('wheelSpeed');
+        const wheelSpeedVal = document.getElementById('wheelSpeedVal');
+        const lightSpeedSlider = document.getElementById('lightSpeed');
+        const lightSpeedVal = document.getElementById('lightSpeedVal');
+        const toggleBtn = document.getElementById('togglePause');
+        const idealSpeedMarker = document.getElementById('idealSpeedMarker');
+        const idealSpeedMarker2 = document.getElementById('idealSpeedMarker2');
+        const idealSpeedMarker3 = document.getElementById('idealSpeedMarker3');
+        const idealSpeedMarker4 = document.getElementById('idealSpeedMarker4');
+        const idealSpeedMarker5 = document.getElementById('idealSpeedMarker5');
+        const eclipsesLabel = document.getElementById('eclipsesLabel');
+        const lightSpeedControlGroup = document.getElementById('lightSpeed').closest('.control-group');
+        const togglePauseBtn = document.getElementById('togglePause');
+        const togglePauseContainer = togglePauseBtn.closest('.control-group');
+        
+        const markers = [
+            { el: idealSpeedMarker, factor: 1, name: '1st' },
+            { el: idealSpeedMarker2, factor: 3, name: '2nd' },
+            { el: idealSpeedMarker3, factor: 5, name: '3rd' },
+            { el: idealSpeedMarker4, factor: 7, name: '4th' },
+            { el: idealSpeedMarker5, factor: 9, name: '5th' }
+        ];
+
+        function updateControlsVisibility() {
+            if (state.mode === 'real-time') {
+                lightSpeedControlGroup.style.display = 'none';
+                togglePauseContainer.style.display = 'none';
+            } else {
+                lightSpeedControlGroup.style.display = '';
+                togglePauseContainer.style.display = '';
+            }
+            // Recalculate markers positions as slider width might have changed
+            // Use setTimeout to ensure DOM reflow has happened
+            setTimeout(updateIdealSpeedMarker, 0);
+        }
+
+        // Logarithmic Scale Helpers
+        const LOG_STEEPNESS = 5; 
+
+        function getSpeedFromSlider(sliderVal, maxSpeed) {
+            const t = sliderVal / 1000;
+            const a = maxSpeed / (Math.exp(LOG_STEEPNESS) - 1);
+            return a * (Math.exp(LOG_STEEPNESS * t) - 1);
+        }
+
+        function getSliderFromSpeed(speed, maxSpeed) {
+            if (speed <= 0) return 0;
+            const a = maxSpeed / (Math.exp(LOG_STEEPNESS) - 1);
+            let t = (1 / LOG_STEEPNESS) * Math.log(speed / a + 1);
+            if (t > 1) t = 1;
+            return t * 1000;
+        }
+
+        // Helper to update ideal speed marker
+        function updateIdealSpeedMarker() {
+            const D = CONFIG.distantMirrorX - CONFIG.wheelX;
+            const gapHeight = CONFIG.wheelGapHeight; 
+            const c = state.lightSpeed;
+            
+            const baseSpeed = (gapHeight * c) / (2 * D);
+            const maxSpeed = baseSpeed * 11;
+            
+            // Check bounds
+            if (state.wheelSpeed > maxSpeed) {
+                state.wheelSpeed = maxSpeed;
+                wheelSpeedSlider.value = 1000;
+                wheelSpeedVal.textContent = state.wheelSpeed.toFixed(2);
+            } else {
+                wheelSpeedSlider.value = getSliderFromSpeed(state.wheelSpeed, maxSpeed);
+            }
+
+            const sliderWidth = wheelSpeedSlider.offsetWidth;
+            const thumbWidth = 16; 
+
+            // Update all markers
+            markers.forEach(m => {
+                const speed = baseSpeed * m.factor;
+                
+                const sliderVal = getSliderFromSpeed(speed, maxSpeed);
+                const p = sliderVal / 1000;
+                
+                const pos = p * (sliderWidth - thumbWidth) + (thumbWidth / 2);
+                
+                if (p > 1) {
+                    m.el.style.display = 'none';
+                } else {
+                    m.el.style.display = 'block';
+                    m.el.style.left = `${pos}px`;
+                    m.el.title = `${m.name} Eclipse: ${speed.toFixed(3)} (Click to set)`;
+                    m.el.dataset.speed = speed;
+
+                    // Position the "Eclipses ->" label near the first marker
+                    if (m.name === '1st') {
+                        eclipsesLabel.style.display = 'block';
+                        // Position to the left of the marker
+                        eclipsesLabel.style.left = `${pos - 105}px`; 
+                    }
+                }
+            });
+        }
+
+        // Event Listeners
+        markers.forEach(m => {
+            m.el.addEventListener('click', () => {
+                const speed = parseFloat(m.el.dataset.speed);
+                if (!isNaN(speed)) {
+                    setSpeed(speed);
+                }
+            });
+        });
+
+        function setSpeed(speed) {
+            state.wheelSpeed = speed;
+            wheelSpeedVal.textContent = speed.toFixed(2);
+            
+            const D = CONFIG.distantMirrorX - CONFIG.wheelX;
+            const gapHeight = CONFIG.wheelGapHeight; 
+            const c = state.lightSpeed;
+            const baseSpeed = (gapHeight * c) / (2 * D);
+            const maxSpeed = baseSpeed * 11;
+            
+            wheelSpeedSlider.value = getSliderFromSpeed(speed, maxSpeed);
+        }
+
+        wheelSpeedSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            
+            const D = CONFIG.distantMirrorX - CONFIG.wheelX;
+            const gapHeight = CONFIG.wheelGapHeight; 
+            const c = state.lightSpeed;
+            const baseSpeed = (gapHeight * c) / (2 * D);
+            const maxSpeed = baseSpeed * 11;
+            
+            state.wheelSpeed = getSpeedFromSlider(val, maxSpeed);
+            
+            wheelSpeedVal.textContent = state.wheelSpeed.toFixed(2);
+        });
+
+        lightSpeedSlider.addEventListener('input', (e) => {
+            state.lightSpeed = parseFloat(e.target.value);
+            lightSpeedVal.textContent = state.lightSpeed;
+            updateIdealSpeedMarker(); // This will recalculate max speed
+        });
+
+        // Dragging Logic
+        let isDraggingMirror = false;
+        let isDraggingGauge = false;
+        let gaugeDragOffset = 0; // Offset between mouse and gauge anchor (bottom)
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Check Switch Click
+            const switchX = canvas.width - 180;
+            const switchY = 20;
+            const switchW = 100;
+            const switchH = 34; // Increased height for better target
+            
+            if (x >= switchX && x <= switchX + switchW && y >= switchY && y <= switchY + switchH) {
+                state.mode = state.mode === 'slow-motion' ? 'real-time' : 'slow-motion';
+                updateControlsVisibility();
+                return;
+            }
+
+            // Check hit on distant mirror
+            if (x >= CONFIG.distantMirrorX - 10 && x <= CONFIG.distantMirrorX + 20 &&
+                y >= CONFIG.distantMirrorY - 60 && y <= CONFIG.distantMirrorY + 60) {
+                isDraggingMirror = true;
+                canvas.style.cursor = 'ew-resize';
+                return;
+            }
+
+            // Check hit on Efficiency Gauge (Only in Slow Motion)
+            if (state.mode === 'slow-motion') {
+                const gaugeX = CONFIG.observerX + 20;
+                const gaugeTop = state.gaugeY - 80;
+                const gaugeBottom = state.gaugeY;
+                if (x >= gaugeX - 10 && x <= gaugeX + 40 &&
+                    y >= gaugeTop - 10 && y <= gaugeBottom + 10) {
+                    isDraggingGauge = true;
+                    gaugeDragOffset = state.gaugeY - y; // Calculate offset
+                    canvas.style.cursor = 'ns-resize';
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (isDraggingMirror) {
+                let newX = x;
+                // Clamp min X to wheelX (400) to avoid collision/negative distance
+                if (newX < 400) newX = 400;
+                if (newX > 750) newX = 750;
+                CONFIG.distantMirrorX = newX;
+                updateIdealSpeedMarker();
+            } else if (isDraggingGauge) {
+                // Apply offset to maintain relative position
+                let newY = y + gaugeDragOffset;
+                
+                // Clamp Y between top limit and observer Y (adjusted for return offset)
+                // The bottom limit matches the light beam level (194)
+                const limitBottom = CONFIG.observerY - CONFIG.returnOffset;
+                if (newY < 100) newY = 100; // Limit top
+                if (newY > limitBottom) newY = limitBottom; // Limit bottom
+                state.gaugeY = newY;
+            } else {
+                // Hover effect
+                const gaugeX = CONFIG.observerX + 20;
+                const gaugeTop = state.gaugeY - 80;
+                const gaugeBottom = state.gaugeY;
+                
+                const switchX = canvas.width - 180;
+                const switchY = 20;
+                const switchW = 100;
+                const switchH = 34;
+
+                if (x >= CONFIG.distantMirrorX - 10 && x <= CONFIG.distantMirrorX + 20 &&
+                    y >= CONFIG.distantMirrorY - 60 && y <= CONFIG.distantMirrorY + 60) {
+                    canvas.style.cursor = 'ew-resize';
+                } else if (state.mode === 'slow-motion' && x >= gaugeX - 10 && x <= gaugeX + 40 &&
+                           y >= gaugeTop - 10 && y <= gaugeBottom + 10) {
+                    canvas.style.cursor = 'ns-resize';
+                } else if (x >= switchX && x <= switchX + switchW &&
+                           y >= switchY && y <= switchY + switchH) {
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDraggingMirror = false;
+            isDraggingGauge = false;
+            canvas.style.cursor = 'default';
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+             isDraggingMirror = false;
+             isDraggingGauge = false;
+        });
+
+        toggleBtn.addEventListener('click', () => {
+            state.paused = !state.paused;
+            toggleBtn.innerHTML = state.paused ? '&#9658;' : '&#10074;&#10074;';
+        });
+
+        // --- PHYSICS ENGINE ---
+
+        // Check if wheel blocks at a specific vertical offset
+        function isBlockedByWheel(y, wheelOffset) {
+            const cycleHeight = CONFIG.wheelGapHeight * 2;
+            // To make the wheel move visually UPWARDS, we use (y + wheelOffset)
+            // This means as wheelOffset increases, the pattern shifts upwards (lower y index maps to same feature)
+            let relativeY = (y + wheelOffset) % cycleHeight;
+            if (relativeY < 0) relativeY += cycleHeight;
+            // Blocked if in the first half (Tooth)
+            return relativeY < CONFIG.wheelGapHeight;
+        }
+
+        class LightPacket {
+            constructor(emissionTime) {
+                this.emissionTime = emissionTime;
+                this.dead = false;
+                this.maxDistance = Infinity; // Will be clamped by obstacles
+                
+                this.checkedWheelOut = false;
+                this.checkedWheelIn = false;
+                
+                // Pre-calculate path distances based on current configuration
+                this.distSourceToM45 = Math.abs(CONFIG.sourceY - CONFIG.mirror45Y); 
+                this.distM45ToWheel = Math.abs(CONFIG.wheelX - CONFIG.mirror45X);
+                this.distWheelToDistant = Math.abs(CONFIG.distantMirrorX - CONFIG.wheelX);
+                this.distM45ToObs = Math.abs(CONFIG.mirror45X - CONFIG.observerX);
+                
+                this.dWheelOut = this.distSourceToM45 + this.distM45ToWheel;
+                this.dWheelIn = this.dWheelOut + 2 * this.distWheelToDistant;
+                this.dObserver = this.dWheelIn + this.distM45ToWheel + this.distM45ToObs;
+            }
+
+            update(currentTime, currentWheelOffset, currentWheelSpeed) {
+                if (this.dead && this.maxDistance === Infinity) {
+                    return;
+                }
+
+                const c = state.lightSpeed;
+                const age = currentTime - this.emissionTime;
+                const currentDist = c * age;
+
+                if (currentDist > this.maxDistance) {
+                    return;
+                }
+
+                // 1. Outbound Wheel Check
+                if (!this.checkedWheelOut && currentDist >= this.dWheelOut) {
+                    const timeAtCrossing = this.emissionTime + this.dWheelOut / c;
+                    const dt = timeAtCrossing - currentTime;
+                    const predictedOffset = currentWheelOffset + currentWheelSpeed * dt;
+                    
+                    if (isBlockedByWheel(CONFIG.wheelY, predictedOffset)) {
+                        this.maxDistance = this.dWheelOut;
+                        this.dead = true;
+                    }
+                    this.checkedWheelOut = true;
+                }
+
+                // 2. Inbound Wheel Check
+                if (!this.dead && !this.checkedWheelIn && currentDist >= this.dWheelIn) {
+                    const timeAtCrossing = this.emissionTime + this.dWheelIn / c;
+                    const dt = timeAtCrossing - currentTime;
+                    const predictedOffset = currentWheelOffset + currentWheelSpeed * dt;
+                    
+                    if (isBlockedByWheel(CONFIG.wheelY, predictedOffset)) {
+                        this.maxDistance = this.dWheelIn;
+                        this.dead = true;
+                    }
+                    this.checkedWheelIn = true;
+                }
+
+                // 3. Observer Check
+                if (!this.dead && currentDist >= this.dObserver) {
+                    this.maxDistance = this.dObserver;
+                    this.dead = true;
+                    state.observerSeeingLight = true;
+                    // Calculate color for this packet
+                    const hue = (this.emissionTime * 2) % 360;
+                    state.observerColor = `hsl(${hue}, 100%, 50%)`;
+                }
+            }
+
+            getRenderPosition(currentTime) {
+                const c = state.lightSpeed;
+                let dist = c * (currentTime - this.emissionTime);
+                
+                // Clamp to max distance (collision point)
+                if (dist > this.maxDistance) dist = this.maxDistance;
+
+                // Map distance to X,Y coordinates
+                // Seg 1: Up
+                if (dist <= this.distSourceToM45) {
+                    return { x: CONFIG.sourceX, y: CONFIG.sourceY - dist, segment: 1 };
+                }
+                
+                // Seg 2: Right (Outbound)
+                let d = dist - this.distSourceToM45;
+                const distM45ToDistant = this.distM45ToWheel + this.distWheelToDistant;
+                if (d <= distM45ToDistant) {
+                    return { x: CONFIG.mirror45X + d, y: CONFIG.mirror45Y, segment: 2 };
+                }
+
+                // Seg 3: Left (Inbound)
+                d -= distM45ToDistant;
+                if (d <= distM45ToDistant) {
+                    // On return, we apply slight offset to visualize separate beam
+                    return { x: CONFIG.distantMirrorX - d, y: CONFIG.distantMirrorY - CONFIG.returnOffset, segment: 3 };
+                }
+
+                // Seg 4: Left to Observer (passing M45)
+                d -= distM45ToDistant;
+                // At this point we are back at Mirror45 X
+                // Distance remaining to observer
+                return { x: CONFIG.mirror45X - d, y: CONFIG.mirror45Y - CONFIG.returnOffset, segment: 4 };
+            }
+        }
+
+        // Calculate efficiency for Real Time mode
+        function calculateEfficiency() {
+            if (state.wheelSpeed === 0 && state.mode === 'real-time') {
+                if (state.staticRandomOffset === null) {
+                    state.staticRandomOffset = Math.random() * CONFIG.wheelGapHeight * 2;
+                }
+                
+                // Determine if blocked based on static random offset
+                // Using isBlockedByWheel logic but adapted for this context
+                // We check if the beam at CONFIG.wheelY passes
+                // beam y is CONFIG.wheelY (outbound) or CONFIG.wheelY - CONFIG.returnOffset (inbound)
+                // For simplicity, if it's stopped, we check alignment at the main beam height (200)
+                // Note: In real-time mode logic, we usually simplify to overlap calculation.
+                // Let's stick to the overlap logic but apply it to a static state.
+                
+                // Check if blocked on outbound (beam at CONFIG.wheelY)
+                const isBlockedOut = isBlockedByWheel(CONFIG.wheelY, state.staticRandomOffset);
+                
+                if (isBlockedOut) {
+                    return 0; // Blocked immediately
+                }
+                
+                // If not blocked on outbound, check inbound
+                // Since speed is 0, offset is same. Beam is at CONFIG.wheelY - CONFIG.returnOffset
+                // Actually, in the simplified "overlap" model of Fizeau, we assume the beam is wide or point-like.
+                // The prompt says: "se è tale che la luce passa regoliamo tutte le luminosità di conseguenza (tutto 100% senza mai dispersione)"
+                // "se invece è tale che la luce non passa e viene bloccata mettiamo il blocco dopo il primo incontro con la ruota e si passa subito a 0%"
+                
+                // Let's rely on isBlockedByWheel for the outbound beam (CONFIG.wheelY).
+                // If outbound is blocked, efficiency 0.
+                // If outbound passes, and speed is 0, inbound will also pass (unless return offset makes it hit a tooth, but usually we align to gap center).
+                // But wait, if we pick a random position, we could be on the edge.
+                
+                // Let's use the isBlockedByWheel function for the main beam Y.
+                // CONFIG.wheelY = 200.
+                if (isBlockedByWheel(CONFIG.wheelY, state.staticRandomOffset)) {
+                    return 0;
+                } else {
+                    // Check inbound blockage as well if outbound passed
+                    // Inbound beam is at CONFIG.wheelY - CONFIG.returnOffset
+                    if (isBlockedByWheel(CONFIG.wheelY - CONFIG.returnOffset, state.staticRandomOffset)) {
+                        return 0;
+                    }
+                    return 100;
+                }
+            } else {
+                state.staticRandomOffset = null; // Reset if moving
+            }
+
+            const D = CONFIG.distantMirrorX - CONFIG.wheelX;
+            const H = CONFIG.wheelGapHeight;
+            const c = state.lightSpeed;
+            const v = state.wheelSpeed;
+            
+            const timeFlight = (2 * D) / c;
+            const shift = v * timeFlight;
+            
+            const period = 2 * H;
+            const phase = shift % period;
+            const overlap = Math.abs(phase - H);
+            
+            // Percentage (0 to 100)
+            return (overlap / H) * 100;
+        }
+
+        // Draw Functions
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // --- Draw Layers ---
+            
+            // 1. Trace (Background) - Only in Slow Motion
+            if (state.mode === 'slow-motion') {
+                drawTrace();
+            }
+
+            // 1b. Wheel Shadow (Depth)
+            drawWheelShadow();
+
+            // 2. Light (Continuous Beam)
+            ctx.lineWidth = 6; // Thick beam
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            if (state.mode === 'slow-motion') {
+                if (state.packets.length > 1) {
+                    // We draw segments between packets
+                    for (let i = 0; i < state.packets.length - 1; i++) {
+                        const p1 = state.packets[i];
+                        const p2 = state.packets[i+1];
+                        
+                        const pos1 = p1.getRenderPosition(state.simulationTime);
+                        const pos2 = p2.getRenderPosition(state.simulationTime);
+
+                        const dist = Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
+                        
+                        if (dist < state.lightSpeed * 2 + 10) { 
+                            // Fix for "long beam flash": 
+                            // If connecting Inbound (Seg 3) and Outbound (Seg 2), ensure we are near the Distant Mirror.
+                            // If we are far from it (e.g. at the Wheel), it means the beam was cut and we shouldn't connect them.
+                            if (pos1.segment === 3 && pos2.segment === 2) {
+                                if (Math.abs(pos1.x - CONFIG.distantMirrorX) > 50) {
+                                    continue;
+                                }
+                            }
+
+                            // Cycling color based on emission time
+                            const hue = (p1.emissionTime * 2) % 360;
+                            ctx.strokeStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(pos1.x, pos1.y);
+
+                            // Handle corners
+                            if (pos1.segment !== pos2.segment) {
+                                if (pos1.segment === 2 && pos2.segment === 1) {
+                                    // Corner 1: Mirror 45 (Up -> Right)
+                                    ctx.lineTo(CONFIG.mirror45X, CONFIG.mirror45Y);
+                                } else if (pos1.segment === 3 && pos2.segment === 2) {
+                                    // Corner 2: Distant Mirror (Right -> Left)
+                                    ctx.lineTo(CONFIG.distantMirrorX, CONFIG.distantMirrorY - CONFIG.returnOffset);
+                                    ctx.lineTo(CONFIG.distantMirrorX, CONFIG.distantMirrorY);
+                                }
+                                // Transition 3->4 is collinear (Left -> Left), no corner needed
+                            }
+
+                            ctx.lineTo(pos2.x, pos2.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            } else {
+                // Real Time Mode: Static Beams with Alpha
+                const efficiency = calculateEfficiency();
+                
+                // Special handling for stopped wheel (speed 0)
+                // If efficiency is 0 (blocked) and speed is 0, we only draw up to the wheel.
+                // If efficiency is 100 (passing) and speed is 0, we draw full intensity everywhere.
+                
+                let seg2Alpha = 0.5;
+                let seg3Alpha = 0.5 * (efficiency / 100);
+                let seg1Alpha = 1.0;
+
+                if (state.wheelSpeed === 0 && state.mode === 'real-time') {
+                     if (efficiency === 0) {
+                         // Blocked at first encounter
+                         seg2Alpha = 0;
+                         seg3Alpha = 0;
+                     } else {
+                         // Passing completely
+                         seg2Alpha = 1.0;
+                         seg3Alpha = 1.0; // No loss
+                     }
+                }
+
+                // Base Glow Configuration
+                const MAX_GLOW = 20;
+                ctx.shadowColor = 'rgba(255, 255, 100, 1)'; // Yellow glow
+
+                // Seg 1: Source -> Wheel (Before M45 + M45 -> Wheel)
+                // Intensity: 100% (always unless we want to simulate source off?)
+                ctx.shadowBlur = MAX_GLOW; 
+                ctx.strokeStyle = `rgba(255, 255, 100, ${seg1Alpha})`; // Yellow tint
+                
+                // Source -> M45
+                ctx.beginPath();
+                ctx.moveTo(CONFIG.sourceX, CONFIG.sourceY);
+                ctx.lineTo(CONFIG.mirror45X, CONFIG.mirror45Y);
+                ctx.stroke();
+
+                // M45 -> Wheel
+                ctx.beginPath();
+                ctx.moveTo(CONFIG.mirror45X, CONFIG.mirror45Y);
+                ctx.lineTo(CONFIG.wheelX, CONFIG.mirror45Y);
+                ctx.stroke();
+
+                // Seg 2: Wheel -> Distant Mirror -> Wheel (Return)
+                if (seg2Alpha > 0) {
+                    ctx.shadowBlur = MAX_GLOW * seg2Alpha;
+                    ctx.strokeStyle = `rgba(255, 255, 100, ${seg2Alpha})`; // Yellow tint
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(CONFIG.wheelX, CONFIG.mirror45Y);
+                    ctx.lineTo(CONFIG.distantMirrorX, CONFIG.distantMirrorY); // Outbound
+                    
+                    // Inbound (Return Offset)
+                    ctx.lineTo(CONFIG.distantMirrorX, CONFIG.distantMirrorY - CONFIG.returnOffset);
+                    ctx.lineTo(CONFIG.wheelX, CONFIG.mirror45Y - CONFIG.returnOffset);
+                    ctx.stroke();
+                }
+
+                // Seg 3: Wheel -> Observer
+                if (seg3Alpha > 0) {
+                    ctx.shadowBlur = MAX_GLOW * seg3Alpha;
+                    ctx.strokeStyle = `rgba(255, 255, 100, ${seg3Alpha})`; // Yellow tint
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(CONFIG.wheelX, CONFIG.mirror45Y - CONFIG.returnOffset);
+                    ctx.lineTo(CONFIG.mirror45X, CONFIG.mirror45Y - CONFIG.returnOffset); // Pass M45
+                    ctx.lineTo(CONFIG.observerX, CONFIG.observerY - CONFIG.returnOffset);
+                    ctx.stroke();
+                }
+
+                // Reset Shadow
+                ctx.shadowBlur = 0;
+            }
+
+            // 3. Static Components (Foreground)
+            
+            // Global Font Settings for Labels
+            ctx.font = "lighter 14px 'Courier New', Courier, monospace";
+            const labelColor = 'rgba(220, 220, 220, 0.6)';
+
+            // Source
+            ctx.fillStyle = '#444';
+            ctx.fillRect(CONFIG.sourceX - 15, CONFIG.sourceY, 30, 30);
+            ctx.fillStyle = labelColor;
+            // Adjusted label position (more space)
+            ctx.fillText("Source", CONFIG.sourceX + 25, CONFIG.sourceY + 20);
+
+            // Mirror 45
+            ctx.save();
+            ctx.strokeStyle = '#AAF';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(CONFIG.mirror45X - 20, CONFIG.mirror45Y + 20);
+            ctx.lineTo(CONFIG.mirror45X + 20, CONFIG.mirror45Y - 20);
+            ctx.stroke();
+            ctx.restore();
+            ctx.fillStyle = labelColor;
+            // Adjusted label position
+            ctx.fillText("Beam Splitter", CONFIG.mirror45X + 25, CONFIG.mirror45Y - 35);
+
+            // Distant Mirror
+            ctx.fillStyle = '#AAA';
+            ctx.fillRect(CONFIG.distantMirrorX, CONFIG.distantMirrorY - 50, 10, 100);
+            ctx.fillStyle = labelColor;
+            // Adjusted label position
+            ctx.fillText("Distant Mirror", CONFIG.distantMirrorX - 50, CONFIG.distantMirrorY + 70);
+
+            // Observer
+            ctx.fillStyle = '#333'; 
+            ctx.beginPath();
+            ctx.arc(CONFIG.observerX, CONFIG.observerY - CONFIG.returnOffset, 15, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Observer Light Indicator (Point)
+            if (state.mode === 'slow-motion') {
+                if (state.observerSeeingLight) {
+                    ctx.fillStyle = state.observerColor || '#FFF';
+                    ctx.shadowColor = state.observerColor || '#FFF';
+                    ctx.shadowBlur = 10;
+                } else {
+                    ctx.fillStyle = '#000';
+                    ctx.shadowBlur = 0;
+                }
+            } else {
+                // Real Time Indicator
+                const efficiency = calculateEfficiency();
+                const intensity = efficiency / 100;
+                // Yellow light, brightness depends on efficiency
+                // Base yellow: 255, 255, 100
+                const r = Math.floor(255 * intensity);
+                const g = Math.floor(255 * intensity);
+                const b = Math.floor(100 * intensity);
+                
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                if (intensity > 0) {
+                     ctx.shadowColor = 'rgba(255, 255, 100, 1)';
+                     ctx.shadowBlur = 10 * intensity;
+                } else {
+                     ctx.shadowBlur = 0;
+                }
+            }
+            ctx.beginPath();
+            ctx.arc(CONFIG.observerX, CONFIG.observerY - CONFIG.returnOffset, 6, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0; 
+            ctx.fillStyle = labelColor;
+            // Adjusted label position
+            ctx.fillText("Observer", CONFIG.observerX - 70, CONFIG.observerY - CONFIG.returnOffset + 40);
+
+            // Wheel
+            drawWheelFront();
+
+            // Efficiency Indicator
+            drawEfficiencyIndicator();
+
+            // 50% Label between Wheel and Distant Mirror (Real-time only)
+            if (state.mode === 'real-time') {
+                ctx.save();
+                ctx.fillStyle = '#AAA';
+                ctx.font = "bold 20px monospace";
+                ctx.textAlign = "center";
+                const midX = (CONFIG.wheelX + CONFIG.distantMirrorX) / 2;
+                // Beam is at CONFIG.mirror45Y (200). Place below.
+                ctx.fillText("50%", midX, CONFIG.mirror45Y + 40);
+                ctx.restore();
+            }
+
+            // Switch
+            drawSwitch();
+        }
+
+        function drawSwitch() {
+            const x = canvas.width - 180;
+            const y = 20;
+            const width = 100;
+            const height = 34;
+            const radius = 17;
+
+            ctx.save();
+            
+            // Background capsule
+            ctx.beginPath();
+            ctx.roundRect(x, y, width, height, radius);
+            ctx.fillStyle = '#333';
+            ctx.fill();
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Labels
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            
+            // Left Label (Slow) - Outside left
+            ctx.fillStyle = state.mode === 'slow-motion' ? '#FFF' : '#777';
+            ctx.fillText("SLOW", x - 30, y + height/2);
+
+            // Right Label (Real) - Outside right
+            ctx.fillStyle = state.mode === 'real-time' ? '#FFF' : '#777';
+            ctx.fillText("REAL", x + width + 30, y + height/2);
+
+            // Knob
+            const knobRadius = 13;
+            const padding = 4;
+            let knobX;
+            if (state.mode === 'slow-motion') {
+                knobX = x + padding + knobRadius;
+            } else {
+                knobX = x + width - padding - knobRadius;
+            }
+
+            ctx.beginPath();
+            ctx.arc(knobX, y + height/2, knobRadius, 0, Math.PI*2);
+            ctx.fillStyle = '#AAA'; // Grey knob
+            ctx.fill();
+            
+            // Highlight on knob
+            ctx.beginPath();
+            ctx.arc(knobX - 3, y + height/2 - 3, 4, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawEfficiencyIndicator() {
+            // Use unified calculation logic
+            let percentage;
+            
+            if (state.mode === 'real-time') {
+                percentage = calculateEfficiency();
+            } else {
+                // In Slow Motion, keep consistent formula
+                const D = CONFIG.distantMirrorX - CONFIG.wheelX;
+                const H = CONFIG.wheelGapHeight;
+                const c = state.lightSpeed;
+                const v = state.wheelSpeed;
+                
+                const timeFlight = (2 * D) / c;
+                const shift = v * timeFlight;
+                
+                const period = 2 * H;
+                const phase = shift % period;
+                const overlap = Math.abs(phase - H);
+                
+                percentage = (overlap / H) * 100;
+            }
+
+            const maxVisualLen = 80;
+            const actualVisualLen = (percentage / 100) * maxVisualLen;
+
+            // Draw
+            // Position: Right of trace. Trace is at observerX - 30.
+            // Vertical position controlled by state.gaugeY (Slow Motion) or Fixed (Real Time)
+            const startX = CONFIG.observerX + 20;
+            let startY;
+            
+            if (state.mode === 'slow-motion') {
+                startY = state.gaugeY;
+            } else {
+                startY = CONFIG.observerY - CONFIG.returnOffset;
+            }
+            
+            ctx.save();
+            ctx.translate(startX, startY);
+
+            if (state.mode === 'slow-motion') {
+                // Draw Max Segment (Background/Ghost)
+                // It grows upwards (negative Y)
+                ctx.fillStyle = 'rgba(80, 80, 80, 0.5)';
+                ctx.fillRect(0, 0, 6, -maxVisualLen); // 6px wide
+
+                // Draw Actual Segment (Foreground)
+                // Color based on efficiency? Or just bright.
+                // Let's use a color that indicates "passing light" (e.g. Cyan or Green)
+                // If eclipse (percentage near 0), it disappears.
+                const colorIntensity = Math.max(0.3, percentage / 100);
+                ctx.fillStyle = `rgba(0, 255, 255, ${colorIntensity})`;
+                ctx.fillRect(0, 0, 6, -actualVisualLen);
+
+                // Draw Percentage Text
+                ctx.fillStyle = '#AAA';
+                ctx.font = "16px monospace";
+                ctx.textAlign = "left";
+                
+                // Position text at the level of the actual bar top
+                const textY = -actualVisualLen;
+                if (maxVisualLen > 5) { // Only draw if visible
+                    // Adjust vertical alignment to center on the line
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(percentage.toFixed(0) + "%", 10, textY);
+                }
+
+                // Draw Reference Lines connecting to Trace
+                // Trace center is at x = -50 relative to gauge
+                // Trace width extends to x = -60 (left edge)
+                const traceLeftX = -65; // Go a bit past the trace
+                
+                ctx.lineWidth = 2;
+
+                // 1. Base Line (at y=0)
+                ctx.strokeStyle = 'rgba(120, 120, 120, 0.5)';
+                ctx.setLineDash([]); // Solid
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(traceLeftX, 0);
+                ctx.stroke();
+
+                // 2. Actual Level Line (at y=-actualVisualLen)
+                // Use same color as the bar (Cyan)
+                ctx.strokeStyle = 'rgba(120, 120, 120, 0.5)';
+                ctx.setLineDash([]); // Solid
+                ctx.beginPath();
+                ctx.moveTo(0, -actualVisualLen);
+                ctx.lineTo(traceLeftX, -actualVisualLen);
+                ctx.stroke();
+
+                // 3. Max Level Line (at y=-maxVisualLen)
+                ctx.strokeStyle = 'rgba(120, 120, 120, 0.5)';
+                ctx.setLineDash([]); // Solid
+                ctx.beginPath();
+                ctx.moveTo(0, -maxVisualLen);
+                ctx.lineTo(traceLeftX, -maxVisualLen);
+                ctx.stroke();
+
+                ctx.setLineDash([]); // Reset
+            } else {
+                // Real Time Mode: Text Only
+                // Fixed position above the beam (y=0 relative to startY)
+                ctx.fillStyle = '#AAA';
+                ctx.font = "bold 20px monospace";
+                ctx.textAlign = "left";
+                ctx.fillText(percentage.toFixed(0) + "%", 15, -20); 
+            }
+
+            ctx.restore();
+        }
+        
+        function drawTrace() {
+            // Shift trace to the left so it doesn't overlap the observer too much
+            const startX = CONFIG.observerX - 30; 
+            const startY = CONFIG.observerY - CONFIG.returnOffset;
+            // We use Angle-based scaling now. 
+            // Scale factor 4 ensures Gap(20) -> 80px visual height
+            const angleScale = 4;
+            
+            ctx.save();
+            ctx.translate(startX, startY);
+            
+            // Draw axis line (optional)
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, -250); // Draw up to 250px
+            ctx.stroke();
+
+            // --- 1. Procedural Background (Teeth) ---
+            // Instead of drawing per-point, we draw analytical rectangles for the teeth
+            // This ensures continuity even at infinite speeds/low framerates
+            
+            const H = CONFIG.wheelGapHeight;
+            const cycle = 2 * H;
+            
+            // Calculate Phase Constant C (Same logic as before)
+            const distM45ToWheel = Math.abs(CONFIG.wheelX - CONFIG.mirror45X);
+            const distM45ToObs = Math.abs(CONFIG.mirror45X - CONFIG.observerX);
+            const returnPath = distM45ToWheel + distM45ToObs;
+            const angleShift = (returnPath / state.lightSpeed) * state.wheelSpeed;
+            
+            // C aligns angle to wheel spatial position
+            // Condition for Tooth: (Angle + C) % cycle < H
+            const C = CONFIG.wheelY + state.wheelOffset - state.totalWheelOffset - angleShift;
+
+            // Visible range in pixels: 0 to -250
+            // y = -(current - angle) * angleScale
+            // angle = current + y/angleScale
+            const currentAngle = state.totalWheelOffset;
+            const maxVisibleY = 250;
+            const minAngle = currentAngle - maxVisibleY / angleScale;
+            
+            // We iterate through cycles of the wheel pattern within the visible angle range
+            const startA_shifted = minAngle + C;
+            const endA_shifted = currentAngle + C;
+            
+            const startK = Math.floor(startA_shifted / cycle);
+            const endK = Math.floor(endA_shifted / cycle);
+
+            ctx.fillStyle = 'rgba(80, 80, 80, 0.8)'; // Dark Grey for Tooth
+
+            for (let k = startK; k <= endK; k++) {
+                // Tooth segment in shifted coordinates: [k*cycle, k*cycle + H]
+                let s1 = k * cycle;
+                let s2 = k * cycle + H;
+                
+                // Clamp to visible range
+                if (s2 < startA_shifted) continue;
+                if (s1 > endA_shifted) continue;
+                
+                s1 = Math.max(s1, startA_shifted);
+                s2 = Math.min(s2, endA_shifted);
+                
+                // Convert back to Angle: A = A' - C
+                const a1 = s1 - C;
+                const a2 = s2 - C;
+                
+                // Convert to Y: y = -(current - a) * angleScale
+                // Note: a1 < a2 (older < newer)
+                // y1 = -(current - a1)*scale (more negative, lower)
+                // y2 = -(current - a2)*scale (less negative, higher)
+                
+                const y1 = -(currentAngle - a1) * angleScale;
+                const y2 = -(currentAngle - a2) * angleScale;
+                
+                // Draw rect
+                // Width 26px centered (-13 to 13)
+                ctx.fillRect(-13, y1, 26, y2 - y1);
+            }
+
+            // --- 2. Light Trace (Signal) ---
+            // Draw continuous segments connecting samples using Zero-Order Hold style
+            // BUT masked against the physical Gaps to avoid drawing over Teeth
+            
+            if (state.trace.length > 1) {
+                // Iterate newest to oldest
+                for (let i = state.trace.length - 1; i > 0; i--) {
+                    const pCurrent = state.trace[i];
+                    const pPrev = state.trace[i-1];
+                    
+                    // Optimization: Check if segment is in view
+                    const yCurrent = -(currentAngle - pCurrent.angle) * angleScale;
+                    // yPrev is lower than yCurrent
+                    if (yCurrent < -250) continue; 
+                    
+                    // If Current is ON, we attempt to fill the gap to Prev
+                    // But we clip the drawing to only occur within physical Gaps
+                    if (pCurrent.intensity > 0) {
+                        ctx.fillStyle = pCurrent.color;
+                        
+                        const A_start = pPrev.angle;
+                        const A_end = pCurrent.angle;
+                        
+                        // Shift angles to align with cycle phase
+                        const A_start_shifted = A_start + C;
+                        const A_end_shifted = A_end + C;
+                        
+                        // Determine which cycles we cover
+                        const k_min = Math.floor(A_start_shifted / cycle);
+                        const k_max = Math.floor(A_end_shifted / cycle);
+                        
+                        for (let k = k_min; k <= k_max; k++) {
+                            // Gap interval in shifted coords: [k*cycle + H, k*cycle + 2H]
+                            // (First half is Tooth, Second half is Gap)
+                            const gap_start_s = k * cycle + H;
+                            const gap_end_s = k * cycle + 2 * H;
+                            
+                            // Intersect Gap with current frame interval
+                            const draw_start_s = Math.max(gap_start_s, A_start_shifted);
+                            const draw_end_s = Math.min(gap_end_s, A_end_shifted);
+                            
+                            if (draw_start_s < draw_end_s) {
+                                // Convert back to Angle -> Y
+                                const angle_s = draw_start_s - C;
+                                const angle_e = draw_end_s - C;
+                                
+                                const y_s = -(currentAngle - angle_s) * angleScale;
+                                const y_e = -(currentAngle - angle_e) * angleScale;
+                                
+                                // Smart Overlap:
+                                // If we stopped drawing because of frame boundary (not gap boundary),
+                                // extend height slightly to cover sub-pixel rendering gaps.
+                                // draw_end_s < gap_end_s means we hit A_end_shifted.
+                                let extraHeight = 0;
+                                if (draw_end_s < gap_end_s - 0.001) {
+                                    extraHeight = 0.5;
+                                }
+
+                                // Draw rect
+                                ctx.fillRect(-10, y_s, 20, (y_e - y_s) + extraHeight);
+                            }
+                        }
+                    }
+                }
+            } else if (state.trace.length === 1) {
+                 const p = state.trace[0];
+                 // Check if it's in a gap before drawing
+                 let phase = (p.angle + C) % cycle;
+                 if (phase < 0) phase += cycle;
+                 
+                 if (p.intensity > 0 && phase >= H) {
+                     const y = -(currentAngle - p.angle) * angleScale;
+                     ctx.fillStyle = p.color;
+                     ctx.fillRect(-10, y-1, 20, 2);
+                 }
+            }
+            
+            ctx.restore();
+        }
+
+        function drawWheelShadow() {
+            const x = CONFIG.wheelX;
+            const width = CONFIG.wheelTeethWidth;
+            const bottomY = canvas.height;
+            const toothHeight = CONFIG.wheelGapHeight;
+            const cycleHeight = toothHeight * 2;
+
+            // Determine offset
+            let currentOffset;
+            if (state.mode === 'real-time') {
+                if (state.wheelSpeed === 0 && state.staticRandomOffset !== null) {
+                    currentOffset = state.staticRandomOffset;
+                } else {
+                    // Random/Alternating offset for frenzy effect
+                    // Use random to pick a phase: 0 or cycleHeight/2 (complementary states)
+                    // Add jitter to make it look vibrating
+                    const phase = Math.random() > 0.5 ? 0 : toothHeight; 
+                    currentOffset = phase + (Math.random() * 4 - 2);
+                }
+            } else {
+                // In slow motion, we want to visually reverse the direction
+                // Original logic was moving down: startY based on +currentOffset
+                // To move up, we invert the phase
+                currentOffset = -state.wheelOffset;
+            }
+
+            let startY = (currentOffset % cycleHeight) - cycleHeight;
+
+            // 1. Draw Depth/Thickness (Back face/Top face)
+            // Shifted up by returnOffset to cover the return beam path
+            ctx.fillStyle = '#444'; 
+            const depthOffset = CONFIG.returnOffset;
+            
+            for (let y = startY; y < bottomY; y += cycleHeight) {
+                // Draw shifted tooth
+                ctx.fillRect(x - width/2, y - depthOffset, width, toothHeight);
+            }
+        }
+
+        function drawWheelFront() {
+            const x = CONFIG.wheelX;
+            const width = CONFIG.wheelTeethWidth;
+            const bottomY = canvas.height;
+            const toothHeight = CONFIG.wheelGapHeight;
+            const cycleHeight = toothHeight * 2;
+
+            // Determine offset
+            let currentOffset;
+            if (state.mode === 'real-time') {
+                if (state.wheelSpeed === 0 && state.staticRandomOffset !== null) {
+                    currentOffset = state.staticRandomOffset;
+                } else {
+                    // Random effect again. Since it's per-frame, slight mismatch with shadow adds to the blur effect.
+                    const phase = Math.random() > 0.5 ? 0 : toothHeight; 
+                    currentOffset = phase + (Math.random() * 4 - 2); 
+                }
+            } else {
+                // In slow motion, we want to visually reverse the direction
+                currentOffset = -state.wheelOffset;
+            }
+
+            let startY = (currentOffset % cycleHeight) - cycleHeight;
+
+            // 2. Draw Front Face
+            ctx.fillStyle = '#666';
+            for (let y = startY; y < bottomY; y += cycleHeight) {
+                ctx.fillRect(x - width/2, y, width, toothHeight);
+            }
+
+            ctx.font = "lighter 16px 'Courier New', Courier, monospace";
+            ctx.fillStyle = 'rgba(220, 220, 220, 0.6)';
+            // Adjusted label position
+            ctx.fillText("Toothed Wheel", x + 15, bottomY - 15);
+        }
+
+        function update(timestamp) {
+            // Initialize time
+            if (!state.lastTime) state.lastTime = timestamp;
+            const dt = timestamp - state.lastTime;
+            state.lastTime = timestamp;
+
+            if (!state.paused) {
+                // Using frame count ensures deterministic behavior with speed "px/frame".
+                state.simulationTime += 1.0; 
+
+                state.observerSeeingLight = false;
+                state.observerColor = null;
+
+                // 1. Move Wheel (Always move for math)
+                state.wheelOffset += state.wheelSpeed;
+                state.totalWheelOffset += state.wheelSpeed;
+
+                // Physics only in Slow Motion
+                if (state.mode === 'slow-motion') {
+                    // 2. Emit Light
+                    if (state.emitting) {
+                        // To create a continuous beam, we need high density.
+                        // Increase density for smoother lines (Target gap ~2px)
+                        const count = Math.ceil(state.lightSpeed / 2); 
+                        const timeStep = 1.0 / count;
+                        
+                        for (let i = 0; i < count; i++) {
+                            // Emit at sub-frame times
+                            state.packets.push(new LightPacket(state.simulationTime - i * timeStep));
+                        }
+                    }
+
+                    // 3. Update Packets
+                    state.packets.forEach(p => p.update(state.simulationTime, state.wheelOffset, state.wheelSpeed));
+                    
+                    // 4. Trace Update
+                    // Add current state to trace history
+                    state.trace.push({
+                        time: state.simulationTime,
+                        angle: state.totalWheelOffset,
+                        intensity: state.observerSeeingLight ? 1 : 0,
+                        color: state.observerColor || '#000'
+                    });
+                    
+                    // Prune trace history based on Angle (keep last ~60 units of angle for >200px height)
+                    const TRACE_ANGLE_WINDOW = 100; // ample buffer
+                    if (state.trace.length > 0) {
+                         while(state.trace.length > 0 && (state.totalWheelOffset - state.trace[0].angle > TRACE_ANGLE_WINDOW)) {
+                             state.trace.shift();
+                         }
+                    }
+
+                    // 5. Cleanup
+                    state.packets = state.packets.filter(p => {
+                        const age = state.simulationTime - p.emissionTime;
+                        const dist = state.lightSpeed * age;
+                        return dist < p.maxDistance + 20;
+                    });
+                } else {
+                    // Real Time: Clear packets to save memory/avoid zombies when switching back
+                    state.packets = [];
+                    state.trace = []; 
+                }
+            }
+
+            drawScene();
+            requestAnimationFrame(update);
+        }
+
+        // Init
+        requestAnimationFrame(update);
+        updateIdealSpeedMarker();
+
+        // --- Author Contact ---
+        function toggleAuthorInfo() {
+            const footer = document.getElementById('author-footer');
+            const isExpanded = footer.getAttribute('data-expanded') === 'true';
+            
+            if (isExpanded) {
+                // Restore initial state
+                footer.innerHTML = "Contact the Author";
+                footer.setAttribute('data-expanded', 'false');
+            } else {
+                // Decode and show
+                const revEmail = "moc.liamg@ecsidocram";
+                const email = reverseString(revEmail);
+                
+                footer.innerHTML = `<a href="mailto:${email}">${email}</a>`;
+                footer.setAttribute('data-expanded', 'true');
+            }
+        }
+
+        function reverseString(str) {
+            return str.split("").reverse().join("");
+        }
+
+    </script>
+</body>
+</html>

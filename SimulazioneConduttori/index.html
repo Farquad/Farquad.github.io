@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulazione Conduttori ed Elettrostatica</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #eeeeee;
+            overflow: hidden;
+            user-select: none;
+        }
+        #sidebar {
+            width: 280px;
+            background-color: #2d2d2d;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border-right: 1px solid #444;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.3rem;
+            text-align: center;
+            color: #64b5f6;
+            margin-bottom: 5px;
+        }
+        .section-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #aaa;
+            margin-bottom: 0px;
+            margin-top: 10px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 4px;
+        }
+        button {
+            padding: 12px;
+            background-color: #3d3d3d;
+            color: white;
+            border: 1px solid #555;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+        button:hover {
+            background-color: #4d4d4d;
+            border-color: #666;
+        }
+        button.active {
+            background-color: #1976d2;
+            border-color: #2196f3;
+            box-shadow: 0 0 8px rgba(33, 150, 243, 0.4);
+        }
+        #btn-clear {
+            background-color: #d32f2f;
+            border-color: #f44336;
+            margin-top: auto;
+        }
+        #btn-clear:hover {
+            background-color: #b71c1c;
+        }
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            background-color: #121212;
+            cursor: crosshair;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .info {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 10px;
+            line-height: 1.4;
+            text-align: justify;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2>Simulazione<br>Conduttori</h2>
+        
+        <div class="section-title">Aggiungi Forme</div>
+        <button id="btn-add-sphere">Sfera (Cerchio)</button>
+        <button id="btn-add-rect">Quadrato</button>
+        
+        <div class="section-title">Strumenti</div>
+        <button id="btn-tool-move" class="active">Muovi / Seleziona</button>
+        <button id="btn-tool-spray-pos" style="color: #ef5350;">Spruzza Cariche (+)</button>
+        <button id="btn-tool-spray-neg" style="color: #42a5f5;">Spruzza Cariche (-)</button>
+        <button id="btn-tool-delete" style="color: #ff9800;">Cancella Conduttore</button>
+        
+        <div class="info">
+            <b>Istruzioni:</b><br>
+            - Aggiungi conduttori nel canvas.<br>
+            - Usa "Spruzza" per iniettare cariche al loro interno.<br>
+            - Le cariche dello stesso segno si respingono e vanno in superficie.<br>
+            - Sovrapponi i conduttori per far fluire le cariche dall'uno all'altro.
+        </div>
+
+        <button id="btn-clear">Pulisci Tutto</button>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resize() {
+            width = canvas.parentElement.clientWidth;
+            height = canvas.parentElement.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const TOOLS = {
+            MOVE: 'MOVE',
+            SPRAY_POS: 'SPRAY_POS',
+            SPRAY_NEG: 'SPRAY_NEG',
+            DELETE: 'DELETE'
+        };
+
+        let currentTool = TOOLS.MOVE;
+        let conductors = [];
+        let charges = [];
+
+        // View state
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+
+        function screenToWorld(x, y) {
+            return {
+                x: (x - panX) / scale,
+                y: (y - panY) / scale
+            };
+        }
+
+        // UI Setup
+        document.getElementById('btn-tool-move').onclick = () => setTool(TOOLS.MOVE);
+        document.getElementById('btn-tool-spray-pos').onclick = () => setTool(TOOLS.SPRAY_POS);
+        document.getElementById('btn-tool-spray-neg').onclick = () => setTool(TOOLS.SPRAY_NEG);
+        document.getElementById('btn-tool-delete').onclick = () => setTool(TOOLS.DELETE);
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.getElementById('btn-tool-move').classList.toggle('active', tool === TOOLS.MOVE);
+            document.getElementById('btn-tool-spray-pos').classList.toggle('active', tool === TOOLS.SPRAY_POS);
+            document.getElementById('btn-tool-spray-neg').classList.toggle('active', tool === TOOLS.SPRAY_NEG);
+            document.getElementById('btn-tool-delete').classList.toggle('active', tool === TOOLS.DELETE);
+        }
+
+        document.getElementById('btn-add-sphere').onclick = () => {
+            let center = screenToWorld(width/2, height/2);
+            conductors.push(new SphereConductor(center.x, center.y, 80));
+        };
+        document.getElementById('btn-add-rect').onclick = () => {
+            let center = screenToWorld(width/2, height/2);
+            conductors.push(new RectConductor(center.x, center.y, 160, 160));
+        };
+        document.getElementById('btn-clear').onclick = () => {
+            conductors = [];
+            charges = [];
+        };
+
+        // Classes
+        class Conductor {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+            getFillStyle() {
+                return 'rgba(150, 160, 170, 0.3)';
+            }
+            getStrokeStyle() {
+                return '#8899aa';
+            }
+            contains(x, y) { return false; }
+            projectOut(x, y) { return {x, y, nx:0, ny:0}; }
+            draw(ctx) {}
+        }
+
+        class SphereConductor extends Conductor {
+            constructor(x, y, radius) {
+                super(x, y);
+                this.radius = radius;
+            }
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.getFillStyle();
+                ctx.fill();
+                ctx.strokeStyle = this.getStrokeStyle();
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            contains(px, py) {
+                const dx = px - this.x;
+                const dy = py - this.y;
+                return (dx * dx + dy * dy) <= this.radius * this.radius;
+            }
+            projectOut(px, py) {
+                let dx = px - this.x;
+                let dy = py - this.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist === 0) return { x: this.x + this.radius, y: this.y, nx: 1, ny: 0 };
+                
+                let nx = dx / dist;
+                let ny = dy / dist;
+                
+                return {
+                    x: this.x + nx * this.radius,
+                    y: this.y + ny * this.radius,
+                    nx, ny
+                };
+            }
+        }
+
+        class RectConductor extends Conductor {
+            constructor(x, y, w, h) {
+                super(x, y);
+                this.w = w;
+                this.h = h;
+            }
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.rect(this.x - this.w/2, this.y - this.h/2, this.w, this.h);
+                ctx.fillStyle = this.getFillStyle();
+                ctx.fill();
+                ctx.strokeStyle = this.getStrokeStyle();
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            contains(px, py) {
+                return Math.abs(px - this.x) <= this.w/2 && Math.abs(py - this.y) <= this.h/2;
+            }
+            projectOut(px, py) {
+                const hw = this.w / 2;
+                const hh = this.h / 2;
+                
+                let cx = Math.max(this.x - hw, Math.min(px, this.x + hw));
+                let cy = Math.max(this.y - hh, Math.min(py, this.y + hh));
+                
+                let nx = 0, ny = 0;
+                
+                if (cx === px && cy === py) {
+                    let distRight = hw - (px - this.x);
+                    let distLeft = (px - this.x) + hw;
+                    let distBottom = hh - (py - this.y);
+                    let distTop = (py - this.y) + hh;
+                    
+                    let minDist = Math.min(distRight, distLeft, distBottom, distTop);
+                    if (minDist === distRight) { cx = this.x + hw; nx = 1; }
+                    else if (minDist === distLeft) { cx = this.x - hw; nx = -1; }
+                    else if (minDist === distBottom) { cy = this.y + hh; ny = 1; }
+                    else { cy = this.y - hh; ny = -1; }
+                } else {
+                    let dx = px - cx;
+                    let dy = py - cy;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 0.001) {
+                        nx = dx / dist;
+                        ny = dy / dist;
+                    } else {
+                        if (cx === this.x + hw) nx = 1;
+                        else if (cx === this.x - hw) nx = -1;
+                        
+                        if (cy === this.y + hh) ny = 1;
+                        else if (cy === this.y - hh) ny = -1;
+                        
+                        let len = Math.sqrt(nx*nx + ny*ny);
+                        if (len > 0) {
+                            nx /= len;
+                            ny /= len;
+                        }
+                    }
+                }
+                return { x: cx, y: cy, nx, ny };
+            }
+        }
+
+        class Charge {
+            constructor(x, y, sign, conductor) {
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.sign = sign; // 1 or -1
+                this.conductor = conductor;
+            }
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = this.sign > 0 ? '#ef5350' : '#42a5f5';
+                
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.fillStyle;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = 'bold 10px Arial';
+                ctx.fillText(this.sign > 0 ? '+' : '-', this.x, this.y + 1);
+            }
+        }
+
+        // Input state
+        let isMouseDown = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let draggedConductor = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            const rect = canvas.getBoundingClientRect();
+            let screenX = e.clientX - rect.left;
+            let screenY = e.clientY - rect.top;
+            
+            let wCoords = screenToWorld(screenX, screenY);
+            mouseX = wCoords.x;
+            mouseY = wCoords.y;
+
+            let hit = false;
+            let clickedConductor = null;
+
+            for (let i = conductors.length - 1; i >= 0; i--) {
+                if (conductors[i].contains(mouseX, mouseY)) {
+                    hit = true;
+                    clickedConductor = conductors[i];
+                    break;
+                }
+            }
+
+            if (!hit) {
+                // If clicked on empty space, pan regardless of the selected tool
+                isPanning = true;
+                panStartX = screenX - panX;
+                panStartY = screenY - panY;
+            } else {
+                if (currentTool === TOOLS.MOVE) {
+                    draggedConductor = clickedConductor;
+                    dragOffsetX = mouseX - draggedConductor.x;
+                    dragOffsetY = mouseY - draggedConductor.y;
+                } else if (currentTool === TOOLS.DELETE) {
+                    conductors = conductors.filter(c => c !== clickedConductor);
+                    charges = charges.filter(c => c.conductor !== clickedConductor);
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            let screenX = e.clientX - rect.left;
+            let screenY = e.clientY - rect.top;
+            
+            if (isPanning) {
+                panX = screenX - panStartX;
+                panY = screenY - panStartY;
+                
+                let wCoords = screenToWorld(screenX, screenY);
+                mouseX = wCoords.x;
+                mouseY = wCoords.y;
+                return;
+            }
+
+            let wCoords = screenToWorld(screenX, screenY);
+            let newMouseX = wCoords.x;
+            let newMouseY = wCoords.y;
+            
+            if (isMouseDown && currentTool === TOOLS.MOVE && draggedConductor) {
+                let nx = newMouseX - dragOffsetX;
+                let ny = newMouseY - dragOffsetY;
+                let dx = nx - draggedConductor.x;
+                let dy = ny - draggedConductor.y;
+                
+                draggedConductor.x = nx;
+                draggedConductor.y = ny;
+                
+                for (let c of charges) {
+                    if (c.conductor === draggedConductor) {
+                        c.x += dx;
+                        c.y += dy;
+                    }
+                }
+            }
+            
+            mouseX = newMouseX;
+            mouseY = newMouseY;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            draggedConductor = null;
+            isPanning = false;
+        });
+
+        // Zoom - Mouse Wheel
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            let screenX = e.clientX - rect.left;
+            let screenY = e.clientY - rect.top;
+            
+            let zoomIntensity = 0.002;
+            let zoomFactor = Math.exp(-e.deltaY * zoomIntensity);
+            
+            let newScale = scale * zoomFactor;
+            if (newScale < 0.1) newScale = 0.1;
+            if (newScale > 10) newScale = 10;
+            
+            panX = screenX - (screenX - panX) * (newScale / scale);
+            panY = screenY - (screenY - panY) * (newScale / scale);
+            scale = newScale;
+            
+            let wCoords = screenToWorld(screenX, screenY);
+            mouseX = wCoords.x;
+            mouseY = wCoords.y;
+        }, { passive: false });
+
+        // Touch Events for Mobile (Pinch to zoom and Pan)
+        let touchPinchDist = null;
+        let touchPanX = null;
+        let touchPanY = null;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            if (e.touches.length === 1) {
+                let screenX = e.touches[0].clientX - rect.left;
+                let screenY = e.touches[0].clientY - rect.top;
+                
+                isMouseDown = true;
+                let wCoords = screenToWorld(screenX, screenY);
+                mouseX = wCoords.x;
+                mouseY = wCoords.y;
+                
+                let hit = false;
+                let clickedConductor = null;
+
+                for (let i = conductors.length - 1; i >= 0; i--) {
+                    if (conductors[i].contains(mouseX, mouseY)) {
+                        hit = true;
+                        clickedConductor = conductors[i];
+                        break;
+                    }
+                }
+
+                if (!hit) {
+                    // Pan on empty space in any tool mode
+                    isPanning = true;
+                    panStartX = screenX - panX;
+                    panStartY = screenY - panY;
+                } else {
+                    if (currentTool === TOOLS.MOVE) {
+                        draggedConductor = clickedConductor;
+                        dragOffsetX = mouseX - draggedConductor.x;
+                        dragOffsetY = mouseY - draggedConductor.y;
+                    } else if (currentTool === TOOLS.DELETE) {
+                        conductors = conductors.filter(c => c !== clickedConductor);
+                        charges = charges.filter(c => c.conductor !== clickedConductor);
+                    }
+                }
+            } else if (e.touches.length === 2) {
+                isMouseDown = false;
+                draggedConductor = null;
+                isPanning = false;
+                
+                let dx = e.touches[0].clientX - e.touches[1].clientX;
+                let dy = e.touches[0].clientY - e.touches[1].clientY;
+                touchPinchDist = Math.sqrt(dx*dx + dy*dy);
+                
+                let midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                let midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                
+                touchPanX = midX - panX;
+                touchPanY = midY - panY;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            
+            if (e.touches.length === 1) {
+                let screenX = e.touches[0].clientX - rect.left;
+                let screenY = e.touches[0].clientY - rect.top;
+                
+                if (isPanning) {
+                    panX = screenX - panStartX;
+                    panY = screenY - panStartY;
+                    
+                    let wCoords = screenToWorld(screenX, screenY);
+                    mouseX = wCoords.x;
+                    mouseY = wCoords.y;
+                    return;
+                }
+
+                let wCoords = screenToWorld(screenX, screenY);
+                let newMouseX = wCoords.x;
+                let newMouseY = wCoords.y;
+                
+                if (isMouseDown && currentTool === TOOLS.MOVE && draggedConductor) {
+                    let nx = newMouseX - dragOffsetX;
+                    let ny = newMouseY - dragOffsetY;
+                    let dx = nx - draggedConductor.x;
+                    let dy = ny - draggedConductor.y;
+                    
+                    draggedConductor.x = nx;
+                    draggedConductor.y = ny;
+                    
+                    for (let c of charges) {
+                        if (c.conductor === draggedConductor) {
+                            c.x += dx;
+                            c.y += dy;
+                        }
+                    }
+                }
+                
+                mouseX = newMouseX;
+                mouseY = newMouseY;
+                
+            } else if (e.touches.length === 2 && touchPinchDist !== null) {
+                let dx = e.touches[0].clientX - e.touches[1].clientX;
+                let dy = e.touches[0].clientY - e.touches[1].clientY;
+                let newDist = Math.sqrt(dx*dx + dy*dy);
+                
+                let zoomFactor = newDist / touchPinchDist;
+                
+                let newScale = scale * zoomFactor;
+                if (newScale < 0.1) newScale = 0.1;
+                if (newScale > 10) newScale = 10;
+                
+                let midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                let midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                
+                panX = midX - touchPanX * (newScale / scale);
+                panY = midY - touchPanY * (newScale / scale);
+                
+                scale = newScale;
+                touchPinchDist = newDist;
+                touchPanX = midX - panX;
+                touchPanY = midY - panY;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (e.touches.length < 2) {
+                touchPinchDist = null;
+            }
+            if (e.touches.length === 0) {
+                isMouseDown = false;
+                draggedConductor = null;
+                isPanning = false;
+            } else if (e.touches.length === 1) {
+                const rect = canvas.getBoundingClientRect();
+                let screenX = e.touches[0].clientX - rect.left;
+                let screenY = e.touches[0].clientY - rect.top;
+                if (isPanning) {
+                    panStartX = screenX - panX;
+                    panStartY = screenY - panY;
+                }
+            }
+        }, { passive: false });
+
+        // Physics Engine
+        function updatePhysics() {
+            const substeps = 2;
+            const k = 150; 
+            const friction = 0.85; 
+            const maxSpeed = 15;
+            
+            for (let step = 0; step < substeps; step++) {
+                const toRemove = new Set();
+                
+                for (let i = 0; i < charges.length; i++) {
+                    if (toRemove.has(i)) continue;
+                    let c1 = charges[i];
+                    let fx = 0, fy = 0;
+                    
+                    for (let j = 0; j < charges.length; j++) {
+                        if (i === j || toRemove.has(j)) continue;
+                        let c2 = charges[j];
+                        
+                        let dx = c1.x - c2.x;
+                        let dy = c1.y - c2.y;
+                        let distSq = dx * dx + dy * dy;
+                        
+                        // Annihilation
+                        if (c1.sign !== c2.sign && distSq < 25) { // < 5px
+                            toRemove.add(i);
+                            toRemove.add(j);
+                            break;
+                        }
+                        
+                        let dist = Math.sqrt(distSq);
+                        if (dist < 2) dist = 2;
+                        
+                        // Forza proporzionale a 1/r per avere il teorema di Gauss valido in 2D
+                        let force = k * (c1.sign * c2.sign) / dist;
+                        fx += force * (dx / dist);
+                        fy += force * (dy / dist);
+                    }
+                    
+                    if (toRemove.has(i)) continue;
+                    
+                    c1.vx += fx;
+                    c1.vy += fy;
+                    
+                    let speed = Math.sqrt(c1.vx*c1.vx + c1.vy*c1.vy);
+                    if (speed > maxSpeed) {
+                        c1.vx = (c1.vx / speed) * maxSpeed;
+                        c1.vy = (c1.vy / speed) * maxSpeed;
+                    }
+                }
+                
+                if (toRemove.size > 0) {
+                    charges = charges.filter((_, i) => !toRemove.has(i));
+                }
+                
+                for (let c of charges) {
+                    c.vx *= friction;
+                    c.vy *= friction;
+                    
+                    let nx = c.x + c.vx;
+                    let ny = c.y + c.vy;
+                    
+                    if (c.conductor && c.conductor.contains(nx, ny)) {
+                        c.x = nx;
+                        c.y = ny;
+                        continue;
+                    }
+                    
+                    let foundNew = false;
+                    for (let cond of conductors) {
+                        if (cond.contains(nx, ny)) {
+                            c.conductor = cond;
+                            c.x = nx;
+                            c.y = ny;
+                            foundNew = true;
+                            break;
+                        }
+                    }
+                    
+                    if (foundNew) continue;
+                    
+                    if (c.conductor) {
+                        let proj = c.conductor.projectOut(nx, ny);
+                        c.x = proj.x;
+                        c.y = proj.y;
+                        
+                        let dot = c.vx * proj.nx + c.vy * proj.ny;
+                        if (dot > 0) {
+                            c.vx -= dot * proj.nx;
+                            c.vy -= dot * proj.ny;
+                        }
+                    } else {
+                        c.x = nx;
+                        c.y = ny;
+                    }
+                }
+            }
+        }
+
+        // Main Loop
+        let frameCount = 0;
+        function loop() {
+            frameCount++;
+            
+            // Spraying logic
+            if (isMouseDown && !isPanning && (currentTool === TOOLS.SPRAY_POS || currentTool === TOOLS.SPRAY_NEG)) {
+                if (frameCount % 5 === 0) { // Limit spawn rate
+                    for (let cond of conductors) {
+                        if (cond.contains(mouseX, mouseY)) {
+                            let sign = currentTool === TOOLS.SPRAY_POS ? 1 : -1;
+                            let rx = mouseX + (Math.random() - 0.5) * 12;
+                            let ry = mouseY + (Math.random() - 0.5) * 12;
+                            if (cond.contains(rx, ry)) {
+                                charges.push(new Charge(rx, ry, sign, cond));
+                            } else {
+                                charges.push(new Charge(mouseX, mouseY, sign, cond));
+                            }
+                            break; // Spawn in the top-most matched conductor
+                        }
+                    }
+                }
+            }
+            
+            updatePhysics();
+            
+            // Render
+            ctx.clearRect(0, 0, width, height);
+            
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(scale, scale);
+            
+            for (let cond of conductors) {
+                cond.draw(ctx);
+                
+                let q_tot = 0;
+                let v_tot = 0;
+                
+                for (let c of charges) {
+                    if (c.conductor === cond) {
+                        q_tot += c.sign;
+                    }
+                    
+                    let dx = cond.x - c.x;
+                    let dy = cond.y - c.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 1) dist = 1;
+                    
+                    // Potenziale proporzionale a -ln(r) per simulazione 2D
+                    v_tot += -150 * c.sign * Math.log(dist / 800); 
+                }
+                
+                ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                let textQ = `Q: ${q_tot > 0 ? '+' : ''}${q_tot}`;
+                let textV = `V: ${v_tot > 0 ? '+' : ''}${v_tot.toFixed(0)}`;
+                
+                let metricsQ = ctx.measureText(textQ);
+                let metricsV = ctx.measureText(textV);
+                let textW = Math.max(metricsQ.width, metricsV.width) + 16;
+                
+                // Sfondo nero semitrasparente per leggere i valori
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(cond.x - textW/2, cond.y - 18, textW, 36);
+                
+                // Disegna i testi
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(textQ, cond.x, cond.y - 8);
+                ctx.fillText(textV, cond.x, cond.y + 8);
+            }
+            
+            for (let c of charges) {
+                c.draw(ctx);
+            }
+            
+            ctx.restore();
+            
+            requestAnimationFrame(loop);
+        }
+        
+        // Start
+        requestAnimationFrame(loop);
+        
+        // Setup initial scene
+        conductors.push(new SphereConductor(width/2 - 150, height/2, 100));
+        conductors.push(new RectConductor(width/2 + 150, height/2, 180, 180));
+    </script>
+</body>
+</html>

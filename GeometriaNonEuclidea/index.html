@@ -1,0 +1,1430 @@
+<![CDATA[<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poincaré Disk - Geometria Iperbolica</title>
+    <style>
+        body {
+            margin: 0;
+            background: #222;
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        #toolbar {
+            padding: 20px 15px;
+            background: #333;
+            border-right: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch;
+            width: 220px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        #toolbar button {
+            padding: 10px 16px;
+            cursor: pointer;
+            border: none;
+            background: #555;
+            color: white;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        #toolbar button:hover { background: #666; }
+        #toolbar button:active { transform: scale(0.97); }
+        #toolbar button.active { background: #007aff; }
+        .tool-row {
+            display: flex;
+            gap: 6px;
+            align-items: stretch;
+        }
+        .tool-row > #btn-flow { flex: 1; }
+        #toolbar .flow-ctrl {
+            width: 32px;
+            padding: 10px 0;
+            font-size: 11px;
+            line-height: 1;
+        }
+        #toolbar .flow-ctrl:disabled {
+            opacity: 0.35;
+            cursor: default;
+            background: #555;
+        }
+        #btn-clear { background: #ff3b30 !important; margin-top: auto; }
+        #btn-clear:hover { background: #d32f2f !important; }
+        .instructions {
+            font-size: 14px;
+            color: #ddd;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            font-style: italic;
+            text-align: center;
+        }
+        #canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #222;
+            padding: 20px;
+        }
+        canvas {
+            background: #f8f9fa;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <button id="btn-point" class="active">Punto</button>
+        <button id="btn-move">Muovi</button>
+        <button id="btn-line">Retta (2 Punti)</button>
+        <button id="btn-segment">Segmento</button>
+        <button id="btn-vector">Vettore</button>
+        <button id="btn-perp">Perpendicolare</button>
+        <button id="btn-bisector">Asse Segmento</button>
+        <button id="btn-measure">Misura</button>
+        <button id="btn-angle">Angolo</button>
+        <div class="tool-row">
+            <button id="btn-flow">Flusso</button>
+            <button id="btn-flow-back" class="flow-ctrl" title="Flusso in direzione opposta" disabled>&#9664;</button>
+            <button id="btn-flow-stop" class="flow-ctrl" title="Ferma il flusso" disabled>&#9632;</button>
+            <button id="btn-flow-play" class="flow-ctrl" title="Avvia il flusso" disabled>&#9654;</button>
+        </div>
+        <button id="btn-rand-triangle">Triangolo Random</button>
+        <span class="instructions" id="instructions">Clicca sul disco per aggiungere un punto.</span>
+        <button id="btn-clear">Pulisci</button>
+    </div>
+    <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        // Stato dell'applicazione
+        let mode = 'POINT'; // 'POINT', 'MOVE', 'LINE', 'PERP', 'ANGLE'
+        let points = [];
+        let lines = [];
+        let selectedEntities = [];
+        let pendingPoints = []; // id dei punti creati al volo per la costruzione in corso
+        let draggingPoint = null;
+        let hoveredEntities = [];
+        let previewIntersection = null;
+        let nextId = 1;
+
+        // Stato del flusso (isometria a un parametro applicata a tutto il piano)
+        let flowRef = null;      // ente selezionato che genera il flusso: {type, id}
+        let flowSpec = null;     // {kind: 'translation', A, B} oppure {kind: 'rotation', P}
+        let flowDir = 0;         // -1 indietro, 0 fermo, 1 avanti
+        let flowParam = 0;       // parametro accumulato dal riferimento corrente
+        let flowBase = null;     // Map id punto -> posizione a parametro 0
+        let flowDots = [];       // pallini di sfondo che rendono visibile il movimento
+        let flowAnim = null;
+        let flowDirty = false;   // il flusso ha spostato qualcosa dall'ultimo salvataggio
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, S;
+
+        // Undo/Redo State
+        let undoStack = [];
+        let redoStack = [];
+
+        function saveState() {
+            undoStack.push({
+                points: JSON.parse(JSON.stringify(points)),
+                lines: JSON.parse(JSON.stringify(lines)),
+                nextId: nextId
+            });
+            redoStack = [];
+            // Ogni modifica della geometria diventa il nuovo riferimento del flusso
+            if (flowSpec) rebaselineFlow();
+        }
+
+        function restoreState(state) {
+            points = JSON.parse(JSON.stringify(state.points));
+            lines = JSON.parse(JSON.stringify(state.lines));
+            nextId = state.nextId;
+            selectedEntities = [];
+            pendingPoints = [];
+            if (flowSpec) rebaselineFlow();
+            draw();
+        }
+
+        function undo() {
+            if (undoStack.length > 1) {
+                redoStack.push(undoStack.pop());
+                restoreState(undoStack[undoStack.length - 1]);
+            }
+        }
+
+        function redo() {
+            if (redoStack.length > 0) {
+                const state = redoStack.pop();
+                undoStack.push(state);
+                restoreState(state);
+            }
+        }
+
+        // Initialize state
+        saveState();
+
+        window.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            } else if (e.ctrlKey && e.key === 'y') {
+                e.preventDefault();
+                redo();
+            } else if (e.key === 'Escape') {
+                if (cancelConstruction()) draw();
+            }
+        });
+
+        // Gestione ridimensionamento e setup canvas
+        function resize() {
+            const container = document.getElementById('canvas-container');
+            const size = Math.min(container.clientWidth - 40, container.clientHeight - 40);
+            canvas.width = size;
+            canvas.height = size;
+            W = size;
+            H = size;
+            S = size / 2;
+            draw();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Funzioni Matematiche
+        function normalize(v) {
+            const len = Math.hypot(v.x, v.y);
+            return len === 0 ? {x: 0, y: 0} : {x: v.x / len, y: v.y / len};
+        }
+
+        // Calcola la retta iperbolica passante per due punti A e B
+        function getLineThroughPoints(A, B) {
+            if (Math.hypot(A.x - B.x, A.y - B.y) < 1e-6) {
+                return { type: 'straight', nx: 0, ny: 1 };
+            }
+
+            const D = A.x * B.y - B.x * A.y;
+            const EA = (1 + A.x * A.x + A.y * A.y) / 2;
+            const EB = (1 + B.x * B.x + B.y * B.y) / 2;
+            
+            if (Math.abs(D) < 1e-5) {
+                let n = { x: -A.y, y: A.x };
+                if (Math.hypot(n.x, n.y) < 1e-6) n = { x: -B.y, y: B.x };
+                if (Math.hypot(n.x, n.y) < 1e-6) n = { x: 0, y: 1 };
+                n = normalize(n);
+                return { type: 'straight', nx: n.x, ny: n.y };
+            }
+            
+            const cx = (EA * B.y - EB * A.y) / D;
+            const cy = (A.x * EB - B.x * EA) / D;
+            const R = Math.sqrt(Math.max(0, cx * cx + cy * cy - 1));
+            return { type: 'circle', cx, cy, R };
+        }
+
+        function getMidpoint(A, B) {
+            const denA = 1 - A.x*A.x - A.y*A.y;
+            const tA = (1 + A.x*A.x + A.y*A.y) / denA;
+            const XA = 2 * A.x / denA;
+            const YA = 2 * A.y / denA;
+
+            const denB = 1 - B.x*B.x - B.y*B.y;
+            const tB = (1 + B.x*B.x + B.y*B.y) / denB;
+            const XB = 2 * B.x / denB;
+            const YB = 2 * B.y / denB;
+
+            const tM = tA + tB;
+            const XM = XA + XB;
+            const YM = YA + YB;
+
+            const scale = Math.sqrt(Math.max(1e-10, tM*tM - XM*XM - YM*YM));
+            const t = tM / scale;
+            const X = XM / scale;
+            const Y = YM / scale;
+
+            return { x: X / (1 + t), y: Y / (1 + t) };
+        }
+
+        function getTangentAngle(target, vertex) {
+            const U = target.x - vertex.x;
+            const V = target.y - vertex.y;
+            const P = 1 - (vertex.x * target.x + vertex.y * target.y);
+            const Q = vertex.y * target.x - vertex.x * target.y;
+            // Divisione di (U + iV) / (P + iQ)
+            const re = U * P + V * Q;
+            const im = V * P - U * Q;
+            return Math.atan2(im, re);
+        }
+
+        function hyperbolicDistance(A, B) {
+            const num = 2 * (Math.pow(A.x - B.x, 2) + Math.pow(A.y - B.y, 2));
+            const denA = 1 - (A.x * A.x + A.y * A.y);
+            const denB = 1 - (B.x * B.x + B.y * B.y);
+            if (denA <= 0 || denB <= 0) return Infinity;
+            const x = 1 + num / (denA * denB);
+            return Math.acosh(x);
+        }
+
+        // Calcola la retta iperbolica perpendicolare a L passante per P
+        function getPerpendicularLine(L, P) {
+            const EP = (1 + P.x * P.x + P.y * P.y) / 2;
+            
+            if (L.type === 'circle') {
+                const D = P.x * L.cy - L.cx * P.y;
+                if (Math.abs(D) < 1e-5) {
+                    const n = normalize({ x: -L.cy, y: L.cx });
+                    return { type: 'straight', nx: n.x, ny: n.y };
+                }
+                const cx = (EP * L.cy - 1 * P.y) / D;
+                const cy = (P.x * 1 - L.cx * EP) / D;
+                const R = Math.sqrt(Math.max(0, cx * cx + cy * cy - 1));
+                return { type: 'circle', cx, cy, R };
+            } else {
+                const D = P.x * L.ny - L.nx * P.y;
+                if (Math.abs(D) < 1e-5) {
+                    return { type: 'straight', nx: -L.ny, ny: L.nx };
+                }
+                const cx = (EP * L.ny) / D;
+                const cy = (-EP * L.nx) / D;
+                const R = Math.sqrt(Math.max(0, cx * cx + cy * cy - 1));
+                return { type: 'circle', cx, cy, R };
+            }
+        }
+
+        function intersectStraightCircle(str, circ) {
+            const nx = str.nx, ny = str.ny;
+            const cx = circ.cx, cy = circ.cy;
+            const b = -ny*cx + nx*cy;
+            const delta = b*b - 1; // Delta/4
+            if (delta < 0) return [];
+            
+            const root = Math.sqrt(delta);
+            const t1 = b + root;
+            const t2 = b - root;
+            
+            const pts = [];
+            if (Math.abs(t1) < 1) pts.push({x: t1 * -ny, y: t1 * nx});
+            if (Math.abs(t2) < 1) pts.push({x: t2 * -ny, y: t2 * nx});
+            return pts;
+        }
+
+        function isPointOnEntity(p, l) {
+            if (l.entityType !== 'segment') return true;
+            if (l.type === 'straight') {
+                const dirX = -l.ny, dirY = l.nx;
+                const proj_p = p.x * dirX + p.y * dirY;
+                const proj_1 = l.p1x * dirX + l.p1y * dirY;
+                const proj_2 = l.p2x * dirX + l.p2y * dirY;
+                const minP = Math.min(proj_1, proj_2) - 1e-5;
+                const maxP = Math.max(proj_1, proj_2) + 1e-5;
+                return proj_p >= minP && proj_p <= maxP;
+            } else if (l.type === 'circle') {
+                const a1 = Math.atan2(l.p1y - l.cy, l.p1x - l.cx);
+                const a2 = Math.atan2(l.p2y - l.cy, l.p2x - l.cx);
+                const aP = Math.atan2(p.y - l.cy, p.x - l.cx);
+                let dTheta = a2 - a1;
+                while(dTheta > Math.PI) dTheta -= 2*Math.PI;
+                while(dTheta < -Math.PI) dTheta += 2*Math.PI;
+                let pTheta = aP - a1;
+                while(pTheta > Math.PI) pTheta -= 2*Math.PI;
+                while(pTheta < -Math.PI) pTheta += 2*Math.PI;
+                const t = dTheta === 0 ? 0 : pTheta / dTheta;
+                return t >= -0.01 && t <= 1.01;
+            }
+            return true;
+        }
+
+        function getIntersection(l1, l2, checkSegment = true) {
+            let pts = [];
+            if (l1.type === 'straight' && l2.type === 'straight') {
+                const det = l1.nx * l2.ny - l1.ny * l2.nx;
+                if (Math.abs(det) > 1e-6) pts.push({x: 0, y: 0});
+            } else if (l1.type === 'straight' && l2.type === 'circle') {
+                pts = intersectStraightCircle(l1, l2);
+            } else if (l1.type === 'circle' && l2.type === 'straight') {
+                pts = intersectStraightCircle(l2, l1);
+            } else if (l1.type === 'circle' && l2.type === 'circle') {
+                let nx = l2.cx - l1.cx;
+                let ny = l2.cy - l1.cy;
+                const len = Math.hypot(nx, ny);
+                if (len > 1e-6) {
+                    nx /= len;
+                    ny /= len;
+                    pts = intersectStraightCircle({type: 'straight', nx, ny}, l1);
+                }
+            }
+            if (checkSegment) {
+                return pts.filter(p => isPointOnEntity(p, l1) && isPointOnEntity(p, l2));
+            }
+            return pts;
+        }
+
+        // Calcola dinamicamente tutte le rette in base allo stato attuale dei punti
+        function getComputedLines() {
+            const computed = [];
+            for (const l of lines) {
+                if (l.type === '2points') {
+                    const p1 = points.find(p => p.id === l.p1 && !p.hidden);
+                    const p2 = points.find(p => p.id === l.p2 && !p.hidden);
+                    if (p1 && p2) {
+                        computed.push({ ...l, ...getLineThroughPoints(p1, p2), entityType: 'line' });
+                    }
+                } else if (l.type === 'segment' || l.type === 'vector') {
+                    const p1 = points.find(p => p.id === l.p1 && !p.hidden);
+                    const p2 = points.find(p => p.id === l.p2 && !p.hidden);
+                    if (p1 && p2) {
+                        computed.push({ ...l, ...getLineThroughPoints(p1, p2), entityType: 'segment', oriented: l.type === 'vector', p1x: p1.x, p1y: p1.y, p2x: p2.x, p2y: p2.y });
+                    }
+                } else if (l.type === 'perp') {
+                    const lineRef = computed.find(cl => cl.id === l.l);
+                    const p = points.find(p => p.id === l.p && !p.hidden);
+                    if (lineRef && p) {
+                        computed.push({ ...l, ...getPerpendicularLine(lineRef, p), entityType: 'line' });
+                    }
+                } else if (l.type === 'bisector_2p') {
+                    const p1 = points.find(p => p.id === l.p1 && !p.hidden);
+                    const p2 = points.find(p => p.id === l.p2 && !p.hidden);
+                    if (p1 && p2) {
+                        const L = getLineThroughPoints(p1, p2);
+                        const M = getMidpoint(p1, p2);
+                        computed.push({ ...l, ...getPerpendicularLine(L, M), entityType: 'line' });
+                    }
+                } else if (l.type === 'bisector_seg') {
+                    const seg = computed.find(cl => cl.id === l.s);
+                    if (seg && seg.entityType === 'segment') {
+                        const p1 = points.find(p => p.id === seg.p1 && !p.hidden);
+                        const p2 = points.find(p => p.id === seg.p2 && !p.hidden);
+                        if (p1 && p2) {
+                            const L = getLineThroughPoints(p1, p2);
+                            const M = getMidpoint(p1, p2);
+                            computed.push({ ...l, ...getPerpendicularLine(L, M), entityType: 'line' });
+                        }
+                    }
+                } else if (l.type === 'angle') {
+                    const pA = points.find(p => p.id === l.pA && !p.hidden);
+                    const pB = points.find(p => p.id === l.pB && !p.hidden);
+                    const pC = points.find(p => p.id === l.pC && !p.hidden);
+                    if (pA && pB && pC) {
+                        computed.push({ ...l, entityType: 'angle', pA, pB, pC });
+                    }
+                }
+            }
+            return computed;
+        }
+
+        // Proietta un punto su una retta (iperbolica vista come ente euclideo sul canvas)
+        function projectOnLine(pos, l) {
+            let p = { x: pos.x, y: pos.y };
+            if (l.type === 'straight') {
+                const dot = p.x * l.nx + p.y * l.ny;
+                p.x -= dot * l.nx;
+                p.y -= dot * l.ny;
+            } else if (l.type === 'circle') {
+                const dx = p.x - l.cx;
+                const dy = p.y - l.cy;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 0) {
+                    p.x = l.cx + (dx / dist) * l.R;
+                    p.y = l.cy + (dy / dist) * l.R;
+                }
+            }
+            
+            // Mantieni all'interno del disco
+            const d = Math.hypot(p.x, p.y);
+            if (d >= 0.99) {
+                p.x = (p.x / d) * 0.99;
+                p.y = (p.y / d) * 0.99;
+            }
+            return p;
+        }
+
+        // Aggiorna le posizioni dei punti vincolati alle rette
+        function updateConstraints(changedPointId) {
+            for (let iter = 0; iter < 3; iter++) {
+                const computed = getComputedLines();
+                for (const p of points) {
+                    if (p.constraint && p.id !== changedPointId) {
+                        if (p.constraint.type === 'line' || p.constraint.type === 'segment') {
+                            const lineRef = computed.find(l => l.id === p.constraint.id);
+                            if (lineRef) {
+                                const newPos = projectOnLine({x: p.x, y: p.y}, lineRef);
+                                p.x = newPos.x;
+                                p.y = newPos.y;
+                                p.hidden = false;
+                            } else {
+                                p.hidden = true;
+                            }
+                        } else if (p.constraint.type === 'intersection') {
+                            const l1 = computed.find(l => l.id === p.constraint.id1);
+                            const l2 = computed.find(l => l.id === p.constraint.id2);
+                            if (l1 && l2) {
+                                let pts = getIntersection(l1, l2, true); // true = validiamo l'intersezione reale tra i due enti visibili
+                                if (pts.length > 0) {
+                                    pts.sort((a,b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+                                    p.x = pts[0].x;
+                                    p.y = pts[0].y;
+                                    p.hidden = false;
+                                } else {
+                                    p.hidden = true;
+                                }
+                            } else {
+                                p.hidden = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Utilities per Interazione Mouse
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const x = (mx - W/2) / S;
+            const y = -(my - H/2) / S; // Asse Y verso l'alto
+            return { x, y };
+        }
+
+        function findClosestEntity(pos, allowedTypes) {
+            let closest = null;
+            let minDist = 0.08; // Soglia di selezione
+            
+            if (allowedTypes.includes('point')) {
+                for (const p of points) {
+                    if (p.hidden) continue;
+                    const d = Math.hypot(p.x - pos.x, p.y - pos.y);
+                    if (d < minDist) {
+                        minDist = d;
+                        closest = { type: 'point', id: p.id, entity: p };
+                    }
+                }
+            }
+            
+            if ((allowedTypes.includes('line') || allowedTypes.includes('segment')) && !closest) {
+                const computed = getComputedLines();
+                for (const l of computed) {
+                    if (!allowedTypes.includes(l.entityType)) continue;
+
+                    let d = Infinity;
+                    if (l.type === 'straight') {
+                        d = Math.abs(pos.x * l.nx + pos.y * l.ny);
+                        if (l.entityType === 'segment') {
+                             const dirX = -l.ny; const dirY = l.nx;
+                             const proj = (pos.x - l.p1x)*dirX + (pos.y - l.p1y)*dirY;
+                             const maxProj = (l.p2x - l.p1x)*dirX + (l.p2y - l.p1y)*dirY;
+                             const t = maxProj === 0 ? 0 : proj / maxProj;
+                             if (t < -0.1 || t > 1.1) d = Infinity;
+                        }
+                    } else if (l.type === 'circle') {
+                        d = Math.abs(Math.hypot(pos.x - l.cx, pos.y - l.cy) - l.R);
+                        if (l.entityType === 'segment') {
+                             const a1 = Math.atan2(l.p1y - l.cy, l.p1x - l.cx);
+                             const a2 = Math.atan2(l.p2y - l.cy, l.p2x - l.cx);
+                             const aP = Math.atan2(pos.y - l.cy, pos.x - l.cx);
+                             let dTheta = a2 - a1;
+                             while(dTheta > Math.PI) dTheta -= 2*Math.PI;
+                             while(dTheta < -Math.PI) dTheta += 2*Math.PI;
+                             let pTheta = aP - a1;
+                             while(pTheta > Math.PI) pTheta -= 2*Math.PI;
+                             while(pTheta < -Math.PI) pTheta += 2*Math.PI;
+                             const t = dTheta === 0 ? 0 : pTheta / dTheta;
+                             if (t < -0.1 || t > 1.1) d = Infinity;
+                        }
+                    }
+                    if (d < minDist) {
+                        minDist = d;
+                        closest = { type: l.entityType, id: l.id, entity: l };
+                    }
+                }
+            }
+            
+            return closest;
+        }
+
+        // Cerca l'intersezione fra due enti più vicina al cursore
+        function findPreviewIntersection(pos) {
+            let best = null;
+            let minDist = 0.08;
+            const computed = getComputedLines();
+
+            for (let i = 0; i < computed.length; i++) {
+                for (let j = i + 1; j < computed.length; j++) {
+                    const l1 = computed[i];
+                    const l2 = computed[j];
+                    if (!['line', 'segment'].includes(l1.entityType)) continue;
+                    if (!['line', 'segment'].includes(l2.entityType)) continue;
+                    for (const pt of getIntersection(l1, l2)) {
+                        const d = Math.hypot(pt.x - pos.x, pt.y - pos.y);
+                        if (d < minDist) {
+                            minDist = d;
+                            best = { pt, l1, l2 };
+                        }
+                    }
+                }
+            }
+            return best;
+        }
+
+        // Modalità che consumano punti: possono anche generarli al volo
+        const POINT_CONSUMER_MODES = ['LINE', 'SEGMENT', 'VECTOR'];
+
+        function clampToDisk(pos) {
+            const d = Math.hypot(pos.x, pos.y);
+            if (d < 0.99) return { x: pos.x, y: pos.y };
+            return { x: (pos.x / d) * 0.99, y: (pos.y / d) * 0.99 };
+        }
+
+        // Restituisce il punto sotto il cursore, creandolo se lì non ce n'è già uno:
+        // sull'intersezione, vincolato all'ente cliccato, oppure libero nello spazio vuoto
+        function pickOrCreatePoint(pos) {
+            const existing = findClosestEntity(pos, ['point']);
+            if (existing) return existing;
+
+            let p;
+            const inter = findPreviewIntersection(pos);
+            if (inter) {
+                p = {
+                    id: nextId++,
+                    x: inter.pt.x,
+                    y: inter.pt.y,
+                    constraint: { type: 'intersection', id1: inter.l1.id, id2: inter.l2.id }
+                };
+            } else {
+                const host = findClosestEntity(pos, ['line', 'segment']);
+                if (host) {
+                    const proj = projectOnLine(pos, host.entity);
+                    p = { id: nextId++, x: proj.x, y: proj.y, constraint: { type: host.type, id: host.id } };
+                } else {
+                    const q = clampToDisk(pos);
+                    p = { id: nextId++, x: q.x, y: q.y, constraint: null };
+                }
+            }
+
+            points.push(p);
+            pendingPoints.push(p.id);
+            return { type: 'point', id: p.id, entity: p };
+        }
+
+        // I punti nati al volo sopravvivono solo se la costruzione va a buon fine
+        function discardPendingPoints() {
+            if (pendingPoints.length === 0) return;
+            points = points.filter(p => !pendingPoints.includes(p.id));
+            pendingPoints = [];
+        }
+
+        function cancelConstruction() {
+            if (selectedEntities.length === 0 && pendingPoints.length === 0) return false;
+            discardPendingPoints();
+            selectedEntities = [];
+            return true;
+        }
+
+        // Gestione Eventi Mouse
+        canvas.addEventListener('mousedown', e => {
+            const pos = getMousePos(e);
+            if (Math.hypot(pos.x, pos.y) > 1) return; // Ignora se fuori dal disco
+            
+            if (mode === 'POINT') {
+                if (previewIntersection) {
+                    points.push({ 
+                        id: nextId++, 
+                        x: previewIntersection.pt.x, 
+                        y: previewIntersection.pt.y, 
+                        constraint: { type: 'intersection', id1: previewIntersection.l1.id, id2: previewIntersection.l2.id }
+                    });
+                    saveState();
+                    draw();
+                } else {
+                    let finalPos = pos;
+                    let constraint = null;
+                    if (hoveredEntities.length > 0) {
+                        const closest = hoveredEntities[0];
+                        finalPos = projectOnLine(pos, closest.entity);
+                        constraint = { type: closest.type, id: closest.id };
+                    }
+                    points.push({ id: nextId++, x: finalPos.x, y: finalPos.y, constraint });
+                    saveState();
+                    draw();
+                }
+            }
+            else if (mode === 'MOVE') {
+                const closest = findClosestEntity(pos, ['point']);
+                if (closest) {
+                    const p = points.find(pt => pt.id === closest.id);
+                    if (p && (!p.constraint || p.constraint.type !== 'intersection')) {
+                        draggingPoint = p;
+                        draggingPoint.originalPos = { x: draggingPoint.x, y: draggingPoint.y };
+                    }
+                }
+            }
+            else if (POINT_CONSUMER_MODES.includes(mode)) {
+                selectedEntities.push(pickOrCreatePoint(pos));
+                if (selectedEntities.length === 2) {
+                    if (selectedEntities[0].id !== selectedEntities[1].id) {
+                        // L'ordine di selezione definisce l'orientazione del vettore (da p1 a p2)
+                        lines.push({
+                            id: nextId++,
+                            type: mode === 'LINE' ? '2points' : (mode === 'VECTOR' ? 'vector' : 'segment'),
+                            p1: selectedEntities[0].id,
+                            p2: selectedEntities[1].id
+                        });
+                        pendingPoints = [];
+                        selectedEntities = [];
+                        saveState();
+                    } else {
+                        cancelConstruction();
+                    }
+                }
+                draw();
+            }
+            else if (mode === 'PERP') {
+                const closest = findClosestEntity(pos, ['point', 'line', 'segment']);
+                if (closest) {
+                    const hasPoint = selectedEntities.some(e => e.type === 'point');
+                    const hasLine = selectedEntities.some(e => e.type === 'line' || e.type === 'segment');
+                    
+                    if ((closest.type === 'point' && !hasPoint) || 
+                        ((closest.type === 'line' || closest.type === 'segment') && !hasLine)) {
+                        selectedEntities.push(closest);
+                    } else if (closest.type === 'point' && hasPoint) {
+                        selectedEntities = selectedEntities.filter(e => e.type !== 'point');
+                        selectedEntities.push(closest);
+                    } else if ((closest.type === 'line' || closest.type === 'segment') && hasLine) {
+                        selectedEntities = selectedEntities.filter(e => e.type !== 'line' && e.type !== 'segment');
+                        selectedEntities.push(closest);
+                    }
+                    
+                    if (selectedEntities.length === 2) {
+                        const pt = selectedEntities.find(e => e.type === 'point').id;
+                        const ln = selectedEntities.find(e => e.type === 'line' || e.type === 'segment').id;
+                        lines.push({
+                            id: nextId++,
+                            type: 'perp',
+                            p: pt,
+                            l: ln
+                        });
+                        saveState();
+                        selectedEntities = [];
+                    }
+                    draw();
+                }
+            }
+            else if (mode === 'BISECTOR') {
+                const closest = findClosestEntity(pos, ['point', 'segment']);
+                if (closest) {
+                    if (closest.type === 'segment') {
+                        lines.push({ id: nextId++, type: 'bisector_seg', s: closest.id });
+                        saveState();
+                        selectedEntities = [];
+                    } else if (closest.type === 'point') {
+                        const hasSegment = selectedEntities.some(e => e.type === 'segment');
+                        if (hasSegment) selectedEntities = []; // clear if mixed selection
+                        
+                        selectedEntities.push(closest);
+                        if (selectedEntities.length === 2) {
+                            if (selectedEntities[0].id !== selectedEntities[1].id) {
+                                lines.push({ id: nextId++, type: 'bisector_2p', p1: selectedEntities[0].id, p2: selectedEntities[1].id });
+                                saveState();
+                            }
+                            selectedEntities = [];
+                        }
+                    }
+                    draw();
+                }
+            }
+            else if (mode === 'MEASURE') {
+                const closest = findClosestEntity(pos, ['segment']);
+                if (closest) {
+                    const lineRef = lines.find(l => l.id === closest.id);
+                    if (lineRef) {
+                        lineRef.showMeasure = !lineRef.showMeasure;
+                        saveState();
+                        draw();
+                    }
+                }
+            }
+            else if (mode === 'FLOW') {
+                const closest = findClosestEntity(pos, ['point', 'line', 'segment']);
+                if (closest) {
+                    armFlow(closest);
+                    draw();
+                }
+            }
+            else if (mode === 'ANGLE') {
+                const closest = findClosestEntity(pos, ['point']);
+                if (closest) {
+                    if (!selectedEntities.some(e => e.id === closest.id)) {
+                        selectedEntities.push(closest);
+                        if (selectedEntities.length === 3) {
+                            lines.push({
+                                id: nextId++,
+                                type: 'angle',
+                                pA: selectedEntities[0].id,
+                                pB: selectedEntities[1].id,
+                                pC: selectedEntities[2].id
+                            });
+                            saveState();
+                            selectedEntities = [];
+                        }
+                    }
+                    draw();
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            const pos = getMousePos(e);
+            let needsRedraw = false;
+
+            // POINT e le modalità che creano punti al volo hanno una logica di hover dedicata
+            let allowedTypes = [];
+            if (mode === 'MOVE') allowedTypes = ['point'];
+            else if (mode === 'PERP') allowedTypes = ['point', 'line', 'segment'];
+            else if (mode === 'BISECTOR') allowedTypes = ['point', 'segment'];
+            else if (mode === 'MEASURE') allowedTypes = ['segment'];
+            else if (mode === 'ANGLE') allowedTypes = ['point'];
+            else if (mode === 'FLOW') allowedTypes = ['point', 'line', 'segment'];
+
+            let newHoveredEntities = [];
+            let newPreviewIntersection = null;
+
+            if (mode === 'POINT' || POINT_CONSUMER_MODES.includes(mode)) {
+                // Un punto esistente ha sempre la precedenza: gli altri enti servono
+                // solo a decidere dove nascerà il punto creato al volo
+                const closestPoint = POINT_CONSUMER_MODES.includes(mode) ? findClosestEntity(pos, ['point']) : null;
+
+                if (closestPoint) {
+                    newHoveredEntities = [closestPoint];
+                } else {
+                    newPreviewIntersection = findPreviewIntersection(pos);
+                    if (newPreviewIntersection) {
+                        newHoveredEntities = [
+                            { type: newPreviewIntersection.l1.entityType, id: newPreviewIntersection.l1.id, entity: newPreviewIntersection.l1 },
+                            { type: newPreviewIntersection.l2.entityType, id: newPreviewIntersection.l2.id, entity: newPreviewIntersection.l2 }
+                        ];
+                    } else {
+                        const closest = findClosestEntity(pos, ['line', 'segment']);
+                        if (closest) newHoveredEntities = [closest];
+                    }
+                }
+            } else {
+                const closest = findClosestEntity(pos, allowedTypes);
+                if (closest) newHoveredEntities = [closest];
+            }
+
+            const prevIds = hoveredEntities.map(e => e.type + e.id).sort().join(',');
+            const newIds = newHoveredEntities.map(e => e.type + e.id).sort().join(',');
+            if (prevIds !== newIds) {
+                hoveredEntities = newHoveredEntities;
+                needsRedraw = true;
+            }
+            
+            if (previewIntersection !== newPreviewIntersection) {
+                previewIntersection = newPreviewIntersection;
+                needsRedraw = true;
+            }
+
+            if (draggingPoint) {
+                let finalPos = pos;
+                
+                if (draggingPoint.constraint && (draggingPoint.constraint.type === 'line' || draggingPoint.constraint.type === 'segment')) {
+                    const computed = getComputedLines();
+                    const lineRef = computed.find(l => l.id === draggingPoint.constraint.id);
+                    if (lineRef) {
+                        finalPos = projectOnLine(pos, lineRef);
+                    }
+                }
+                
+                const d = Math.hypot(finalPos.x, finalPos.y);
+                if (d >= 0.99) {
+                    draggingPoint.x = (finalPos.x / d) * 0.99;
+                    draggingPoint.y = (finalPos.y / d) * 0.99;
+                } else {
+                    draggingPoint.x = finalPos.x;
+                    draggingPoint.y = finalPos.y;
+                }
+                
+                updateConstraints(draggingPoint.id);
+                // Il trascinamento vince sul flusso: ripartiamo dalla nuova configurazione
+                if (flowSpec) rebaselineFlow();
+                needsRedraw = true;
+            }
+
+            if (needsRedraw) draw();
+        });
+
+        function endDrag() {
+            if (draggingPoint) {
+                if (draggingPoint.originalPos && (draggingPoint.x !== draggingPoint.originalPos.x || draggingPoint.y !== draggingPoint.originalPos.y)) {
+                    saveState();
+                }
+                delete draggingPoint.originalPos;
+                draggingPoint = null;
+            }
+        }
+
+        canvas.addEventListener('mouseup', endDrag);
+        canvas.addEventListener('mouseleave', () => {
+            endDrag();
+            hoveredEntities = [];
+            previewIntersection = null;
+            draw();
+        });
+
+        // ---------------------------------------------------------------
+        // FLUSSO: isometrie del disco di Poincaré (trasformazioni di Möbius)
+        // ---------------------------------------------------------------
+        const FLOW_TRANS_SPEED = 0.45; // lunghezza iperbolica al secondo
+        const FLOW_ROT_SPEED = 0.55;   // radianti al secondo
+        const FLOW_DOT_COUNT = 380;
+
+        function cMul(a, b) { return { x: a.x * b.x - a.y * b.y, y: a.x * b.y + a.y * b.x }; }
+        function cDiv(a, b) {
+            const d = b.x * b.x + b.y * b.y;
+            return { x: (a.x * b.x + a.y * b.y) / d, y: (a.y * b.x - a.x * b.y) / d };
+        }
+        function cAdd(a, b) { return { x: a.x + b.x, y: a.y + b.y }; }
+        function cSub(a, b) { return { x: a.x - b.x, y: a.y - b.y }; }
+        function cConj(a) { return { x: a.x, y: -a.y }; }
+        const C_ONE = { x: 1, y: 0 };
+
+        // Automorfismo del disco che porta A nell'origine, e la sua inversa
+        function toOrigin(z, A) { return cDiv(cSub(z, A), cSub(C_ONE, cMul(cConj(A), z))); }
+        function fromOrigin(w, A) { return cDiv(cAdd(w, A), cAdd(C_ONE, cMul(cConj(A), w))); }
+
+        // Traslazione iperbolica di lunghezza t lungo l'asse orientato da A verso B
+        function makeTranslation(A, B, t) {
+            const w = toOrigin(B, A);
+            const theta = Math.atan2(w.y, w.x);
+            const e = { x: Math.cos(theta), y: Math.sin(theta) };
+            const eInv = cConj(e);
+            const tau = { x: Math.tanh(t / 2), y: 0 };
+            return function (z) {
+                // Porta l'asse sul semiasse reale positivo, trasla, torna indietro
+                const u = cMul(eInv, toOrigin(z, A));
+                const v = cDiv(cAdd(u, tau), cAdd(C_ONE, cMul(tau, u)));
+                return fromOrigin(cMul(e, v), A);
+            };
+        }
+
+        // Rotazione iperbolica di angolo phi attorno al punto P
+        function makeRotation(P, phi) {
+            const e = { x: Math.cos(phi), y: Math.sin(phi) };
+            return function (z) {
+                return fromOrigin(cMul(e, toOrigin(z, P)), P);
+            };
+        }
+
+        function flowMapAt(param) {
+            if (!flowSpec) return z => ({ x: z.x, y: z.y });
+            if (flowSpec.kind === 'rotation') {
+                return makeRotation(flowSpec.P, param * FLOW_ROT_SPEED);
+            }
+            return makeTranslation(flowSpec.A, flowSpec.B, param * FLOW_TRANS_SPEED);
+        }
+
+        // Due punti interni distinti che individuano l'asse (orientato) di un ente
+        function getFlowAxis(l) {
+            let A, B;
+            if (l.entityType === 'segment') {
+                A = { x: l.p1x, y: l.p1y };
+                B = { x: l.p2x, y: l.p2y };
+            } else if (l.type === 'straight') {
+                A = { x: 0, y: 0 };
+                B = { x: -l.ny * 0.5, y: l.nx * 0.5 };
+            } else if (l.type === 'circle') {
+                const dc = Math.hypot(l.cx, l.cy);
+                if (dc < 1e-9) return null;
+                const alpha = Math.acos(Math.min(1, l.R / dc));
+                const phi = Math.atan2(-l.cy, -l.cx); // verso il punto più vicino all'origine
+                A = { x: l.cx + l.R * Math.cos(phi), y: l.cy + l.R * Math.sin(phi) };
+                B = { x: l.cx + l.R * Math.cos(phi + alpha * 0.5), y: l.cy + l.R * Math.sin(phi + alpha * 0.5) };
+            } else {
+                return null;
+            }
+            if (Math.hypot(A.x - B.x, A.y - B.y) < 1e-9) return null;
+            if (Math.hypot(A.x, A.y) >= 1 || Math.hypot(B.x, B.y) >= 1) return null;
+            return { A, B };
+        }
+
+        // Rilegge dalla geometria attuale l'asse (o il centro) che genera il flusso
+        function resolveFlowSpec() {
+            if (!flowRef) return false;
+            if (flowRef.type === 'point') {
+                const p = points.find(pt => pt.id === flowRef.id && !pt.hidden);
+                if (!p || Math.hypot(p.x, p.y) >= 1) return false;
+                flowSpec = { kind: 'rotation', P: { x: p.x, y: p.y } };
+                return true;
+            }
+            const l = getComputedLines().find(e => e.id === flowRef.id);
+            if (!l) return false;
+            const axis = getFlowAxis(l);
+            if (!axis) return false;
+            flowSpec = { kind: 'translation', A: axis.A, B: axis.B };
+            return true;
+        }
+
+        // Riporta il parametro a zero prendendo lo stato attuale come riferimento:
+        // evita ogni accumulo di errore numerico lungo l'animazione
+        function rebaselineFlow() {
+            flowParam = 0;
+            flowBase = new Map();
+            for (const p of points) flowBase.set(p.id, { x: p.x, y: p.y });
+            for (const d of flowDots) { d.bx = d.x; d.by = d.y; }
+            resolveFlowSpec();
+        }
+
+        function spawnFlowDot(d) {
+            const u = Math.random();
+            const R_max = 0.985;
+            const C = (R_max * R_max) / (1 - R_max * R_max);
+            const r = Math.sqrt((u * C) / (1 + u * C)); // uniforme secondo la metrica iperbolica
+            const a = Math.random() * 2 * Math.PI;
+            d.x = r * Math.cos(a);
+            d.y = r * Math.sin(a);
+            // Il riferimento è la controimmagine, così il pallino nasce dove è stato estratto
+            const base = flowMapAt(-flowParam)({ x: d.x, y: d.y });
+            d.bx = base.x;
+            d.by = base.y;
+            d.life = 0;
+            d.maxLife = 3.5 + Math.random() * 5;
+            d.radius = 1.4 + Math.random() * 1.6;
+            return d;
+        }
+
+        // Lo sfondo puntinato vive solo mentre il flusso scorre: viene rigenerato
+        // da zero a ogni avvio e cancellato all'arresto
+        function initFlowDots() {
+            flowDots = [];
+            for (let i = 0; i < FLOW_DOT_COUNT; i++) {
+                const d = spawnFlowDot({});
+                d.life = Math.random() * d.maxLife; // vite sfasate: nessun lampeggio collettivo
+                flowDots.push(d);
+            }
+        }
+
+        function armFlow(sel) {
+            const prevRef = flowRef;
+            flowRef = { type: sel.type, id: sel.id };
+            if (!resolveFlowSpec()) {
+                flowRef = prevRef;
+                return;
+            }
+            rebaselineFlow();
+            updateFlowUI();
+        }
+
+        function resetFlow() {
+            flowDir = 0;
+            flowDirty = false;
+            if (flowAnim !== null) {
+                cancelAnimationFrame(flowAnim);
+                flowAnim = null;
+            }
+            flowRef = null;
+            flowSpec = null;
+            flowBase = null;
+            flowParam = 0;
+            flowDots = [];
+            updateFlowUI();
+        }
+
+        function flowStep(dt) {
+            flowParam += flowDir * dt;
+            flowDirty = true;
+            const T = flowMapAt(flowParam);
+
+            for (const p of points) {
+                const b = flowBase && flowBase.get(p.id);
+                if (!b) continue;
+                const q = T(b);
+                p.x = q.x;
+                p.y = q.y;
+            }
+            // Le costruzioni derivate seguono da sé: il flusso è un'isometria
+            if (points.some(p => p.constraint)) updateConstraints();
+
+            for (const d of flowDots) {
+                const q = T({ x: d.bx, y: d.by });
+                d.x = q.x;
+                d.y = q.y;
+                d.life += dt;
+                if (d.life >= d.maxLife || Math.hypot(d.x, d.y) > 0.998) spawnFlowDot(d);
+            }
+        }
+
+        let flowLastTime = 0;
+        function flowTick(now) {
+            if (flowDir === 0) {
+                flowAnim = null;
+                return;
+            }
+            const dt = Math.min(0.05, (now - flowLastTime) / 1000);
+            flowLastTime = now;
+            flowStep(dt);
+            draw();
+            flowAnim = requestAnimationFrame(flowTick);
+        }
+
+        function playFlow(dir) {
+            if (!flowSpec) return;
+            if (flowDir === dir) {
+                stopFlow();
+                return;
+            }
+            flowDir = dir;
+            // Ripartenza da fermo: nuovo sfondo puntinato (cambiando solo verso non si rigenera)
+            if (flowDots.length === 0) initFlowDots();
+            updateFlowUI();
+            if (flowAnim === null) {
+                flowLastTime = performance.now();
+                flowAnim = requestAnimationFrame(flowTick);
+            }
+        }
+
+        function stopFlow() {
+            flowDir = 0;
+            flowDots = [];
+            if (flowAnim !== null) {
+                cancelAnimationFrame(flowAnim);
+                flowAnim = null;
+            }
+            if (flowDirty) {
+                flowDirty = false;
+                saveState(); // la nuova configurazione entra nella cronologia
+            }
+            updateFlowUI();
+            draw();
+        }
+
+        function drawFlowDots() {
+            for (const d of flowDots) {
+                const dist = Math.hypot(d.x, d.y);
+                if (dist >= 1) continue;
+                // Dissolvenza in nascita, in morte e verso il bordo del disco
+                const f = Math.min(1, d.life / 0.6, (d.maxLife - d.life) / 0.6, (1 - dist) / 0.03);
+                if (f <= 0) continue;
+                ctx.beginPath();
+                ctx.fillStyle = 'rgba(96, 116, 140, ' + (0.3 * f).toFixed(3) + ')';
+                ctx.arc(d.x, d.y, d.radius / S, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+
+        // Punta di freccia con vertice in tip, diretta lungo il versore dir
+        function drawArrowHead(tip, dir) {
+            const len = 14 / S;
+            const halfWidth = 5.5 / S;
+            const baseX = tip.x - dir.x * len;
+            const baseY = tip.y - dir.y * len;
+            const perpX = -dir.y, perpY = dir.x;
+
+            ctx.beginPath();
+            ctx.moveTo(tip.x, tip.y);
+            ctx.lineTo(baseX + perpX * halfWidth, baseY + perpY * halfWidth);
+            ctx.lineTo(baseX - perpX * halfWidth, baseY - perpY * halfWidth);
+            ctx.closePath();
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.fill();
+        }
+
+        // Rendering Principale
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            
+            ctx.save();
+            ctx.translate(W/2, H/2);
+            ctx.scale(S, -S); // Converte y canvas (verso il basso) in y matematico (verso l'alto)
+            
+            drawFlowDots(); // sfondo: non copre nulla, viene disegnato per primo
+            
+            const computed = getComputedLines();
+            
+            // Disegna rette e segmenti
+            for (const l of computed) {
+                ctx.beginPath();
+                const isSelected = selectedEntities.some(e => (e.type === 'line' || e.type === 'segment') && e.id === l.id);
+                const isHovered = hoveredEntities.some(he => (he.type === 'line' || he.type === 'segment') && he.id === l.id);
+                const isFlowAxis = flowRef && flowRef.type !== 'point' && flowRef.id === l.id;
+                ctx.strokeStyle = isSelected || isHovered ? '#ff3b30' : (isFlowAxis ? '#34c759' : '#007aff');
+                ctx.lineWidth = (isSelected || isHovered ? 4 : 2) / S; // Scala la larghezza
+                
+                if (l.type === 'straight') {
+                    if (l.entityType === 'segment') {
+                        ctx.moveTo(l.p1x, l.p1y);
+                        ctx.lineTo(l.p2x, l.p2y);
+                        ctx.stroke();
+                        if (l.oriented) {
+                            drawArrowHead({ x: l.p2x, y: l.p2y }, normalize({ x: l.p2x - l.p1x, y: l.p2y - l.p1y }));
+                        }
+                    } else {
+                        // Direzione della linea è (ny, -nx). La disegniamo da un estremo all'altro del disco.
+                        ctx.moveTo(-l.ny, l.nx);
+                        ctx.lineTo(l.ny, -l.nx);
+                        ctx.stroke();
+                    }
+                } else if (l.type === 'circle') {
+                    if (l.entityType === 'segment') {
+                        let startAngle = Math.atan2(l.p1y - l.cy, l.p1x - l.cx);
+                        let endAngle = Math.atan2(l.p2y - l.cy, l.p2x - l.cx);
+                        let dTheta = endAngle - startAngle;
+                        while(dTheta > Math.PI) dTheta -= 2*Math.PI;
+                        while(dTheta < -Math.PI) dTheta += 2*Math.PI;
+                        ctx.arc(l.cx, l.cy, l.R, startAngle, startAngle + dTheta, dTheta < 0);
+                        ctx.stroke();
+                        if (l.oriented) {
+                            // Tangente all'arco nel punto finale, orientata nel senso di percorrenza
+                            const sense = dTheta < 0 ? -1 : 1;
+                            drawArrowHead(
+                                { x: l.p2x, y: l.p2y },
+                                { x: -Math.sin(endAngle) * sense, y: Math.cos(endAngle) * sense }
+                            );
+                        }
+                    } else {
+                        const d = Math.hypot(l.cx, l.cy);
+                        const alpha = Math.acos(Math.min(1, l.R / d));
+                        const phi = Math.atan2(-l.cy, -l.cx);
+                        ctx.arc(l.cx, l.cy, l.R, phi - alpha, phi + alpha);
+                        ctx.stroke();
+                    }
+                } else if (l.entityType === 'angle') {
+                    const pA = l.pA, pB = l.pB, pC = l.pC;
+                    
+                    const angleA = getTangentAngle(pA, pB);
+                    const angleC = getTangentAngle(pC, pB);
+                    
+                    let dTheta = angleC - angleA;
+                    while (dTheta > Math.PI) dTheta -= 2 * Math.PI;
+                    while (dTheta < -Math.PI) dTheta += 2 * Math.PI;
+                    
+                    const isSelected = selectedEntities.some(e => e.type === 'angle' && e.id === l.id);
+                    const isHovered = hoveredEntities.some(he => he.type === 'angle' && he.id === l.id);
+                    ctx.strokeStyle = isSelected || isHovered ? '#ff3b30' : '#ff9500';
+                    ctx.fillStyle = isSelected || isHovered ? 'rgba(255, 59, 48, 0.2)' : 'rgba(255, 149, 0, 0.2)';
+                    ctx.lineWidth = 2 / S;
+                    
+                    const r = 25 / S;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(pB.x, pB.y);
+                    ctx.arc(pB.x, pB.y, r, angleA, angleC, dTheta < 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    const deg = Math.abs(dTheta) * 180 / Math.PI;
+                    const bisector = angleA + dTheta / 2;
+                    const textDist = 40 / S;
+                    const tx = pB.x + Math.cos(bisector) * textDist;
+                    const ty = pB.y + Math.sin(bisector) * textDist;
+                    
+                    ctx.save();
+                    ctx.translate(tx, ty);
+                    ctx.scale(1/S, -1/S);
+                    ctx.font = 'bold 12px "Segoe UI", sans-serif';
+                    const text = deg.toFixed(1) + '°';
+                    const tm = ctx.measureText(text);
+                    ctx.fillStyle = 'rgba(34, 34, 34, 0.7)';
+                    ctx.fillRect(-tm.width/2 - 4, -10, tm.width + 8, 20);
+                    
+                    ctx.fillStyle = ctx.strokeStyle;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(text, 0, 0);
+                    ctx.restore();
+                }
+
+                if (l.showMeasure && l.entityType === 'segment') {
+                    const p1 = points.find(p => p.id === l.p1);
+                    const p2 = points.find(p => p.id === l.p2);
+                    if (p1 && p2) {
+                        const dist = hyperbolicDistance(p1, p2);
+                        const M = getMidpoint(p1, p2);
+                        ctx.save();
+                        ctx.translate(M.x, M.y);
+                        ctx.scale(1/S, -1/S); // ripristina scala per il testo (e y verso il basso)
+                        ctx.font = 'bold 14px "Segoe UI", sans-serif';
+                        
+                        const text = dist.toFixed(2);
+                        const tm = ctx.measureText(text);
+                        ctx.fillStyle = 'rgba(34, 34, 34, 0.7)';
+                        ctx.fillRect(8, -18, tm.width + 4, 20);
+                        
+                        ctx.fillStyle = isSelected || isHovered ? '#ff3b30' : '#ffffff';
+                        ctx.fillText(text, 10, -3);
+                        ctx.restore();
+                    }
+                }
+            }
+            
+            // Disegna punti
+            for (const p of points) {
+                if (p.hidden) continue;
+                
+                ctx.beginPath();
+                const isSelected = selectedEntities.some(e => e.type === 'point' && e.id === p.id);
+                const isHovered = hoveredEntities.some(he => he.type === 'point' && he.id === p.id);
+                
+                if (isSelected || isHovered) {
+                    ctx.fillStyle = '#ff3b30';
+                } else if (p.constraint) {
+                    if (p.constraint.type === 'intersection') {
+                        ctx.fillStyle = '#007aff'; // Blu per intersezione non trascinabile
+                    } else {
+                        ctx.fillStyle = '#999999'; // Grigio chiaro per punti vincolati a 1 curva
+                    }
+                } else {
+                    ctx.fillStyle = '#333333'; // Grigio scuro per punti liberi
+                }
+                ctx.arc(p.x, p.y, ((isSelected || isHovered) ? 6 : 4) / S, 0, 2*Math.PI);
+                ctx.fill();
+            }
+
+            // Anello sul centro di rotazione del flusso
+            if (flowRef && flowRef.type === 'point') {
+                const c = points.find(p => p.id === flowRef.id && !p.hidden);
+                if (c) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#34c759';
+                    ctx.lineWidth = 2 / S;
+                    ctx.arc(c.x, c.y, 9 / S, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+            }
+
+            if (previewIntersection) {
+                ctx.beginPath();
+                ctx.fillStyle = 'rgba(255, 59, 48, 0.5)';
+                ctx.arc(previewIntersection.pt.x, previewIntersection.pt.y, 6 / S, 0, 2*Math.PI);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
+        // UI Toolbar
+        const buttons = {
+            'POINT': document.getElementById('btn-point'),
+            'MOVE': document.getElementById('btn-move'),
+            'LINE': document.getElementById('btn-line'),
+            'SEGMENT': document.getElementById('btn-segment'),
+            'VECTOR': document.getElementById('btn-vector'),
+            'PERP': document.getElementById('btn-perp'),
+            'BISECTOR': document.getElementById('btn-bisector'),
+            'MEASURE': document.getElementById('btn-measure'),
+            'ANGLE': document.getElementById('btn-angle'),
+            'FLOW': document.getElementById('btn-flow')
+        };
+        const instructions = document.getElementById('instructions');
+        const flowCtrls = {
+            back: document.getElementById('btn-flow-back'),
+            stop: document.getElementById('btn-flow-stop'),
+            play: document.getElementById('btn-flow-play')
+        };
+
+        const modeInstructions = {
+            'POINT': 'Clicca sul disco per aggiungere un punto.',
+            'MOVE': 'Trascina un punto per spostarlo.',
+            'LINE': 'Clicca due punti (esistenti o nuovi, anche su altri enti) per la retta.',
+            'SEGMENT': 'Clicca due punti: se non ce n\'è uno, viene creato dove clicchi.',
+            'VECTOR': 'Clicca due punti (creati al volo se servono): la freccia va dal 1° al 2°.',
+            'PERP': 'Clicca una retta/segmento e un punto per la perpendicolare.',
+            'BISECTOR': 'Clicca un segmento o due punti per tracciarne l\'asse.',
+            'MEASURE': 'Clicca su un segmento per mostrarne o nasconderne la misura.',
+            'ANGLE': 'Seleziona 3 punti (il 2° sarà il vertice) per misurare l\'angolo.',
+            'FLOW': 'Seleziona un vettore/segmento/retta (traslazione) o un punto (rotazione).'
+        };
+
+        function updateFlowUI() {
+            const armed = !!flowSpec;
+            for (const k in flowCtrls) flowCtrls[k].disabled = !armed;
+            flowCtrls.back.classList.toggle('active', flowDir === -1);
+            flowCtrls.play.classList.toggle('active', flowDir === 1);
+            flowCtrls.stop.classList.toggle('active', armed && flowDir === 0);
+            if (mode === 'FLOW') {
+                if (!armed) {
+                    instructions.textContent = modeInstructions['FLOW'];
+                } else if (flowSpec.kind === 'rotation') {
+                    instructions.textContent = 'Rotazione iperbolica attorno al punto: avvia con ◀ ▶.';
+                } else {
+                    instructions.textContent = 'Traslazione iperbolica lungo l\'asse: avvia con ◀ ▶.';
+                }
+            }
+        }
+
+        function setMode(newMode) {
+            cancelConstruction();
+            mode = newMode;
+            selectedEntities = [];
+            for (const m in buttons) {
+                buttons[m].classList.toggle('active', m === mode);
+            }
+            instructions.textContent = modeInstructions[mode];
+            updateFlowUI();
+            draw();
+        }
+
+        for (const m in buttons) {
+            buttons[m].addEventListener('click', () => setMode(m));
+        }
+
+        flowCtrls.play.addEventListener('click', () => playFlow(1));
+        flowCtrls.back.addEventListener('click', () => playFlow(-1));
+        flowCtrls.stop.addEventListener('click', stopFlow);
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            if (points.length > 0 || lines.length > 0 || flowSpec) {
+                resetFlow();
+                points = [];
+                lines = [];
+                selectedEntities = [];
+                pendingPoints = [];
+                nextId = 1;
+                saveState();
+                draw();
+            }
+        });
+
+        document.getElementById('btn-rand-triangle').addEventListener('click', () => {
+            function randPoint() {
+                const r = Math.random() * 0.7; // Raggio massimo 0.7 per non essere troppo vicino al bordo
+                const theta = Math.random() * 2 * Math.PI;
+                return { x: r * Math.cos(theta), y: r * Math.sin(theta) };
+            }
+
+            const pt1 = randPoint();
+            const pt2 = randPoint();
+            const pt3 = randPoint();
+
+            const id1 = nextId++;
+            const id2 = nextId++;
+            const id3 = nextId++;
+
+            points.push({ id: id1, x: pt1.x, y: pt1.y, constraint: null });
+            points.push({ id: id2, x: pt2.x, y: pt2.y, constraint: null });
+            points.push({ id: id3, x: pt3.x, y: pt3.y, constraint: null });
+
+            lines.push({ id: nextId++, type: 'segment', p1: id1, p2: id2 });
+            lines.push({ id: nextId++, type: 'segment', p1: id2, p2: id3 });
+            lines.push({ id: nextId++, type: 'segment', p1: id3, p2: id1 });
+
+            saveState();
+            draw();
+        });
+
+    </script>
+</body>
+</html>]]>

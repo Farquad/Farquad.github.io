@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Rete neurale 5x5 per cifre - addestra e visualizza</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 16px; display: grid; gap: 16px; }
+  .row { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+  #grid { border: 1px solid #999; image-rendering: pixelated; cursor: crosshair; }
+  fieldset { border: 1px solid #ccc; border-radius: 8px; padding: 8px; }
+  legend { padding: 0 6px; font-weight: 600; }
+  button, select, input { padding: 6px 10px; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#eef; }
+  #viz { border:1px solid #ccc; background:#212121; }
+  .gridbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  label { user-select: none; }
+  #samplesBox { max-height: 160px; overflow:auto; font-size: 12px; border:1px solid #eee; padding:6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    white-space: pre; outline: none; }
+</style>
+</head>
+<body>
+<h1>Rete neurale 5x5 per cifre - addestra e visualizza</h1>
+<div class="row">
+  <fieldset>
+    <legend>Griglia 5x5</legend>
+    <canvas id="grid" width="250" height="250"></canvas>
+    <div class="gridbar" style="margin-top:8px;">
+      Etichetta:
+      <select id="labelSel"></select>
+      <button id="btnAdd">Aggiungi esempio</button>
+      <button id="btnClear">Pulisci griglia</button>
+    </div>
+    <div class="gridbar" style="margin-top:8px;">
+      <button id="btnPredict">Predici</button>
+      <span>Predizione: <span id="pred" class="pill">-</span></span>
+      <span>Confidenza: <span id="conf" class="pill">-</span></span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Visualizzazione rete</legend>
+    <canvas id="viz" width="700" height="420"></canvas>
+  </fieldset>
+</div>
+
+<fieldset>
+  <legend>Training</legend>
+  <div class="gridbar">
+    Epoche: <input id="epochs" type="number" value="50" style="width:60px">
+    LR: <input id="lr" type="text" value="0,01" style="width:60px">
+    Batch: <input id="batch" type="number" value="8" style="width:60px">
+    <button id="btnTrain">Allena</button>
+    <button id="btnReset">Reset pesi</button>
+  </div>
+  <div class="gridbar" style="margin-top:6px">
+    Allenamento continuo:
+    <button id="btnTrainStart">Avvia/Resume</button>
+    <button id="btnTrainPause" disabled>Pausa</button>
+    <button id="btnTrainStop" disabled>Stop</button>
+    <span id="trainStatus" class="pill">fermo</span>
+    batch/tick: <input id="btick" type="number" value="5" style="width:60px">
+    ms/tick: <input id="mtick" type="number" value="50" style="width:60px">
+    <label><input id="liveViz" type="checkbox" checked> Aggiorna rete in tempo reale</label>
+  </div>
+  <div style="margin-top:6px">
+    <canvas id="loss" width="600" height="120"></canvas>
+    <div>Grafico loss:</div>
+    <div class="gridbar">
+      <span id="lossNow" class="pill">loss: -</span>
+      <span id="lossBest" class="pill">best: -</span>
+    </div>
+  </div>
+  <div class="gridbar" style="margin-top:6px">
+    Scala Y: <label><input id="lockScale" type="checkbox"> Fissa</label>
+    min: <input id="yMin" type="text" value="0,0" style="width:60px">
+    max: <input id="yMax" type="text" value="2,0" style="width:60px">
+    <button id="btnScaleReset">Reset</button>
+    <label><input id="gridLoss" type="checkbox" checked> Griglia</label>
+  </div>
+  <div class="gridbar">
+    Auto-stop su mancato miglioramento:
+    <label><input id="autoStop" type="checkbox"> Attiva</label>
+    pazienza: <input id="patience" type="number" value="150" style="width:60px">
+    min delta: <input id="minDelta" type="text" value="0,001" style="width:60px">
+  </div>
+  <div class="gridbar">
+    Architettura nascosta: <input id="arch" type="text" value="10,10" style="width:80px">
+    <button id="btnRebuild">Ricrea rete</button>
+    <label><input id="showEdges" type="checkbox" checked> Mostra connessioni</label>
+  </div>
+  <div class="gridbar">
+    Spessore connessioni: <input id="wScale" type="range" min="1" max="10" value="6"><span id="wScaleVal">6 px</span>
+    <label><input id="autoWScale" type="checkbox" checked> Auto</label>
+  </div>
+  <div class="gridbar">
+    Esempi memorizzati: <span id="count">0</span>
+  </div>
+  <div id="samplesBox" contenteditable="true" spellcheck="false"></div>
+  <div style="margin-top:6px">
+    Per comodità: <button id="btnSeed">Aggiungi esempi</button>
+  </div>
+</fieldset>
+
+<script>
+// ===== Helpers =====
+function parseNum(s, def){ if(s==null) return def; if(typeof s==='number') return s; s=String(s).trim().replace(',', '.'); var v=parseFloat(s); return isNaN(v)? def : v; }
+function randn(){ let u=0,v=0; while(u===0) u=Math.random(); while(v===0) v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function zeros(n){ return new Float64Array(n); }
+function matZeros(r,c){ const a=new Array(r); for(let i=0;i<r;i++){ a[i]=zeros(c);} return a; }
+function relu(a){ const out=new Float64Array(a.length); for(let i=0;i<a.length;i++) out[i]=a[i]>0?a[i]:0; return out; }
+function softmax(z){ let m=-Infinity; for(let i=0;i<z.length;i++) if(z[i]>m) m=z[i]; const ex=new Float64Array(z.length); let s=0; for(let i=0;i<z.length;i++){ ex[i]=Math.exp(z[i]-m); s+=ex[i]; } for(let i=0;i<z.length;i++) ex[i]/=s; return Array.from(ex); }
+
+// ===== Model (multi-layer MLP) =====
+function MLP(sizes){ this.sizes=sizes.slice(); this.L=this.sizes.length; this.W=[]; this.b=[]; this.init(); }
+MLP.prototype.init=function(){ this.W=[]; this.b=[]; for(let l=0;l<this.L-1;l++){ const fan_in=this.sizes[l], fan_out=this.sizes[l+1]; const s=Math.sqrt(2/fan_in); const Wl=matZeros(fan_out, fan_in); const bl=zeros(fan_out); for(let i=0;i<fan_out;i++){ for(let j=0;j<fan_in;j++) Wl[i][j]=randn()*s; bl[i]=0; } this.W.push(Wl); this.b.push(bl);} };
+MLP.prototype.forward=function(x){ let a=x; const caches=[]; for(let l=0;l<this.L-1;l++){ const Wl=this.W[l], bl=this.b[l]; const z=zeros(Wl.length); for(let i=0;i<Wl.length;i++){ let s=bl[i]; const row=Wl[i]; for(let j=0;j<row.length;j++) s+=row[j]*a[j]; z[i]=s; } const last=(l===this.L-2); const aNext= last? softmax(z) : relu(z); caches.push({a:a, z:Array.from(z)}); a=aNext; } return {a:a, caches:caches}; };
+MLP.prototype.trainBatch=function(batch, lr){ lr=parseNum(lr,0.01); const eps=0.1, wd=1e-4; let lossSum=0; const Lm=this.L-1; const dW=new Array(Lm), db=new Array(Lm); for(let l=0;l<Lm;l++){ const Wl=this.W[l]; dW[l]=matZeros(Wl.length, Wl[0].length); db[l]=zeros(Wl.length); }
+  for(let b=0;b<batch.length;b++){
+    const x=batch[b].x, yIdx=batch[b].yIdx;
+    const f=this.forward(x); const y=f.a; const caches=f.caches; const C=this.sizes[this.L-1];
+    const t=new Array(C); for(let i=0;i<C;i++) t[i]=eps/(C-1); t[yIdx]=1-eps;
+    let lval=0; for(let o=0;o<C;o++){ const yy=Math.min(1-1e-9, Math.max(1e-9, y[o])); lval += - t[o]*Math.log(yy); } lossSum+=lval;
+    let delta=y.slice(); for(let o=0;o<C;o++) delta[o]-=t[o];
+    for(let l=Lm-1;l>=0;l--){ const aPrev=(l===0)? x : (function(){ const z=caches[l-1].z; const ap=new Float64Array(z.length); for(let i=0;i<z.length;i++) ap[i]=z[i]>0? z[i]:0; return ap; })();
+      for(let i=0;i<delta.length;i++){ db[l][i]+=delta[i]; const row=dW[l][i]; for(let j=0;j<aPrev.length;j++) row[j]+=delta[i]*aPrev[j]; }
+      if(l>0){ const zPrev=caches[l-1].z; const deltaPrev=new Float64Array(zPrev.length); for(let j=0;j<deltaPrev.length;j++){ let s=0; for(let i=0;i<delta.length;i++) s+=this.W[l][i][j]*delta[i]; deltaPrev[j]= s * (zPrev[j]>0 ? 1 : 0); } delta=Array.from(deltaPrev); }
+    }
+  }
+  const m=Math.max(1,batch.length), lr_m=lr/m; for(let l=0;l<Lm;l++){ for(let i=0;i<this.W[l].length;i++){ this.b[l][i]-=lr_m*db[l][i]; for(let j=0;j<this.W[l][i].length;j++) this.W[l][i][j]-=lr_m*dW[l][i][j] + lr*wd*this.W[l][i][j]; } }
+  return lossSum/m; };
+MLP.prototype.predict=function(x){ const f=this.forward(x); const y=f.a; let k=0,p=y[0]; for(let i=1;i<y.length;i++){ if(y[i]>p){ p=y[i]; k=i; } } return {k:k,p:p,y:y}; };
+
+// ===== Grid UI =====
+const grid=document.getElementById('grid'); const gctx=grid.getContext('2d');
+const N=5; const cell=grid.width/N; const gridData=new Float64Array(N*N);
+function drawGrid(){ gctx.fillStyle='#fff'; gctx.fillRect(0,0,grid.width,grid.height); for(let r=0;r<N;r++){ for(let c=0;c<N;c++){ const v=gridData[r*N+c]; const s=Math.round(255*(1-v)); gctx.fillStyle='rgb('+s+','+s+','+s+')'; gctx.fillRect(c*cell, r*cell, cell, cell); gctx.strokeStyle='#ddd'; gctx.strokeRect(c*cell, r*cell, cell, cell); } } }
+function canvasPos(e){ const rect=grid.getBoundingClientRect(); return { x:(e.clientX-rect.left)*(grid.width/rect.width), y:(e.clientY-rect.top)*(grid.height/rect.height) }; }
+let drawing=false, drawVal=1;
+function toggleAt(e){ const p=canvasPos(e); const c=Math.floor(p.x/cell), r=Math.floor(p.y/cell); if(c<0||c>=N||r<0||r>=N) return; const idx=r*N+c; drawVal = gridData[idx] ? 0 : 1; gridData[idx]=drawVal; drawGrid(); }
+grid.addEventListener('mousedown', e=>{ drawing=true; toggleAt(e); updatePredUI(); });
+grid.addEventListener('mousemove', e=>{ if(!drawing) return; const p=canvasPos(e); const c=Math.floor(p.x/cell), r=Math.floor(p.y/cell); const idx=r*N+c; if(idx>=0&&idx<gridData.length){ if(gridData[idx]!==drawVal){ gridData[idx]=drawVal; drawGrid(); updatePredUI(); } } });
+// stop drawing when mouse is released or cursor leaves the canvas
+window.addEventListener('mouseup', ()=>{ drawing=false; });
+grid.addEventListener('mouseleave', ()=>{ drawing=false; });
+// clear button
+document.getElementById('btnClear').addEventListener('click', ()=>{ gridData.fill(0); drawGrid(); updatePredUI(); });
+
+// ===== Samples area =====
+function toBits(){ let s=''; for(let i=0;i<25;i++) s+= (gridData[i]>0.5? '1':'0'); return s; }
+function parseSamples(){ const text=(document.getElementById('samplesBox').textContent||'').trim(); if(!text){ document.getElementById('count').textContent='0'; return []; }
+  const lines=text.split(/\n+/); const out=[]; for(const lineRaw of lines){ const line=lineRaw.trim(); if(!line) continue; const m=line.match(/([01]{25}).*?(\d)/); if(!m) continue; const bits=m[1]; const y=parseInt(m[2],10); const x=new Float64Array(25); for(let k=0;k<25;k++) x[k]=(bits.charCodeAt(k)===49)?1:0; out.push({x:x, yIdx:y}); }
+  document.getElementById('count').textContent=String(out.length); return out; }
+
+document.getElementById('btnAdd').addEventListener('click', ()=>{ const bits=toBits(); const y=parseInt(document.getElementById('labelSel').value||'0',10); const box=document.getElementById('samplesBox'); const prefix=(box.textContent && !box.textContent.endsWith('\n'))?'\n':''; box.textContent=(box.textContent||'')+prefix+bits+' -> '+y; parseSamples(); });
+for(let i=0;i<10;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=String(i); document.getElementById('labelSel').appendChild(o); }
+
+document.getElementById('btnSeed').addEventListener('click', ()=>{
+  const text = `0100001000010000100001000 -> 1
+0100011000010000100001000 -> 1
+0110011100111000110001100 -> 1
+0110011100011000110001100 -> 1
+0110011100011000110011110 -> 1
+0111011110011100111011111 -> 1
+0010011100001000010011111 -> 1
+0010001100001000010001110 -> 1
+0011001110001100011001111 -> 1
+0011001110001100011000110 -> 1
+0001000110010100001000010 -> 1
+0111000010001100110001110 -> 1
+0111000010001100100001110 -> 1
+0111000010011100100001110 -> 2
+0011100001001110010000111 -> 2
+0011100001001110100001111 -> 2
+0111100001011110100001111 -> 2
+0111100001001110000101111 -> 3
+0111100001011110000101111 -> 3
+0111000001011110000101110 -> 3
+0111000001011100000101110 -> 3
+0011000001001100000100110 -> 3
+0111000010011100001001110 -> 3
+0101001010011100001000010 -> 4
+0101001010010100111000010 -> 4
+0001001010010100111000010 -> 4
+0001000110010101111100010 -> 4
+0001001110100101111100010 -> 4
+0111101000011100001001110 -> 5
+0111001000011100001001110 -> 5
+0111001000011000001001110 -> 5
+0111001000011000001001100 -> 5
+0111001000011110000101111 -> 5
+1111110000111110000111111 -> 5
+1111110000111110000111110 -> 5
+1111010000111110000111110 -> 5
+1111010000111100000111110 -> 5
+0011101000011100100101110 -> 6
+0011101000011100100100110 -> 6
+0011001000011100100100110 -> 6
+0011001000011100101001110 -> 6
+0111001000011100101001110 -> 6
+0111000010000100001000010 -> 7
+0111000010001100010000100 -> 7
+0111000010001000010000100 -> 7
+0111000010001000100001000 -> 7
+1110000100001000010000100 -> 7
+1110010100111001010011100 -> 8
+0100010100111001010001000 -> 8
+0111001010011100101001110 -> 8
+0011001010011100101001110 -> 8
+0011100101001110010100111 -> 8
+0111101001011110100101111 -> 8
+0111001010011100001001110 -> 9
+0011001010011100001001100 -> 9
+0111001010011100001001100 -> 9
+1111010010111100001011100 -> 9
+1111010010111100001001100 -> 9
+1111010010011100001001100 -> 9
+0110010010011100001001100 -> 9
+0111000010001100001001100 -> 3
+0110000010001100001001100 -> 3
+0110000010011100001001100 -> 3
+0110000010011000001001100 -> 3
+0100101001011110000100001 -> 4
+0010101001011110000100001 -> 4
+0001100101011110000100001 -> 4
+1001010010111100001000010 -> 4
+1001010010111110001000010 -> 4
+0111010000111001001001100 -> 6
+0111010000111101001001100 -> 6
+0111010000111101001001110 -> 6
+0111100001001100010001000 -> 7
+0111000010001100110001000 -> 7
+0111010010111101001011110 -> 8
+0111010010111101001001110 -> 8
+0010001000101001010001100 -> 6
+0001100100011110100100111 -> 6
+0011101000011110100100111 -> 6
+1110000100011001100011100 -> 2
+1110000100011001100011110 -> 2
+1110000100011001000011110 -> 2
+1111000010011101000011110 -> 2
+1111000010111101000011110 -> 2
+0111000010001100100001111 -> 2
+0110000010011100100001111 -> 2
+1100000100111000010011000 -> 3
+1100000100111000010011100 -> 3
+1110010100111000010011100 -> 9
+1110010000111001010011100 -> 6
+1110010000111001010001100 -> 6
+1110010000110001010001100 -> 6
+0110010000110001010001100 -> 6
+0110010000110001010001000 -> 6
+1110000100010000100001000 -> 7
+0011001010011100001000110 -> 9
+0011001010011100101000110 -> 8
+0011101001011110000101110 -> 9
+0011100001001110110000111 -> 2
+1111110001011110000111111 -> 9
+1111110000111111000111111 -> 6
+0111000010001000100001110 -> 2
+0110000100011100001001110 -> 3
+0010000100001000010000100 -> 1
+0110000100001000010000100 -> 1
+0011000100001110000100111 -> 5
+0011000001001110000100111 -> 3
+0011100101001010010100111 -> 0
+0011100101001010010100011 -> 0
+0001000101001010010100011 -> 0
+0011001001010010100100111 -> 0
+0111010001100011000101110 -> 0
+0110010010100101001001100 -> 0
+0100010100101001010001000 -> 0
+0111001010010100101001110 -> 0
+0111101001010010100101111 -> 0
+0011001001010010100100110 -> 0
+0110010010011001001001100 -> 8
+0001100111010110001100011 -> 1
+1110000100011001100010000 -> 7
+0011100001000100010000100 -> 7
+0010011100001000010000100 -> 1
+0110011010100101001001110 -> 0
+0000001111010010100101111 -> 0
+0000000000011110100101111 -> 0
+0000000000111101001011110 -> 0
+0000010010111100001000010 -> 4
+0110010100111000010011100 -> 9
+1000010000100001000000000 -> 1
+0100011000010001110000000 -> 1
+0000001110010100101001110 -> 0
+0111101000111110100101111 -> 6
+0111000010001100110001110 -> 2`;
+  const box=document.getElementById('samplesBox');
+  const prefix=(box.textContent && !box.textContent.endsWith('\n'))?'\n':'';
+  box.textContent=(box.textContent||'')+prefix+text.trim();
+  parseSamples();
+});
+
+// ===== Net build & viz =====
+function parseArch(){ const s=(document.getElementById('arch').value||'10,10').trim(); const parts=s.split(/[ ,;]+/).filter(Boolean); const hidden=[]; for(const p of parts){ const v=parseInt(p,10); if(!isNaN(v) && v>0) hidden.push(Math.max(1, Math.min(64, v))); } return hidden.length? hidden : [16]; }
+let net=new MLP([25].concat(parseArch()).concat([10]));
+
+const viz=document.getElementById('viz'); const vctx=viz.getContext('2d');
+const wScale=document.getElementById('wScale'); const wScaleVal=document.getElementById('wScaleVal'); const showEdges=document.getElementById('showEdges'); const autoWScale=document.getElementById('autoWScale');
+function maxAbsW(){ let m=0; for(let l=0;l<net.W.length;l++){ const Wl=net.W[l]; for(let i=0;i<Wl.length;i++) for(let j=0;j<Wl[i].length;j++) m=Math.max(m, Math.abs(Wl[i][j])); } return m||1e-6; }
+function mapColor(w, act){ const a = Math.min(1, Math.max(0, act)); const lum = Math.round(40 + 215 * a); return w>=0? `rgba(${lum},20,60,1)` : `rgba(30,60,${lum},1)`; }
+function widthFor(w, m){ const maxPx=parseInt(wScale.value||'6',10); const a=Math.abs(w); if(autoWScale.checked){ return 0.5 + (a/m)*maxPx; } return 0.5 + a*(maxPx/2); }
+function drawNet(){ const f_res = net.forward(gridData); const acts = f_res.caches.map(c=>c.a); acts.push(f_res.a); const m=maxAbsW(); wScaleVal.textContent=(wScale.value||'6')+' px'; vctx.clearRect(0,0,viz.width,viz.height); const padX=60,padY=30; const L=net.sizes.length; const colX=[]; for(let c=0;c<L;c++) colX.push(padX + c*((viz.width-2*padX)/Math.max(1,L-1))); const pos=[]; for(let c=0;c<L;c++){ const nodes=net.sizes[c]; const arr=[]; for(let i=0;i<nodes;i++){ const y=padY + i*((viz.height-2*padY)/Math.max(1,nodes-1)); arr.push([colX[c],y]); } pos.push(arr);} if(showEdges.checked){ vctx.lineCap='round'; for(let l=0;l<net.W.length;l++){ const A=pos[l], B=pos[l+1], Wl=net.W[l], actL=acts[l]; for(let i=0;i<Wl.length;i++) for(let j=0;j<Wl[i].length;j++){ const a=A[j], b=B[i]; vctx.strokeStyle=mapColor(Wl[i][j], actL[j]); vctx.lineWidth=widthFor(Wl[i][j], m); vctx.beginPath(); vctx.moveTo(a[0]+12,a[1]); vctx.lineTo(b[0]-12,b[1]); vctx.stroke(); } } } for(let c=0;c<L;c++){ for(let i=0;i<pos[c].length;i++){ const label=(c===0)? 'I' : (c===L-1? String(i) : 'H'); const act = acts[c][i]; const lum = Math.round(255 * Math.min(1, Math.max(0, act))); vctx.beginPath(); vctx.arc(pos[c][i][0],pos[c][i][1],10,0,2*Math.PI); vctx.fillStyle=`rgb(${lum},${lum},${lum})`; vctx.fill(); vctx.strokeStyle=(lum>100)?'#fff':'#333'; vctx.stroke(); vctx.fillStyle=(lum>128)?'#000':'#fff'; vctx.font='bold 10px system-ui'; vctx.textAlign='center'; vctx.textBaseline='middle'; vctx.fillText(label,pos[c][i][0],pos[c][i][1]); } } }
+wScale.oninput=()=>{ wScaleVal.textContent=wScale.value+' px'; drawNet(); };
+showEdges.onchange=drawNet; autoWScale.onchange=drawNet;
+
+// ===== Training controls =====
+const lossCanvas=document.getElementById('loss'); const lctx=lossCanvas.getContext('2d');
+const lockScale=document.getElementById('lockScale'); const yMinEl=document.getElementById('yMin'); const yMaxEl=document.getElementById('yMax'); const gridLoss=document.getElementById('gridLoss'); const btnScaleReset=document.getElementById('btnScaleReset');
+let lossHist=[], ewma=null, bestEwma=Infinity, noImprove=0; const ewAlpha=0.1; const maxLossPts=600;
+function drawLoss(){ const w=lossCanvas.width, h=lossCanvas.height; lctx.clearRect(0,0,w,h); const left=40, right=6, top=6, bottom=20; const plotW=w-left-right, plotH=h-top-bottom; lctx.strokeStyle='#ddd'; lctx.beginPath(); lctx.moveTo(left+0.5,top+0.5); lctx.lineTo(left+0.5,h-bottom+0.5); lctx.lineTo(w-right+0.5,h-bottom+0.5); lctx.stroke(); if(lossHist.length<2) return; let yMin, yMax; if(lockScale.checked){ yMin=parseNum(yMinEl.value,0); yMax=parseNum(yMaxEl.value,2); } else { yMin=Math.min.apply(null, lossHist); yMax=Math.max.apply(null, lossHist); if(yMin===yMax) yMax=yMin+1e-6; } const ticksY=5; lctx.fillStyle='#666'; lctx.font='10px system-ui'; for(let t=0;t<=ticksY;t++){ const frac=t/ticksY; const y=top+(1-frac)*plotH; const val=(yMin+frac*(yMax-yMin)).toFixed(3); if(gridLoss.checked){ lctx.strokeStyle='#f1f1f1'; lctx.beginPath(); lctx.moveTo(left+1,y+0.5); lctx.lineTo(w-right,y+0.5); lctx.stroke(); } lctx.fillText(val, 2, y+3); } lctx.beginPath(); for(let i=0;i<lossHist.length;i++){ const x=left + (i/(lossHist.length-1))*plotW; const y=top + (1-((lossHist[i]-yMin)/(yMax-yMin)))*plotH; if(i===0) lctx.moveTo(x,y); else lctx.lineTo(x,y); } lctx.strokeStyle='#333'; lctx.lineWidth=1; lctx.stroke(); }
+function pushLoss(v){ if(!isFinite(v)) return; lossHist.push(v); if(lossHist.length>maxLossPts) lossHist.shift(); ewma = (ewma==null)? v : (ewAlpha*v + (1-ewAlpha)*ewma); const minDelta=parseNum(document.getElementById('minDelta').value,0.001); if(ewma < bestEwma - minDelta){ bestEwma=ewma; noImprove=0; } else noImprove++; document.getElementById('lossNow').textContent='loss: '+v.toFixed(4); document.getElementById('lossBest').textContent='best: '+(isFinite(bestEwma)?bestEwma.toFixed(4):'-'); drawLoss(); }
+btnScaleReset.addEventListener('click', ()=>{ lossHist=[]; ewma=null; bestEwma=Infinity; noImprove=0; drawLoss(); });
+
+let trainTimer=null, trainSteps=0, trainPaused=false; let order=[], ptr=0, lastLen=0; const statusEl=document.getElementById('trainStatus');
+function rebuildOrder(n){ order=[]; for(let i=0;i<n;i++) order.push(i); for(let i=n-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=order[i]; order[i]=order[j]; order[j]=t; } ptr=0; lastLen=n; }
+function parseData(){ return parseSamples(); }
+function maybeAutoStop(){ if(!document.getElementById('autoStop').checked) return; const patience=parseInt(document.getElementById('patience').value||'150',10); if(noImprove>=patience){ pauseTrain(); } }
+function trainTick(){ const data=parseData(); if(!data.length){ stopTrain(); return; } if(data.length!==lastLen || order.length===0) rebuildOrder(data.length); const lr=parseNum(document.getElementById('lr').value,0.01); const bsz=Math.max(1, parseInt(document.getElementById('batch').value||'8',10)); const bpt=Math.max(1, parseInt(document.getElementById('btick').value||'5',10)); for(let b=0;b<bpt;b++){ const batch=[]; for(let q=0;q<bsz;q++){ const idx=order[ptr]; batch.push(data[idx]); ptr=(ptr+1)%order.length; } const L=net.trainBatch(batch, lr); pushLoss(L); trainSteps++; } statusEl.textContent='in corso - step '+trainSteps; if(document.getElementById('liveViz').checked) drawNet(); updatePredUI(); maybeAutoStop(); }
+function startTrain(){ if(trainTimer) return; if(!trainPaused){ trainSteps=0; lossHist=[]; ewma=null; bestEwma=Infinity; noImprove=0; drawLoss(); } trainPaused=false; const ms=Math.max(10, parseInt(document.getElementById('mtick').value||'50',10)); statusEl.textContent='in corso - step '+trainSteps; trainTimer=setInterval(trainTick, ms); setButtons(); }
+function pauseTrain(){ if(!trainTimer) return; clearInterval(trainTimer); trainTimer=null; trainPaused=true; statusEl.textContent='in pausa - step '+trainSteps; setButtons(); }
+function stopTrain(){ if(trainTimer){ clearInterval(trainTimer); trainTimer=null; } trainPaused=false; trainSteps=0; statusEl.textContent='fermo'; setButtons(); }
+function setButtons(){ document.getElementById('btnTrainStart').disabled=!!trainTimer; document.getElementById('btnTrainPause').disabled=!trainTimer; document.getElementById('btnTrainStop').disabled=!trainTimer && !trainPaused; }
+
+document.getElementById('btnTrainStart').onclick=startTrain; document.getElementById('btnTrainPause').onclick=pauseTrain; document.getElementById('btnTrainStop').onclick=stopTrain;
+
+document.getElementById('btnReset').onclick=function(){ net.init(); drawNet(); };
+document.getElementById('btnRebuild').onclick=function(){ net=new MLP([25].concat(parseArch()).concat([10])); drawNet(); };
+
+document.getElementById('btnTrain').onclick=function(){ const data=parseData(); if(!data.length){ alert('Nessun esempio valido'); return; } const epochs=parseInt(document.getElementById('epochs').value||'1',10); const lr=parseNum(document.getElementById('lr').value,0.01); const bsz=Math.max(1, parseInt(document.getElementById('batch').value||'8',10)); for(let e=0;e<epochs;e++){ const idxs=data.map((_,i)=>i); for(let i=idxs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=idxs[i]; idxs[i]=idxs[j]; idxs[j]=t; } for(let p=0;p<idxs.length;p+=bsz){ const batch=[]; for(let q=p;q<Math.min(p+bsz, idxs.length); q++) batch.push(data[idxs[q]]); const L=net.trainBatch(batch, lr); pushLoss(L); } }
+  drawNet(); };
+
+// ===== Prediction UI =====
+function updatePredUI(){
+  const pr=net.predict(gridData);
+  const k=pr.k;
+  document.getElementById('pred').textContent=String(k);
+  document.getElementById('conf').textContent=(pr.y[k]*100).toFixed(1)+'%';
+  drawNet();
+}
+document.getElementById('btnPredict').onclick=updatePredUI;
+
+// ===== Init =====
+drawGrid(); drawNet(); parseSamples(); setButtons();
+</script>
+</body>
+</html>

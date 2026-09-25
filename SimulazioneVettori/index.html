@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <title>3D Vector Operations</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: sans-serif; overflow: hidden; }
+        #canvas-container { flex: 1; position: relative; background-color: #222; }
+        #overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        #control-panel { 
+            width: 380px; 
+            background: #ffffff; 
+            padding: 20px; 
+            box-sizing: border-box; 
+            overflow-y: auto; 
+            border-left: 1px solid #ccc; 
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        h2 { margin-top: 0; font-size: 1.5rem; color: #333; }
+        .vector-control { border: 1px solid #e0e0e0; padding: 12px 15px; margin-bottom: 15px; border-radius: 8px; background: #fafafa; }
+        .vector-control h3 { margin: 0; display: flex; flex-direction: column; font-size: 1.1rem; cursor: pointer; user-select: none; }
+        .vector-control h3:hover { opacity: 0.8; }
+        .vector-header-top { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+        .vector-header-bottom { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 5px; padding-left: 20px; box-sizing: border-box; }
+        .vector-controls-container { display: none; margin-top: 15px; }
+        /* The container itself doesn't have the expanded class, the parent .vector-control does */
+        .vector-control.expanded .vector-controls-container { display: block; }
+        .expand-icon { font-size: 0.8rem; margin-right: 8px; display: inline-block; transition: transform 0.2s; }
+        .vector-control.expanded .expand-icon { transform: rotate(90deg); }
+        .coord-input { display: flex; align-items: center; margin-bottom: 8px; }
+        .coord-input label { width: 25px; font-weight: bold; color: #555; }
+        .coord-input input[type="range"] { flex: 1; margin: 0 10px; cursor: pointer; }
+        .coord-input input[type="number"] { width: 60px; text-align: right; border: 1px solid #ccc; border-radius: 4px; padding: 3px; font-family: monospace; }
+        .operations { border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; background: #fafafa; }
+        .operations h3 { margin-top: 0; font-size: 1.1rem; }
+        .op-row { display: flex; align-items: center; margin-bottom: 12px; justify-content: space-between;}
+        .op-row label { display: flex; align-items: center; cursor: pointer; font-size: 1.05rem; }
+        .op-row input[type="checkbox"] { margin-right: 10px; transform: scale(1.2); cursor: pointer; }
+        .op-mag { font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.95rem; }
+        .result-box { margin-top: 20px; padding: 15px; background: #e8f4f8; border: 1px solid #bce8f1; border-radius: 8px; font-size: 1.1rem; color: #31708f; display: flex; justify-content: space-between; align-items: center; }
+        .result-val { font-family: monospace; font-weight: bold; font-size: 1.2rem; background: #fff; padding: 3px 8px; border-radius: 4px; border: 1px solid #bce8f1; }
+        
+        /* Custom styles for colors */
+        .color-u { color: #cc0000; }
+        .color-v { color: #009900; }
+        .color-sum { color: #3333ff; }
+        .color-diff { color: #ff8800; }
+        .color-cross { color: #cc33cc; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="overlay-canvas"></canvas>
+    </div>
+    <div id="control-panel">
+        <h2>Simulazione Vettori 3D</h2>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px;">
+            <div style="display: flex; align-items: center;">
+                <label for="hdri-brightness" style="font-weight: bold; color: #555; margin-right: 10px; font-size: 0.95rem;">Luminosità Ambiente:</label>
+                <input type="range" id="hdri-brightness" min="0" max="2" step="0.05" value="0.8" style="flex: 1; cursor: pointer;">
+            </div>
+        </div>
+
+        <div class="vector-control" id="panel-u" style="border-left: 5px solid #cc0000;">
+            <h3 class="color-u" onclick="this.parentElement.classList.toggle('expanded')">
+                <div class="vector-header-top">
+                    <span style="display: flex; align-items: center;">
+                        <span class="expand-icon">▶</span>
+                        <span style="display: flex; align-items: center;" onclick="event.stopPropagation()">
+                            <input type="checkbox" id="show-u" checked style="margin-right: 8px;"> 
+                            <label for="show-u" style="cursor: pointer; margin-right: 5px;">Vettore <b>u</b></label>
+                        </span>
+                    </span>
+                </div>
+                <div class="vector-header-bottom">
+                    <span id="coords-u" style="font-family: monospace; font-size: 0.95rem; color: #555;">u=(0; 0; 0)</span>
+                    <span id="mag-u" class="op-mag">|u| = 0.00</span>
+                </div>
+            </h3>
+            <div class="vector-controls-container">
+                <div class="coord-input" id="panel-u-x"><label>X:</label><input type="range" id="u-x" min="-10" max="10" step="0.1" value="4"><input type="number" id="num-u-x" min="-10" max="10" step="0.1" value="4"></div>
+                <div class="coord-input" id="panel-u-y"><label>Y:</label><input type="range" id="u-y" min="-10" max="10" step="0.1" value="2"><input type="number" id="num-u-y" min="-10" max="10" step="0.1" value="2"></div>
+                <div class="coord-input" id="panel-u-z"><label>Z:</label><input type="range" id="u-z" min="-10" max="10" step="0.1" value="3"><input type="number" id="num-u-z" min="-10" max="10" step="0.1" value="3"></div>
+            </div>
+        </div>
+
+        <div class="vector-control" id="panel-v" style="border-left: 5px solid #009900;">
+            <h3 class="color-v" onclick="this.parentElement.classList.toggle('expanded')">
+                <div class="vector-header-top">
+                    <span style="display: flex; align-items: center;">
+                        <span class="expand-icon">▶</span>
+                        <span style="display: flex; align-items: center;" onclick="event.stopPropagation()">
+                            <input type="checkbox" id="show-v" checked style="margin-right: 8px;"> 
+                            <label for="show-v" style="cursor: pointer; margin-right: 5px;">Vettore <b>v</b></label>
+                        </span>
+                    </span>
+                </div>
+                <div class="vector-header-bottom">
+                    <span id="coords-v" style="font-family: monospace; font-size: 0.95rem; color: #555;">v=(0; 0; 0)</span>
+                    <span id="mag-v" class="op-mag">|v| = 0.00</span>
+                </div>
+            </h3>
+            <div class="vector-controls-container">
+                <div class="coord-input" id="panel-v-x"><label>X:</label><input type="range" id="v-x" min="-10" max="10" step="0.1" value="-2"><input type="number" id="num-v-x" min="-10" max="10" step="0.1" value="-2"></div>
+                <div class="coord-input" id="panel-v-y"><label>Y:</label><input type="range" id="v-y" min="-10" max="10" step="0.1" value="4"><input type="number" id="num-v-y" min="-10" max="10" step="0.1" value="4"></div>
+                <div class="coord-input" id="panel-v-z"><label>Z:</label><input type="range" id="v-z" min="-10" max="10" step="0.1" value="-1"><input type="number" id="num-v-z" min="-10" max="10" step="0.1" value="-1"></div>
+            </div>
+        </div>
+
+        <div class="operations">
+            <h3>Operazioni Vettoriali</h3>
+            <div class="op-row" id="panel-sum">
+                <label class="color-sum"><input type="checkbox" id="show-sum"> <b>u + v</b></label>
+                <span id="mag-sum" class="op-mag">|u+v| = 0.00</span>
+            </div>
+            <div class="op-row" id="panel-diff">
+                <label class="color-diff"><input type="checkbox" id="show-diff"> <b>u - v</b></label>
+                <span id="mag-diff" class="op-mag">|u-v| = 0.00</span>
+            </div>
+            <div class="op-row" id="panel-cross">
+                <label class="color-cross"><input type="checkbox" id="show-cross"> <b>u × v</b></label>
+                <span id="mag-cross" class="op-mag">|u×v| = 0.00</span>
+            </div>
+        </div>
+
+        <div class="result-box">
+            <span>Prodotto scalare <b>u · v</b></span>
+            <span id="dot-product" class="result-val">0.00</span>
+        </div>
+    </div>
+
+    <!-- Import maps polyfill -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+        // 1. Scene setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        // Set a fallback background color until the HDRI loads
+        scene.background = new THREE.Color(0x222222);
+
+        // Load HDRI environment map (a simple, clean outdoor sky with soft lighting)
+        new RGBELoader()
+            .setPath('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/equirectangular/')
+            .load('venice_sunset_1k.hdr', function (texture) {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                
+                // Adjust tone mapping and exposure for a better look
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = parseFloat(document.getElementById('hdri-brightness').value);
+
+                // Slightly blur the background so it doesn't distract from the vectors
+                scene.background = texture;
+                scene.backgroundBlurriness = 0.3; // Requires three.js r144+
+                scene.environment = texture;
+            });
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(15, 12, 18);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // 2. Grid (Axes are now drawn in 2D overlay)
+        // Adjust grid colors to be slightly more visible against the HDRI background
+        const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
+        gridHelper.position.y = -0.01;
+        gridHelper.material.toneMapped = false;
+        scene.add(gridHelper);
+
+        // 3. Vectors (Math only, rendering is done in 2D overlay)
+        const origin = new THREE.Vector3(0, 0, 0);
+
+        const vecU = new THREE.Vector3();
+        const vecV = new THREE.Vector3();
+        const vecSum = new THREE.Vector3();
+        const vecDiff = new THREE.Vector3();
+        const vecCross = new THREE.Vector3();
+
+        // 3.5 3D Arrows
+        function create3DArrow(colorHex, thickness = 0.06, headLength = 0.6, headRadius = 0.18) {
+            const group = new THREE.Group();
+            const material = new THREE.MeshBasicMaterial({ color: colorHex, toneMapped: false });
+            
+            const cylGeom = new THREE.CylinderGeometry(thickness, thickness, 1, 16);
+            cylGeom.translate(0, 0.5, 0);
+            const cylinder = new THREE.Mesh(cylGeom, material);
+            group.add(cylinder);
+            
+            const coneGeom = new THREE.ConeGeometry(headRadius, headLength, 16);
+            coneGeom.translate(0, headLength / 2, 0);
+            const cone = new THREE.Mesh(coneGeom, material);
+            group.add(cone);
+            
+            return { group, cylinder, cone, headLength, material };
+        }
+
+        const arrows3D = {
+            x: create3DArrow(0xaaaaaa, 0.03, 0.4, 0.1),
+            y: create3DArrow(0xaaaaaa, 0.03, 0.4, 0.1),
+            z: create3DArrow(0xaaaaaa, 0.03, 0.4, 0.1),
+            u: create3DArrow(0xcc0000),
+            v: create3DArrow(0x009900),
+            sum: create3DArrow(0x3333ff),
+            diff: create3DArrow(0xff8800),
+            cross: create3DArrow(0xcc33cc)
+        };
+
+        Object.values(arrows3D).forEach(arrow => scene.add(arrow.group));
+
+        function updateArrow(arrowObj, vEnd, visible) {
+            if (!visible || vEnd.lengthSq() < 0.000001) {
+                arrowObj.group.visible = false;
+                return;
+            }
+            arrowObj.group.visible = true;
+            
+            const length = vEnd.length();
+            const dir = vEnd.clone().normalize();
+            
+            const headLen = Math.min(arrowObj.headLength, length);
+            const shaftLen = Math.max(0, length - headLen);
+            
+            arrowObj.cylinder.scale.set(1, shaftLen, 1);
+            arrowObj.cone.position.set(0, shaftLen, 0);
+            arrowObj.cone.scale.set(1, headLen / arrowObj.headLength, 1);
+            
+            // To prevent errors when direction is exactly down
+            const axis = new THREE.Vector3(0, 1, 0);
+            arrowObj.group.quaternion.setFromUnitVectors(axis, dir);
+        }
+
+        // 3.6 Hand Emoji for Cross Product
+        const emojiCanvas = document.createElement('canvas');
+        emojiCanvas.width = 512;
+        emojiCanvas.height = 512;
+        const emojiCtx = emojiCanvas.getContext('2d');
+        emojiCtx.font = '360px sans-serif';
+        emojiCtx.textAlign = 'center';
+        emojiCtx.textBaseline = 'middle';
+        emojiCtx.fillText('✋', 256, 280);
+        const handTexture = new THREE.CanvasTexture(emojiCanvas);
+        handTexture.minFilter = THREE.LinearMipmapLinearFilter;
+        handTexture.magFilter = THREE.LinearFilter;
+        
+        const handMaterial = new THREE.MeshBasicMaterial({ 
+            map: handTexture, 
+            transparent: true, 
+            side: THREE.DoubleSide, 
+            depthTest: false,
+            toneMapped: false
+        });
+        const handGeometry = new THREE.PlaneGeometry(3.5, 3.5);
+        // Translate slightly downwards so the "center of the palm" of the emoji
+        // is at the origin (0,0,0) rather than the center of the square canvas
+        handGeometry.translate(0, 0.4, 0); 
+        const handMesh = new THREE.Mesh(handGeometry, handMaterial);
+        handMesh.renderOrder = 2;
+        handMesh.visible = false;
+        scene.add(handMesh);
+
+        // 4. UI Elements, Interaction State, and Event Listeners
+        const inputs = {
+            u: {
+                x: { range: document.getElementById('u-x'), num: document.getElementById('num-u-x') },
+                y: { range: document.getElementById('u-y'), num: document.getElementById('num-u-y') },
+                z: { range: document.getElementById('u-z'), num: document.getElementById('num-u-z') }
+            },
+            v: {
+                x: { range: document.getElementById('v-x'), num: document.getElementById('num-v-x') },
+                y: { range: document.getElementById('v-y'), num: document.getElementById('num-v-y') },
+                z: { range: document.getElementById('v-z'), num: document.getElementById('num-v-z') }
+            }
+        };
+
+        const hdriBrightnessSlider = document.getElementById('hdri-brightness');
+        hdriBrightnessSlider.addEventListener('input', (e) => {
+            renderer.toneMappingExposure = parseFloat(e.target.value);
+        });
+
+        const checks = {
+            u: document.getElementById('show-u'),
+            v: document.getElementById('show-v'),
+            sum: document.getElementById('show-sum'),
+            diff: document.getElementById('show-diff'),
+            cross: document.getElementById('show-cross')
+        };
+
+        const labels = {
+            u: document.getElementById('mag-u'),
+            v: document.getElementById('mag-v'),
+            coordsU: document.getElementById('coords-u'),
+            coordsV: document.getElementById('coords-v'),
+            sum: document.getElementById('mag-sum'),
+            diff: document.getElementById('mag-diff'),
+            cross: document.getElementById('mag-cross'),
+            dot: document.getElementById('dot-product')
+        };
+
+        const interactionState = {
+            hoveredVector: null,
+            hoveredAxis: null,
+            draggingVector: null,
+            draggingAxis: null,
+            editingVector: null,
+            editingAxis: null,
+            editTimeout: null
+        };
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        renderer.domElement.addEventListener('pointermove', (e) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const clientX = e.clientX - rect.left;
+            const clientY = e.clientY - rect.top;
+            
+            const mouse2D = { x: clientX, y: clientY };
+            
+            mouse.x = (clientX / rect.width) * 2 - 1;
+            mouse.y = -(clientY / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            if (interactionState.draggingVector && interactionState.draggingAxis) {
+                const axisDir = new THREE.Vector3();
+                if (interactionState.draggingAxis === 'x') axisDir.set(1, 0, 0);
+                else if (interactionState.draggingAxis === 'y') axisDir.set(0, 1, 0);
+                else if (interactionState.draggingAxis === 'z') axisDir.set(0, 0, 1);
+                
+                const w0 = raycaster.ray.origin;
+                const a = 1;
+                const b = raycaster.ray.direction.dot(axisDir);
+                const c = 1;
+                const d = raycaster.ray.direction.dot(w0);
+                const e = axisDir.dot(w0);
+                const D = a * c - b * b;
+                
+                if (D > 1e-6) {
+                    let tc = (a * e - b * d) / D;
+                    tc = Math.max(-10, Math.min(10, tc));
+                    tc = Math.round(tc * 10) / 10;
+                    
+                    const vecInputs = inputs[interactionState.draggingVector][interactionState.draggingAxis];
+                    vecInputs.range.value = tc;
+                    vecInputs.num.value = tc;
+                    updateVectors();
+                }
+                return;
+            }
+
+            let foundVector = null;
+            let foundAxis = null;
+            let minDist = 20;
+
+            function getScreenPos(p3d) {
+                const p = p3d.clone().applyMatrix4(camera.matrixWorldInverse);
+                if (p.z > -camera.near) return { z: 2 };
+                p.applyMatrix4(camera.projectionMatrix);
+                return {
+                    x: (p.x * 0.5 + 0.5) * rect.width,
+                    y: (-(p.y) * 0.5 + 0.5) * rect.height,
+                    z: p.z
+                };
+            }
+
+            function distToSegment(p, v, w) {
+                const l2 = (w.x - v.x)**2 + (w.y - v.y)**2;
+                if (l2 == 0) return Math.hypot(p.x - v.x, p.y - v.y);
+                let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+            }
+
+            const checkHover = (vecName, vecObj) => {
+                if (!checks[vecName].checked) return;
+                
+                const px = getScreenPos(new THREE.Vector3(vecObj.x, 0, 0));
+                const py = getScreenPos(new THREE.Vector3(0, vecObj.y, 0));
+                const pz = getScreenPos(new THREE.Vector3(0, 0, vecObj.z));
+                
+                if (px.z < 1) { const d = Math.hypot(mouse2D.x - px.x, mouse2D.y - px.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'x'; } }
+                if (py.z < 1) { const d = Math.hypot(mouse2D.x - py.x, mouse2D.y - py.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'y'; } }
+                if (pz.z < 1) { const d = Math.hypot(mouse2D.x - pz.x, mouse2D.y - pz.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'z'; } }
+                
+                if (!foundAxis) {
+                    const o2D = getScreenPos(origin);
+                    const v2D = getScreenPos(vecObj);
+                    if (o2D.z < 1 && v2D.z < 1) {
+                        const d = distToSegment(mouse2D, o2D, v2D);
+                        if (d < minDist) {
+                            minDist = d;
+                            foundVector = vecName;
+                        }
+                    }
+                }
+            };
+
+            checkHover('u', vecU);
+            checkHover('v', vecV);
+            checkHover('sum', vecSum);
+            checkHover('diff', vecDiff);
+            checkHover('cross', vecCross);
+
+            if (interactionState.hoveredVector !== foundVector || interactionState.hoveredAxis !== foundAxis) {
+                interactionState.hoveredVector = foundVector;
+                interactionState.hoveredAxis = foundAxis;
+                
+                const isEditableAxis = foundAxis && (foundVector === 'u' || foundVector === 'v');
+                renderer.domElement.style.cursor = isEditableAxis ? 'pointer' : (foundVector ? 'crosshair' : 'default');
+            }
+        });
+
+        renderer.domElement.addEventListener('pointerleave', (e) => {
+            if (!interactionState.draggingVector) {
+                interactionState.hoveredVector = null;
+                interactionState.hoveredAxis = null;
+                renderer.domElement.style.cursor = 'default';
+            }
+        });
+
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            if (interactionState.hoveredVector && interactionState.hoveredAxis) {
+                if (interactionState.hoveredVector === 'u' || interactionState.hoveredVector === 'v') {
+                    interactionState.draggingVector = interactionState.hoveredVector;
+                    interactionState.draggingAxis = interactionState.hoveredAxis;
+                    controls.enabled = false;
+                    e.preventDefault();
+                }
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (interactionState.draggingVector) {
+                interactionState.draggingVector = null;
+                interactionState.draggingAxis = null;
+                controls.enabled = true;
+            }
+        });
+
+        // Sync inputs
+        function syncInputs(source, target, vecName, axis) {
+            target.value = source.value;
+            
+            interactionState.editingVector = vecName;
+            interactionState.editingAxis = axis;
+            clearTimeout(interactionState.editTimeout);
+            interactionState.editTimeout = setTimeout(() => {
+                interactionState.editingVector = null;
+                interactionState.editingAxis = null;
+            }, 1500);
+            
+            updateVectors();
+        }
+
+        ['u', 'v'].forEach(vec => {
+            ['x', 'y', 'z'].forEach(axis => {
+                inputs[vec][axis].range.addEventListener('input', (e) => syncInputs(e.target, inputs[vec][axis].num, vec, axis));
+                inputs[vec][axis].num.addEventListener('input', (e) => syncInputs(e.target, inputs[vec][axis].range, vec, axis));
+            });
+        });
+
+        Object.values(checks).forEach(check => {
+            check.addEventListener('change', updateVectors);
+        });
+
+        // Setup side panel hover effects
+        const panelHoverSetup = [
+            { id: 'panel-u', vec: 'u' },
+            { id: 'panel-v', vec: 'v' },
+            { id: 'panel-sum', vec: 'sum' },
+            { id: 'panel-diff', vec: 'diff' },
+            { id: 'panel-cross', vec: 'cross' }
+        ];
+
+        panelHoverSetup.forEach(item => {
+            const el = document.getElementById(item.id);
+            if (el) {
+                el.addEventListener('mouseenter', () => {
+                    if (!interactionState.draggingVector) {
+                        interactionState.hoveredVector = item.vec;
+                    }
+                });
+                el.addEventListener('mouseleave', () => {
+                    if (!interactionState.draggingVector && interactionState.hoveredVector === item.vec) {
+                        interactionState.hoveredVector = null;
+                        interactionState.hoveredAxis = null;
+                    }
+                });
+            }
+        });
+
+        // Setup side panel axis hover effects
+        ['u', 'v'].forEach(vec => {
+            ['x', 'y', 'z'].forEach(axis => {
+                const el = document.getElementById(`panel-${vec}-${axis}`);
+                if (el) {
+                    el.addEventListener('mouseenter', (e) => {
+                        if (!interactionState.draggingVector) {
+                            interactionState.hoveredVector = vec;
+                            interactionState.hoveredAxis = axis;
+                        }
+                    });
+                    el.addEventListener('mouseleave', (e) => {
+                        if (!interactionState.draggingVector) {
+                            interactionState.hoveredAxis = null;
+                            interactionState.hoveredVector = vec;
+                        }
+                    });
+                }
+            });
+        });
+
+        function updateVectors() {
+            vecU.set(
+                parseFloat(inputs.u.x.num.value) || 0,
+                parseFloat(inputs.u.y.num.value) || 0,
+                parseFloat(inputs.u.z.num.value) || 0
+            );
+            vecV.set(
+                parseFloat(inputs.v.x.num.value) || 0,
+                parseFloat(inputs.v.y.num.value) || 0,
+                parseFloat(inputs.v.z.num.value) || 0
+            );
+
+            vecSum.addVectors(vecU, vecV);
+            vecDiff.subVectors(vecU, vecV);
+            vecCross.crossVectors(vecU, vecV);
+            const dotProduct = vecU.dot(vecV);
+
+            labels.u.textContent = `|u| = ${vecU.length().toFixed(2)}`;
+            labels.v.textContent = `|v| = ${vecV.length().toFixed(2)}`;
+            labels.coordsU.textContent = `u=(${vecU.x}; ${vecU.y}; ${vecU.z})`;
+            labels.coordsV.textContent = `v=(${vecV.x}; ${vecV.y}; ${vecV.z})`;
+            labels.sum.textContent = `|u+v| = ${vecSum.length().toFixed(2)}`;
+            labels.diff.textContent = `|u-v| = ${vecDiff.length().toFixed(2)}`;
+            labels.cross.textContent = `|u×v| = ${vecCross.length().toFixed(2)}`;
+            labels.dot.textContent = dotProduct.toFixed(2);
+        }
+
+        // 5. Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // Initial update
+        updateVectors();
+
+        // 6. 2D Overlay for Vectors and Axes
+        const overlayCanvas = document.getElementById('overlay-canvas');
+        const ctx = overlayCanvas.getContext('2d');
+
+        function renderOverlay() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const dpr = window.devicePixelRatio || 1;
+            
+            if (overlayCanvas.width !== Math.floor(width * dpr) || overlayCanvas.height !== Math.floor(height * dpr)) {
+                overlayCanvas.width = Math.floor(width * dpr);
+                overlayCanvas.height = Math.floor(height * dpr);
+                ctx.scale(dpr, dpr);
+            }
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            const near = camera.near;
+
+            function drawLine3D(vStart, vEnd, color, thickness, isDashed = false) {
+                if (vStart.distanceTo(vEnd) < 0.001) return;
+                const p1 = vStart.clone().applyMatrix4(camera.matrixWorldInverse);
+                const p2 = vEnd.clone().applyMatrix4(camera.matrixWorldInverse);
+                
+                if (p1.z > -near && p2.z > -near) return;
+                
+                let clipped1 = p1.clone();
+                let clipped2 = p2.clone();
+                if (p1.z > -near || p2.z > -near) {
+                    const t = (-near - p1.z) / (p2.z - p1.z);
+                    const intersection = p1.clone().lerp(p2, t);
+                    if (p1.z > -near) clipped1 = intersection;
+                    else clipped2 = intersection;
+                }
+                
+                const proj1 = clipped1.applyMatrix4(camera.projectionMatrix);
+                const proj2 = clipped2.applyMatrix4(camera.projectionMatrix);
+                
+                const x1 = (proj1.x * 0.5 + 0.5) * width;
+                const y1 = (-(proj1.y) * 0.5 + 0.5) * height;
+                const x2 = (proj2.x * 0.5 + 0.5) * width;
+                const y2 = (-(proj2.y) * 0.5 + 0.5) * height;
+                
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = thickness;
+                if (isDashed) ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            function drawProjections(vecObj, color, activeAxis, hoveredAxis, isEditable = true) {
+                const { x, y, z } = vecObj;
+                const pX = new THREE.Vector3(x, 0, 0);
+                const pY = new THREE.Vector3(0, y, 0);
+                const pZ = new THREE.Vector3(0, 0, z);
+                const pXY = new THREE.Vector3(x, y, 0);
+                const pXZ = new THREE.Vector3(x, 0, z);
+                const pYZ = new THREE.Vector3(0, y, z);
+                
+                ctx.globalAlpha = 0.5;
+                drawLine3D(origin, pX, color, 1, true);
+                drawLine3D(origin, pY, color, 1, true);
+                drawLine3D(origin, pZ, color, 1, true);
+                drawLine3D(pX, pXY, color, 1, true);
+                drawLine3D(pY, pXY, color, 1, true);
+                drawLine3D(pX, pXZ, color, 1, true);
+                drawLine3D(pZ, pXZ, color, 1, true);
+                drawLine3D(pY, pYZ, color, 1, true);
+                drawLine3D(pZ, pYZ, color, 1, true);
+                drawLine3D(pXY, vecObj, color, 1, true);
+                drawLine3D(pXZ, vecObj, color, 1, true);
+                drawLine3D(pYZ, vecObj, color, 1, true);
+                ctx.globalAlpha = 1.0;
+                
+                function drawHandle(p3d, axis) {
+                    const p2 = p3d.clone().applyMatrix4(camera.matrixWorldInverse);
+                    if (p2.z > -near) return;
+                    p2.applyMatrix4(camera.projectionMatrix);
+                    
+                    const sx = (p2.x * 0.5 + 0.5) * width;
+                    const sy = (-(p2.y) * 0.5 + 0.5) * height;
+                    
+                    ctx.beginPath();
+                    const baseRadius = isEditable ? 6 : 4;
+                    ctx.arc(sx, sy, baseRadius, 0, Math.PI * 2);
+                    
+                    if (isEditable && (activeAxis === axis || hoveredAxis === axis)) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fill();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = color;
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, 12, 0, Math.PI * 2);
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = color;
+                        ctx.stroke();
+                    } else {
+                        ctx.fillStyle = color;
+                        ctx.fill();
+                        if (!isEditable) {
+                            ctx.lineWidth = 1;
+                            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                            ctx.stroke();
+                        }
+                    }
+                }
+                
+                drawHandle(pX, 'x');
+                drawHandle(pY, 'y');
+                drawHandle(pZ, 'z');
+            }
+            
+            function drawLabel(vEnd, color, labelText, isAxis = false) {
+                if (!labelText || vEnd.lengthSq() < 0.000001) return;
+                
+                const p = vEnd.clone().applyMatrix4(camera.matrixWorldInverse);
+                if (p.z > -near) return; // Behind camera
+                
+                p.applyMatrix4(camera.projectionMatrix);
+                
+                const x = (p.x * 0.5 + 0.5) * width;
+                const y = (-(p.y) * 0.5 + 0.5) * height;
+                
+                ctx.font = isAxis ? "bold 16px sans-serif" : "bold 16px sans-serif";
+                ctx.fillStyle = color;
+                ctx.shadowColor = 'rgba(34,34,34,0.8)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(labelText, x + 8, y + 8);
+                ctx.shadowBlur = 0;
+            }
+            
+            // Draw parallelogram for cross product hover (Background layer)
+            if (interactionState.hoveredVector === 'cross' && checks.cross.checked) {
+                const p0 = origin.clone().applyMatrix4(camera.matrixWorldInverse);
+                const pu = vecU.clone().applyMatrix4(camera.matrixWorldInverse);
+                const pv = vecV.clone().applyMatrix4(camera.matrixWorldInverse);
+                const puv = new THREE.Vector3().addVectors(vecU, vecV).applyMatrix4(camera.matrixWorldInverse);
+                
+                // Only draw if all points are in front of camera
+                if (p0.z <= -near && pu.z <= -near && pv.z <= -near && puv.z <= -near) {
+                    p0.applyMatrix4(camera.projectionMatrix);
+                    pu.applyMatrix4(camera.projectionMatrix);
+                    pv.applyMatrix4(camera.projectionMatrix);
+                    puv.applyMatrix4(camera.projectionMatrix);
+                    
+                    const x0 = (p0.x * 0.5 + 0.5) * width;
+                    const y0 = (-(p0.y) * 0.5 + 0.5) * height;
+                    const xu = (pu.x * 0.5 + 0.5) * width;
+                    const yu = (-(pu.y) * 0.5 + 0.5) * height;
+                    const xv = (pv.x * 0.5 + 0.5) * width;
+                    const yv = (-(pv.y) * 0.5 + 0.5) * height;
+                    const xuv = (puv.x * 0.5 + 0.5) * width;
+                    const yuv = (-(puv.y) * 0.5 + 0.5) * height;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x0, y0);
+                    ctx.lineTo(xu, yu);
+                    ctx.lineTo(xuv, yuv);
+                    ctx.lineTo(xv, yv);
+                    ctx.closePath();
+                    
+                    ctx.fillStyle = 'rgba(204, 51, 204, 0.3)'; // Semi-transparent cross product color (#cc33cc)
+                    ctx.fill();
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = 'rgba(204, 51, 204, 0.8)';
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // Draw projections (Background layer)
+            ['u', 'v', 'sum', 'diff', 'cross'].forEach(vecName => {
+                if (checks[vecName].checked) {
+                    if (interactionState.hoveredVector === vecName || 
+                        interactionState.draggingVector === vecName ||
+                        interactionState.editingVector === vecName) {
+                        
+                        let vecObj, color;
+                        switch(vecName) {
+                            case 'u': vecObj = vecU; color = '#cc0000'; break;
+                            case 'v': vecObj = vecV; color = '#009900'; break;
+                            case 'sum': vecObj = vecSum; color = '#3333ff'; break;
+                            case 'diff': vecObj = vecDiff; color = '#ff8800'; break;
+                            case 'cross': vecObj = vecCross; color = '#cc33cc'; break;
+                        }
+
+                        const activeAxis = (interactionState.draggingVector === vecName) ? interactionState.draggingAxis :
+                                           (interactionState.editingVector === vecName) ? interactionState.editingAxis : null;
+                        const hoveredAxis = (interactionState.hoveredVector === vecName) ? interactionState.hoveredAxis : null;
+                        const isEditable = vecName === 'u' || vecName === 'v';
+                        
+                        drawProjections(vecObj, color, activeAxis, hoveredAxis, isEditable);
+                    }
+                }
+            });
+
+            // Prepare labels for depth sorting
+            const drawQueue = [];
+            const camDir = camera.position.clone().normalize();
+
+            function queueLabel(vEnd, color, labelText, isAxis) {
+                if (vEnd.lengthSq() < 0.000001) return; // Skip very small vectors
+                
+                const dir = vEnd.clone().normalize();
+                const dot = camDir.dot(dir);
+                
+                drawQueue.push({
+                    vEnd, color, labelText, isAxis, dot
+                });
+            }
+
+            // Queue axes
+            queueLabel(new THREE.Vector3(10, 0, 0), '#aaaaaa', 'X', true);
+            queueLabel(new THREE.Vector3(0, 10, 0), '#aaaaaa', 'Y', true);
+            queueLabel(new THREE.Vector3(0, 0, 10), '#aaaaaa', 'Z', true);
+
+            // Queue vectors
+            if (checks.u.checked) queueLabel(vecU, '#cc0000', 'u', false);
+            if (checks.v.checked) queueLabel(vecV, '#009900', 'v', false);
+            if (checks.sum.checked) queueLabel(vecSum, '#3333ff', 'u+v', false);
+            if (checks.diff.checked) queueLabel(vecDiff, '#ff8800', 'u-v', false);
+            if (checks.cross.checked) queueLabel(vecCross, '#cc33cc', 'u×v', false);
+
+            // Sort so that those pointing away from camera (lower dot product) are drawn first
+            drawQueue.sort((a, b) => a.dot - b.dot);
+
+            // Draw sorted labels
+            drawQueue.forEach(item => {
+                drawLabel(item.vEnd, item.color, item.labelText, item.isAxis);
+            });
+        }
+
+        // 7. Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // Update 3D arrows
+            updateArrow(arrows3D.x, new THREE.Vector3(10, 0, 0), true);
+            updateArrow(arrows3D.y, new THREE.Vector3(0, 10, 0), true);
+            updateArrow(arrows3D.z, new THREE.Vector3(0, 0, 10), true);
+            updateArrow(arrows3D.u, vecU, checks.u.checked);
+            updateArrow(arrows3D.v, vecV, checks.v.checked);
+            updateArrow(arrows3D.sum, vecSum, checks.sum.checked);
+            updateArrow(arrows3D.diff, vecDiff, checks.diff.checked);
+            updateArrow(arrows3D.cross, vecCross, checks.cross.checked);
+
+            if (interactionState.hoveredVector === 'cross' && checks.cross.checked && vecCross.lengthSq() > 0.001 && vecV.lengthSq() > 0.001) {
+                handMesh.visible = true;
+                const yAxis = vecV.clone().normalize();
+                const zAxis = vecCross.clone().normalize();
+                const xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
+                const matrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+                handMesh.quaternion.setFromRotationMatrix(matrix);
+            } else {
+                handMesh.visible = false;
+            }
+
+            renderer.render(scene, camera);
+            renderOverlay();
+        }
+        animate();
+    </script>
+</body>
+</html>

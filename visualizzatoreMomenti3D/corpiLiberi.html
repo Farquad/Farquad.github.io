@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulazione Corpi Liberi 3D / 2D</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background-color: #111; color: #fff; }
+        #canvas-container { flex: 1; position: relative; width: 100%; height: 100%; }
+        #overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        
+        #ui-container { position: absolute; top: 15px; left: 15px; z-index: 100; background: rgba(20, 20, 20, 0.85); padding: 15px; border-radius: 10px; border: 1px solid #444; backdrop-filter: blur(5px); box-shadow: 0 4px 15px rgba(0,0,0,0.6); width: 240px; }
+        h3 { margin-top: 0; margin-bottom: 12px; font-size: 1.1rem; border-bottom: 1px solid #555; padding-bottom: 6px; color: #e0e0e0; text-align: center; }
+        button { display: block; width: 100%; background: #3a3a3a; color: white; border: 1px solid #555; padding: 8px; margin-bottom: 8px; cursor: pointer; border-radius: 6px; transition: all 0.2s ease; font-weight: 600; font-size: 13px; }
+        button:hover { background: #505050; border-color: #777; }
+        button:active { background: #777; transform: scale(0.98); }
+        #toggleMode { background: #2a5a8a; border-color: #3a6a9a; margin-bottom: 15px; font-size: 14px; padding: 10px; }
+        #toggleMode:hover { background: #3a6a9a; }
+        #removeBtn { background: #5a2a2a; border-color: #7a3a3a; margin-top: 15px; }
+        #removeBtn:hover { background: #7a3a3a; }
+        #info-panel { margin-top: 15px; font-size: 12px; line-height: 1.4; color: #ddd; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 6px; border: 1px solid #333; }
+        .data-row { display: flex; flex-direction: column; margin-bottom: 6px; border-bottom: 1px dashed #444; padding-bottom: 4px; }
+        .data-label { font-weight: 600; color: #aaa; margin-bottom: 2px; }
+        .data-value { text-align: right; color: #fff; font-weight: bold; }
+        #legend { margin-top: 15px; background: rgba(0,0,0,0.6); padding: 12px; border-radius: 6px; border: 1px solid #333; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 8px; font-size: 13px; font-weight: 500; }
+        .color-box { width: 16px; height: 16px; margin-right: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.3); }
+        #help { position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 6px; font-size: 13px; color: #aaa; pointer-events: none; border: 1px solid #333; z-index: 100; }
+    </style>
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="overlay-canvas"></canvas>
+    </div>
+
+    <div id="ui-container">
+        <h3>Pannello di Controllo</h3>
+        <button id="toggleMode">Passa a simulazione 3D</button>
+        <button id="addCube">Aggiungi Quadrato</button>
+        <button id="addBox">Aggiungi Rettangolo</button>
+        <button id="removeBtn" style="display: none;">Rimuovi Selezionato</button>
+        
+        <div id="info-panel">
+            Nessun oggetto selezionato.<br>Clicca su un solido per vedere i dettagli e i vettori di movimento.
+        </div>
+        
+        <div id="legend" style="display: none;">
+            <div class="legend-item"><div class="color-box" style="background: #ff3333;"></div> Velocità Lineare (v)</div>
+            <div class="legend-item"><div class="color-box" style="background: #00cc00;"></div> Velocità Angolare (ω)</div>
+        </div>
+    </div>
+    
+    <div id="help">
+        Controlli Vista 2D: Tasto Destro = Sposta | Rotellina = Zoom
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+        import * as CANNON from 'cannon-es';
+
+        let is2DMode = true; // Modalità iniziale 2D
+        let hdrTexture = null;
+
+        // ==========================================
+        // 1. INIZIALIZZAZIONE THREE.JS (GRAFICA)
+        // ==========================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+        scene.fog = new THREE.FogExp2(0x050505, 0); // Spenta in 2D
+
+        const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1500);
+        camera.position.set(0, 0, 220); // Vista frontale 2D
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableRotate = false; // Bloccata in 2D
+
+        // Luci Comuni
+        const ambientLight = new THREE.AmbientLight(0x505050, 1.5);
+        scene.add(ambientLight);
+        
+        const mainLight = new THREE.DirectionalLight(0xffffee, 2.5);
+        mainLight.position.set(60, 100, 40);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 4096;
+        mainLight.shadow.mapSize.height = 4096;
+        const d_shadow = 150; 
+        mainLight.shadow.camera.left = -d_shadow;
+        mainLight.shadow.camera.right = d_shadow;
+        mainLight.shadow.camera.top = d_shadow;
+        mainLight.shadow.camera.bottom = -d_shadow;
+        mainLight.shadow.camera.near = 0.1;
+        mainLight.shadow.camera.far = 500;
+        mainLight.shadow.bias = -0.0005;
+        scene.add(mainLight);
+        
+        const pointLight1 = new THREE.PointLight(0x88bbff, 1.5, 300);
+        pointLight1.position.set(0, -20, 0);
+        scene.add(pointLight1);
+
+        // ==========================================
+        // VETTORI STILE INDEX.HTML
+        // ==========================================
+        function create3DArrow(colorHex, thickness = 0.6, headLength = 4.0, headRadius = 1.8) {
+            const group = new THREE.Group();
+            const material = new THREE.MeshBasicMaterial({ color: colorHex, depthTest: false });
+            
+            const cylGeom = new THREE.CylinderGeometry(thickness, thickness, 1, 16);
+            cylGeom.translate(0, 0.5, 0);
+            const cylinder = new THREE.Mesh(cylGeom, material);
+            cylinder.renderOrder = 999;
+            group.add(cylinder);
+            
+            const coneGeom = new THREE.ConeGeometry(headRadius, headLength, 16);
+            coneGeom.translate(0, headLength / 2, 0);
+            const cone = new THREE.Mesh(coneGeom, material);
+            cone.renderOrder = 999;
+            group.add(cone);
+            
+            group.visible = false;
+            return { group, cylinder, cone, headLength, material };
+        }
+
+        function updateArrow(arrowObj, origin, vEnd) {
+            if (vEnd.lengthSq() < 0.0001) {
+                arrowObj.group.visible = false;
+                return;
+            }
+            arrowObj.group.visible = true;
+            arrowObj.group.position.copy(origin);
+            
+            const length = vEnd.length();
+            const dir = vEnd.clone().normalize();
+            
+            const headLen = Math.min(arrowObj.headLength, length);
+            const shaftLen = Math.max(0.01, length - headLen);
+            
+            arrowObj.cylinder.scale.set(1, shaftLen, 1);
+            arrowObj.cone.position.set(0, shaftLen, 0);
+            arrowObj.cone.scale.set(1, headLen / arrowObj.headLength, 1);
+            
+            const axis = new THREE.Vector3(0, 1, 0);
+            arrowObj.group.quaternion.setFromUnitVectors(axis, dir);
+        }
+
+        const arrowV = create3DArrow(0xff3333);
+        const arrowOmega = create3DArrow(0x00cc00);
+        scene.add(arrowV.group);
+        scene.add(arrowOmega.group);
+
+        // Posizioni finali per renderOverlay
+        let posV = new THREE.Vector3();
+        let posOmega = new THREE.Vector3();
+
+        // ==========================================
+        // OVERLAY CANVAS (Per Etichette Vettori)
+        // ==========================================
+        const overlayCanvas = document.getElementById('overlay-canvas');
+        const ctx = overlayCanvas.getContext('2d');
+
+        function renderOverlay() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const dpr = window.devicePixelRatio || 1;
+            
+            if (overlayCanvas.width !== Math.floor(width * dpr) || overlayCanvas.height !== Math.floor(height * dpr)) {
+                overlayCanvas.width = Math.floor(width * dpr);
+                overlayCanvas.height = Math.floor(height * dpr);
+                ctx.scale(dpr, dpr);
+            }
+            
+            ctx.clearRect(0, 0, width, height);
+            if (!selectedObject) return;
+
+            function drawLabel(vEnd3D, color, labelText) {
+                if (!vEnd3D || vEnd3D.lengthSq() < 0.0001) return;
+                
+                const p = vEnd3D.clone().applyMatrix4(camera.matrixWorldInverse);
+                if (p.z > -camera.near) return;
+                
+                p.applyMatrix4(camera.projectionMatrix);
+                const x = (p.x * 0.5 + 0.5) * width;
+                const y = (-(p.y) * 0.5 + 0.5) * height;
+                
+                ctx.font = "bold 16px sans-serif";
+                ctx.fillStyle = color;
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(labelText, x + 8, y + 8);
+                ctx.shadowBlur = 0;
+            }
+
+            drawLabel(posV, '#ff3333', 'v');
+            drawLabel(posOmega, '#00cc00', 'ω');
+        }
+
+        // ==========================================
+        // 2. INIZIALIZZAZIONE CANNON-ES (FISICA)
+        // ==========================================
+        const world = new CANNON.World();
+        world.gravity.set(0, 0, 0); 
+        world.broadphase = new CANNON.SAPBroadphase(world);
+        // Risolutore più rigido per impedire incastri durante gli urti
+        world.solver.iterations = 100;
+        world.solver.tolerance = 0.0001;
+
+        // Vincolo asse Z per modalità 2D in fase postStep
+        world.addEventListener('postStep', () => {
+            if (is2DMode) {
+                world.bodies.forEach(body => {
+                    if (body.mass > 0) {
+                        body.position.z = 0;
+                        body.velocity.z = 0;
+                        body.angularVelocity.x = 0;
+                        body.angularVelocity.y = 0;
+                    }
+                });
+            }
+        });
+
+        const wallPhysMat = new CANNON.Material('wall');
+        const bodyPhysMat = new CANNON.Material('body');
+
+        // Urti perfettamente elastici
+        world.addContactMaterial(new CANNON.ContactMaterial(wallPhysMat, bodyPhysMat, { friction: 0.0, restitution: 1.0 }));
+        world.addContactMaterial(new CANNON.ContactMaterial(bodyPhysMat, bodyPhysMat, { friction: 0.0, restitution: 1.0 }));
+
+        // HDRI SKYBOX
+        new RGBELoader()
+            .setPath('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/equirectangular/')
+            .load('venice_sunset_1k.hdr', function (texture) {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                hdrTexture = texture;
+                if (!is2DMode) {
+                    scene.background = texture;
+                    scene.environment = texture;
+                }
+            });
+
+        // ==========================================
+        // 3. COSTRUZIONE AMBIENTI (3D e 2D)
+        // ==========================================
+        const scene3DGroup = new THREE.Group();
+        const scene2DGroup = new THREE.Group();
+        scene.add(scene3DGroup);
+        scene.add(scene2DGroup);
+
+        // Imposta visibilità in base al flag iniziale
+        scene3DGroup.visible = !is2DMode;
+        scene2DGroup.visible = is2DMode;
+
+        const roomSize = 100;
+
+        function build3DRoom() {
+            const wallT = 4;
+            const wallFull = roomSize * 2 + wallT * 2; 
+            const winSize = 80;
+            const frameH = (roomSize * 2 - winSize) / 2;
+            const frameW = (roomSize * 2 - winSize) / 2;
+
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.9, metalness: 0.1 });
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8, metalness: 0.2 });
+
+            function createVisualWallWithWindow(pos, rot) {
+                const wallGroup = new THREE.Group();
+                const bottom = new THREE.Mesh(new THREE.BoxGeometry(wallFull, frameH, wallT), wallMaterial);
+                bottom.position.set(0, -(winSize/2 + frameH/2), 0);
+                bottom.receiveShadow = bottom.castShadow = true;
+                wallGroup.add(bottom);
+
+                const top = new THREE.Mesh(new THREE.BoxGeometry(wallFull, frameH, wallT), wallMaterial);
+                top.position.set(0, (winSize/2 + frameH/2), 0);
+                top.receiveShadow = top.castShadow = true;
+                wallGroup.add(top);
+
+                const left = new THREE.Mesh(new THREE.BoxGeometry(frameW, winSize, wallT), wallMaterial);
+                left.position.set(-(winSize/2 + frameW/2), 0, 0);
+                left.receiveShadow = left.castShadow = true;
+                wallGroup.add(left);
+
+                const right = new THREE.Mesh(new THREE.BoxGeometry(frameW, winSize, wallT), wallMaterial);
+                right.position.set((winSize/2 + frameW/2), 0, 0);
+                right.receiveShadow = right.castShadow = true;
+                wallGroup.add(right);
+                
+                const glass = new THREE.Mesh(
+                    new THREE.PlaneGeometry(winSize, winSize), 
+                    new THREE.MeshPhysicalMaterial({ color: 0x88ccff, transparent: true, opacity: 0.2, roughness: 0.05, transmission: 0.9, thickness: 0.5, side: THREE.DoubleSide })
+                );
+                glass.position.set(0, 0, wallT/2);
+                wallGroup.add(glass);
+
+                wallGroup.position.copy(pos);
+                wallGroup.rotation.set(rot.x, rot.y, rot.z);
+                scene3DGroup.add(wallGroup);
+            }
+
+            const floorGeo = new THREE.BoxGeometry(wallFull, wallT, wallFull);
+            const floorMesh = new THREE.Mesh(floorGeo, floorMaterial);
+            floorMesh.position.set(0, -(roomSize + wallT/2), 0);
+            floorMesh.receiveShadow = true;
+            scene3DGroup.add(floorMesh);
+
+            const ceilingMesh = new THREE.Mesh(floorGeo, wallMaterial);
+            ceilingMesh.position.set(0, (roomSize + wallT/2), 0);
+            ceilingMesh.receiveShadow = true;
+            scene3DGroup.add(ceilingMesh);
+
+            createVisualWallWithWindow(new THREE.Vector3(0, 0, -(roomSize + wallT/2)), new THREE.Vector3(0, 0, 0));
+            createVisualWallWithWindow(new THREE.Vector3(0, 0, (roomSize + wallT/2)), new THREE.Vector3(0, Math.PI, 0));
+            createVisualWallWithWindow(new THREE.Vector3(-(roomSize + wallT/2), 0, 0), new THREE.Vector3(0, Math.PI/2, 0));
+            createVisualWallWithWindow(new THREE.Vector3((roomSize + wallT/2), 0, 0), new THREE.Vector3(0, -Math.PI/2, 0));
+        }
+        build3DRoom();
+
+        function build2DRoom() {
+            const boundaryGeo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(roomSize * 2, roomSize * 2));
+            const boundaryMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, linewidth: 3 });
+            const boundaryMesh = new THREE.LineSegments(boundaryGeo, boundaryMat);
+            scene2DGroup.add(boundaryMesh);
+            
+            const grid = new THREE.GridHelper(roomSize * 2, 20, 0x333333, 0x1a1a1a);
+            grid.rotation.x = Math.PI / 2;
+            grid.position.z = -2;
+            scene2DGroup.add(grid);
+        }
+        build2DRoom();
+
+        const physicalWalls = [];
+        function setupPhysicalWalls() {
+            for(let wall of physicalWalls) world.removeBody(wall);
+            physicalWalls.length = 0;
+
+            function createWall(pos, rot) {
+                const body = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: wallPhysMat });
+                body.position.copy(pos);
+                body.quaternion.setFromEuler(rot.x, rot.y, rot.z);
+                world.addBody(body);
+                physicalWalls.push(body);
+            }
+
+            createWall(new CANNON.Vec3(0, -roomSize, 0), new CANNON.Vec3(-Math.PI/2, 0, 0)); 
+            createWall(new CANNON.Vec3(0, roomSize, 0), new CANNON.Vec3(Math.PI/2, 0, 0));  
+            createWall(new CANNON.Vec3(-roomSize, 0, 0), new CANNON.Vec3(0, Math.PI/2, 0)); 
+            createWall(new CANNON.Vec3(roomSize, 0, 0), new CANNON.Vec3(0, -Math.PI/2, 0)); 
+
+            if (!is2DMode) {
+                createWall(new CANNON.Vec3(0, 0, -roomSize), new CANNON.Vec3(0, 0, 0));         
+                createWall(new CANNON.Vec3(0, 0, roomSize), new CANNON.Vec3(0, Math.PI, 0));    
+            }
+        }
+        setupPhysicalWalls();
+
+        // ==========================================
+        // 4. GESTIONE CORPI RIGIDI
+        // ==========================================
+        const objects = [];
+        let selectedObject = null;
+
+        // Controlla se una posizione è libera da altri corpi per evitare sovrapposizioni allo spawn
+        function isPositionFree(pos, currentRadius) {
+            for (let obj of objects) {
+                const dx = obj.body.position.x - pos.x;
+                const dy = obj.body.position.y - pos.y;
+                const dz = obj.body.position.z - pos.z;
+                const distSq = dx*dx + dy*dy + dz*dz;
+                
+                // Il raggio di sicurezza di un oggetto è circa la metà della sua diagonale massima
+                const objSafeRadius = Math.max(obj.w, obj.h, obj.d) * 0.866; 
+                
+                if (distSq < Math.pow(currentRadius + objSafeRadius, 2)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function spawnObject(isCube) {
+            let w, h, d;
+            if (isCube) {
+                w = h = d = Math.random() * 6 + 4;
+            } else {
+                w = Math.random() * 8 + 4;
+                h = Math.random() * 10 + 6;
+                d = Math.random() * 8 + 4;
+            }
+
+            if (is2DMode) d = 0.5; // Corpi piatti in 2D
+
+            const density = 2; // kg/m^3
+            const volume = w * h * d;
+            const mass = volume * density;
+            
+            const halfExtents = new CANNON.Vec3(w/2, h/2, d/2);
+            const shape = new CANNON.Box(halfExtents);
+            const body = new CANNON.Body({ 
+                mass: mass, 
+                shape: shape, 
+                material: bodyPhysMat,
+                linearDamping: 0.0, 
+                angularDamping: 0.0
+            });
+
+            const safeRadius = Math.max(w, h, d) * 0.866;
+            const safeR = roomSize - safeRadius - 1;
+            
+            let foundPosition = false;
+            let spawnPos = new CANNON.Vec3();
+
+            // Cerca una posizione libera (max 100 tentativi)
+            for (let attempts = 0; attempts < 100; attempts++) {
+                if (is2DMode) {
+                    spawnPos.set((Math.random() - 0.5) * 2 * safeR, (Math.random() - 0.5) * 2 * safeR, 0);
+                } else {
+                    spawnPos.set((Math.random() - 0.5) * 2 * safeR, (Math.random() - 0.5) * 2 * safeR, (Math.random() - 0.5) * 2 * safeR);
+                }
+                
+                if (isPositionFree(spawnPos, safeRadius)) {
+                    foundPosition = true;
+                    break;
+                }
+            }
+
+            if (!foundPosition) {
+                console.warn("Spazio insufficiente: impossibile aggiungere un nuovo oggetto senza sovrapposizioni.");
+                return null;
+            }
+
+            body.position.copy(spawnPos);
+
+            if (is2DMode) {
+                body.quaternion.setFromEuler(0, 0, Math.random() * Math.PI * 2);
+                const vSpeed = 35 + Math.random() * 35;
+                body.velocity.set((Math.random() - 0.5) * vSpeed, (Math.random() - 0.5) * vSpeed, 0);
+                const wSpeed = 8 + Math.random() * 8;
+                body.angularVelocity.set(0, 0, (Math.random() - 0.5) * wSpeed);
+            } else {
+                body.quaternion.setFromEuler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                const vSpeed = 25 + Math.random() * 25;
+                body.velocity.set((Math.random() - 0.5) * vSpeed, (Math.random() - 0.5) * vSpeed, (Math.random() - 0.5) * vSpeed);
+                const wSpeed = 6 + Math.random() * 6;
+                body.angularVelocity.set((Math.random() - 0.5) * wSpeed, (Math.random() - 0.5) * wSpeed, (Math.random() - 0.5) * wSpeed);
+            }
+
+            world.addBody(body);
+
+            const color = new THREE.Color().setHSL(Math.random(), 0.7, 0.45);
+            let geometry, mesh;
+            
+            if (is2DMode) {
+                geometry = new THREE.BoxGeometry(w, h, d);
+                const material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5, metalness: 0.1 });
+                mesh = new THREE.Mesh(geometry, material);
+                const edgesGeo = new THREE.EdgesGeometry(geometry);
+                const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+                mesh.add(new THREE.LineSegments(edgesGeo, edgesMat));
+                scene2DGroup.add(mesh);
+            } else {
+                geometry = new THREE.BoxGeometry(w, h, d);
+                const material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.2 });
+                mesh = new THREE.Mesh(geometry, material);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                const edgesGeo = new THREE.EdgesGeometry(geometry);
+                const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2, transparent: true, opacity: 0.4 });
+                mesh.add(new THREE.LineSegments(edgesGeo, edgesMat));
+                scene3DGroup.add(mesh);
+            }
+
+            const objData = { body, mesh, isCube, w, h, d, color };
+            objects.push(objData);
+            return objData;
+        }
+
+        function initSceneObjects() {
+            for(let obj of objects) {
+                world.removeBody(obj.body);
+                if (obj.mesh.parent) obj.mesh.parent.remove(obj.mesh);
+            }
+            objects.length = 0;
+            deselectObject();
+
+            for(let i=0; i<4; i++) spawnObject(true);
+            for(let i=0; i<3; i++) spawnObject(false);
+        }
+        initSceneObjects();
+
+        // ==========================================
+        // 5. INTERAZIONE (DRAG & DROP E SELEZIONE)
+        // ==========================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        // Corpo Cinematico/Fittizio per gestire il Drag in modo sicuro tramite Constraint del Solver
+        const mouseJointBody = new CANNON.Body({ mass: 0 }); 
+        mouseJointBody.collisionFilterGroup = 0;
+        mouseJointBody.collisionFilterMask = 0;
+        world.addBody(mouseJointBody);
+
+        let dragConstraint = null;
+
+        // Struttura per gestire il drag
+        const dragInfo = {
+            active: false,
+            body: null,
+            dragPlane: new THREE.Plane(),
+            targetPos: new THREE.Vector3()
+        };
+
+        // Linea visiva dell'elastico
+        const dragMat = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 });
+        const dragGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+        const dragLine = new THREE.Line(dragGeo, dragMat);
+        dragLine.visible = false;
+        scene.add(dragLine);
+
+        window.addEventListener('pointerdown', (event) => {
+            if(event.target.closest('#ui-container')) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const meshes = objects.map(o => o.mesh);
+            const intersects = raycaster.intersectObjects(meshes);
+
+            if (intersects.length > 0) {
+                const clickedMesh = intersects[0].object;
+                const obj = objects.find(o => o.mesh === clickedMesh);
+                selectObject(obj);
+
+                // Avvia Dragging
+                controls.enabled = false;
+                dragInfo.active = true;
+                dragInfo.body = obj.body;
+                
+                // Punto di contatto esatto nel mondo
+                const hitPoint = intersects[0].point;
+                // Calcola il punto locale rispetto all'oggetto per "agganciarlo" lì
+                const localHit = new CANNON.Vec3();
+                obj.body.pointToLocalFrame(new CANNON.Vec3(hitPoint.x, hitPoint.y, hitPoint.z), localHit);
+                
+                // Posiziona il corpo fittizio del mouse nel punto di clic
+                mouseJointBody.position.copy(new CANNON.Vec3(hitPoint.x, hitPoint.y, hitPoint.z));
+                
+                // Crea un vincolo rigido (PointToPoint) tra il corpo reale e il corpo fittizio del mouse
+                dragConstraint = new CANNON.PointToPointConstraint(obj.body, localHit, mouseJointBody, new CANNON.Vec3(0,0,0));
+                
+                // Limita la forza massima del vincolo per non rompere la simulazione se si muove il mouse velocissimo
+                const maxF = obj.body.mass * 1000;
+                dragConstraint.equations[0].maxForce = maxF;
+                dragConstraint.equations[1].maxForce = maxF;
+                dragConstraint.equations[2].maxForce = maxF;
+                world.addConstraint(dragConstraint);
+
+                // Crea un piano parallelo alla camera passante per il punto cliccato
+                const normal = camera.position.clone().sub(hitPoint).normalize();
+                if (is2DMode) normal.set(0, 0, 1); // In 2D costringi al piano Z
+                dragInfo.dragPlane.setFromNormalAndCoplanarPoint(normal, hitPoint);
+                dragInfo.targetPos.copy(hitPoint);
+                
+                dragLine.visible = true;
+
+            } else {
+                deselectObject();
+            }
+        });
+
+        window.addEventListener('pointermove', (event) => {
+            if(event.target.closest('#ui-container')) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            if (dragInfo.active) {
+                raycaster.setFromCamera(mouse, camera);
+                const intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragInfo.dragPlane, intersectPoint);
+                if (intersectPoint) {
+                    if (is2DMode) intersectPoint.z = 0; // Forza il target in 2D
+                    dragInfo.targetPos.copy(intersectPoint);
+                    
+                    // Sposta il corpo fittizio del mouse alla nuova posizione
+                    mouseJointBody.position.copy(new CANNON.Vec3(intersectPoint.x, intersectPoint.y, intersectPoint.z));
+                    
+                    // Risveglia il corpo per forzare il solver ad aggiornare il vincolo
+                    dragInfo.body.wakeUp();
+                }
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (dragInfo.active) {
+                dragInfo.active = false;
+                dragInfo.body = null;
+                dragLine.visible = false;
+                controls.enabled = true; // Riabilita camera
+                
+                if (dragConstraint) {
+                    world.removeConstraint(dragConstraint);
+                    dragConstraint = null;
+                }
+            }
+        });
+
+        function selectObject(obj) {
+            if (selectedObject) selectedObject.mesh.material.emissive.setHex(0x000000);
+            selectedObject = obj;
+            selectedObject.mesh.material.emissive.copy(selectedObject.color).multiplyScalar(0.6);
+            
+            document.getElementById('legend').style.display = 'block';
+            document.getElementById('removeBtn').style.display = 'block';
+            updateInfoPanel();
+        }
+
+        function deselectObject() {
+            if (selectedObject) selectedObject.mesh.material.emissive.setHex(0x000000);
+            selectedObject = null;
+            
+            arrowV.group.visible = false;
+            arrowOmega.group.visible = false;
+            
+            document.getElementById('legend').style.display = 'none';
+            document.getElementById('removeBtn').style.display = 'none';
+            document.getElementById('info-panel').innerHTML = 'Nessun oggetto selezionato.<br>Clicca su un solido per vedere i dettagli e i vettori di movimento.';
+            renderOverlay(); // Cancella le scritte
+        }
+
+        function updateInfoPanel() {
+            if (!selectedObject) return;
+            const body = selectedObject.body;
+            const vMag = body.velocity.length();
+            const wMag = body.angularVelocity.length();
+            
+            const invQuat = new CANNON.Quaternion();
+            body.quaternion.inverse(invQuat);
+            const wLocal = new CANNON.Vec3();
+            invQuat.vmult(body.angularVelocity, wLocal);
+            const ILocal = body.inertia;
+            const LLocal = new CANNON.Vec3(wLocal.x * ILocal.x, wLocal.y * ILocal.y, wLocal.z * ILocal.z);
+            const LWorld = new CANNON.Vec3();
+            body.quaternion.vmult(LLocal, LWorld);
+            const LMag = LWorld.length();
+            
+            const T_lin = 0.5 * body.mass * vMag * vMag;
+            const T_rot = 0.5 * (wLocal.x * wLocal.x * ILocal.x + wLocal.y * wLocal.y * ILocal.y + wLocal.z * wLocal.z * ILocal.z);
+            const T_tot = T_lin + T_rot;
+
+            const baseName1 = is2DMode ? 'Quadrato' : 'Cubo';
+            const baseName2 = is2DMode ? 'Rettangolo' : 'Parallelepipedo';
+
+            document.getElementById('info-panel').innerHTML = `
+                <div class="data-row"><span class="data-label">Forma:</span> <span class="data-value">${selectedObject.isCube ? baseName1 : baseName2}</span></div>
+                <div class="data-row"><span class="data-label">Massa (m):</span> <span class="data-value">${body.mass.toFixed(1)} kg</span></div>
+                <div class="data-row"><span class="data-label">Vel. Lineare (|v|):</span> <span class="data-value">${vMag.toFixed(2)} m/s</span></div>
+                <div class="data-row"><span class="data-label">Vel. Angolare (|ω|):</span> <span class="data-value">${wMag.toFixed(2)} rad/s</span></div>
+                <div class="data-row"><span class="data-label">Momento Angolare (|L|):</span> <span class="data-value">${LMag.toFixed(2)}</span></div>
+                <div class="data-row"><span class="data-label">Energia Cinetica:</span> <span class="data-value">${T_tot.toFixed(1)} J</span></div>
+            `;
+        }
+
+        // === GESTIONE SWITCH MODALITA' ===
+        document.getElementById('toggleMode').addEventListener('click', () => {
+            is2DMode = !is2DMode;
+            
+            const btn = document.getElementById('toggleMode');
+            const btnCube = document.getElementById('addCube');
+            const btnBox = document.getElementById('addBox');
+            const helpText = document.getElementById('help');
+
+            if (is2DMode) {
+                btn.innerText = "Passa a simulazione 3D";
+                btnCube.innerText = "Aggiungi Quadrato";
+                btnBox.innerText = "Aggiungi Rettangolo";
+                helpText.innerText = "Controlli Vista 2D: Tasto Destro = Sposta | Rotellina = Zoom";
+                
+                scene3DGroup.visible = false;
+                scene2DGroup.visible = true;
+                scene.background = new THREE.Color(0x111111);
+                scene.environment = null;
+                scene.fog.density = 0;
+
+                camera.position.set(0, 0, 220);
+                camera.lookAt(0, 0, 0);
+                controls.enableRotate = false;
+            } else {
+                btn.innerText = "Passa a simulazione 2D";
+                btnCube.innerText = "Aggiungi Cubo";
+                btnBox.innerText = "Aggiungi Parallelepipedo";
+                helpText.innerText = "Controlli Vista 3D: Tasto Sinistro = Ruota | Tasto Destro = Sposta | Rotellina = Zoom";
+                
+                scene3DGroup.visible = true;
+                scene2DGroup.visible = false;
+                if (hdrTexture) {
+                    scene.background = hdrTexture;
+                    scene.environment = hdrTexture;
+                }
+                scene.fog.density = 0.003;
+
+                camera.position.set(0, 0, 80);
+                controls.enableRotate = true;
+            }
+
+            setupPhysicalWalls();
+            initSceneObjects();
+        });
+
+        document.getElementById('addCube').addEventListener('click', () => spawnObject(true));
+        document.getElementById('addBox').addEventListener('click', () => spawnObject(false));
+        document.getElementById('removeBtn').addEventListener('click', () => {
+            if (selectedObject) {
+                world.removeBody(selectedObject.body);
+                if (selectedObject.mesh.parent) selectedObject.mesh.parent.remove(selectedObject.mesh);
+                const index = objects.indexOf(selectedObject);
+                if (index > -1) objects.splice(index, 1);
+                deselectObject();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderOverlay();
+        });
+
+        // ==========================================
+        // 6. LOOP DI ANIMAZIONE E FISICA
+        // ==========================================
+        const clock = new THREE.Clock();
+        let timeAccumulator = 0;
+        // Frequenza fisica elevata (240Hz) per evitare "tunneling" (compenetrazioni a causa di alta velocità)
+        const timeStep = 1 / 240; 
+        let lastPanelUpdate = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+            
+            // Aggiorna la linea visiva del drag
+            if (dragInfo.active && dragConstraint) {
+                const worldAnchor = new CANNON.Vec3();
+                dragInfo.body.pointToWorldFrame(dragConstraint.pivotA, worldAnchor);
+                dragLine.geometry.setFromPoints([
+                    new THREE.Vector3(worldAnchor.x, worldAnchor.y, worldAnchor.z),
+                    dragInfo.targetPos
+                ]);
+            }
+
+            timeAccumulator += dt;
+            while (timeAccumulator >= timeStep) {
+                // Azzera le forze applicate nel frame precedente
+                world.step(timeStep);
+                timeAccumulator -= timeStep;
+            }
+
+            for (const obj of objects) {
+                obj.mesh.position.copy(obj.body.position);
+                obj.mesh.quaternion.copy(obj.body.quaternion);
+            }
+
+            if (selectedObject) {
+                const body = selectedObject.body;
+                const pos = new THREE.Vector3(body.position.x, body.position.y, body.position.z);
+                
+                // --- Vettore Velocità Lineare ---
+                const vel = new THREE.Vector3(body.velocity.x, body.velocity.y, body.velocity.z);
+                const scaleV = is2DMode ? 0.4 : 0.4;
+                updateArrow(arrowV, pos, vel.clone().multiplyScalar(scaleV));
+                posV.copy(pos).add(vel.clone().multiplyScalar(scaleV));
+                
+                // --- Calcolo Momento e Velocità Angolare in World Space ---
+                const invQuat = new CANNON.Quaternion();
+                body.quaternion.inverse(invQuat);
+                const wLocal = new CANNON.Vec3();
+                invQuat.vmult(body.angularVelocity, wLocal);
+                
+                const ILocal = body.inertia;
+                const LLocal = new CANNON.Vec3(wLocal.x * ILocal.x, wLocal.y * ILocal.y, wLocal.z * ILocal.z);
+                
+                const LWorld = new CANNON.Vec3();
+                body.quaternion.vmult(LLocal, LWorld);
+                
+                const wVec = new THREE.Vector3(body.angularVelocity.x, body.angularVelocity.y, body.angularVelocity.z);
+
+                const scaleW = is2DMode ? 2.0 : 2.0;
+                updateArrow(arrowOmega, pos, wVec.clone().multiplyScalar(scaleW));
+                posOmega.copy(pos).add(wVec.clone().multiplyScalar(scaleW));
+
+                const now = Date.now();
+                if (now - lastPanelUpdate > 100) {
+                    updateInfoPanel();
+                    lastPanelUpdate = now;
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+            renderOverlay();
+        }
+
+        animate();
+    </script>
+</body>
+</html>

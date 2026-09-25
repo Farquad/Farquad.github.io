@@ -1,0 +1,4426 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagramma di Minkowski</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #app {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        #sidebar {
+            width: 350px;
+            background-color: #2a2a2a;
+            border-left: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #sidebar h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            text-align: center;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        #add-line-btn, #add-event-btn {
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        #add-line-btn {
+            background-color: #4CAF50;
+        }
+
+        #add-line-btn:hover {
+            background-color: #45a049;
+        }
+
+        #add-event-btn {
+            background-color: #ff9800;
+        }
+
+        #add-event-btn:hover {
+            background-color: #f57c00;
+        }
+
+        .sidebar-header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .sidebar-header-actions #add-line-btn,
+        .sidebar-header-actions #add-event-btn {
+            margin-bottom: 0;
+            flex-grow: 1;
+        }
+
+        .history-preset-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-self: stretch;
+            flex-shrink: 0;
+        }
+
+        .undo-redo-container {
+            display: flex;
+            gap: 5px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .undo-redo-container .icon-btn {
+            flex: 1;
+        }
+
+        .icon-btn {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            min-width: 0;
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            background-color: #555;
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .element-card {
+            background-color: #333;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border-left: 5px solid;
+            position: relative;
+        }
+
+        .element-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .delete-btn {
+            background: transparent;
+            color: #ff5555;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            line-height: 1;
+            padding: 0 5px;
+        }
+        .delete-btn:hover {
+            color: #ff0000;
+        }
+
+        .control-group {
+            margin-bottom: 10px;
+        }
+
+        .control-group label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            justify-content: space-between;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .velocity-params {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background-color: #222;
+            overflow: hidden;
+        }
+
+        .velocity-params-row {
+            display: flex;
+            align-items: stretch;
+        }
+
+        .velocity-params-row + .velocity-params-row {
+            border-top: 1px solid #555;
+        }
+
+        .velocity-prime-rows {
+            display: contents;
+        }
+
+        /* display:contents non rende la prima riga primata sibling DOM della riga β/γ */
+        .velocity-prime-rows > .velocity-params-row:first-child {
+            border-top: 1px solid #555;
+        }
+
+        .velocity-params-row > span {
+            min-width: 0;
+            padding: 6px 10px;
+            box-sizing: border-box;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* β = v/c = … è più lungo di γ = …: più spazio a sinistra */
+        .velocity-params-row > span:first-child {
+            flex: 1.7 1 0;
+        }
+
+        .velocity-params-row > span:last-child {
+            flex: 1 1 0;
+        }
+
+        .velocity-params-row > span + span {
+            border-left: 1px solid #555;
+        }
+
+        .velocity-params .inline-edit-input {
+            width: 3em;
+            max-width: 100%;
+            padding: 0 2px;
+            font-size: inherit;
+            box-sizing: border-box;
+        }
+
+        .radio-switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .radio-switch-row > span {
+            flex-shrink: 0;
+        }
+
+        .radio-switch {
+            display: flex;
+            position: relative;
+            flex: 1;
+            min-width: 0;
+            background-color: #222;
+            border: 1px solid #555;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .radio-switch input[type="radio"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .radio-switch label {
+            flex: 1;
+            margin: 0 !important;
+            padding: 5px 6px;
+            text-align: center;
+            justify-content: center !important;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: #555;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            opacity: 0.45;
+            transition: background-color 0.15s, color 0.15s, opacity 0.15s;
+            user-select: none;
+        }
+
+        .radio-switch label:hover {
+            color: #999;
+            opacity: 0.7;
+            background-color: rgba(255, 255, 255, 0.04);
+        }
+
+        .radio-switch input[type="radio"]:checked + label {
+            background-color: #4a90d9;
+            color: #fff;
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        .radio-switch label + input[type="radio"] + label {
+            border-left: 1px solid #555;
+        }
+
+        .state-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px 10px;
+            margin: 0;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background-color: #222;
+            color: #777;
+            font-size: 0.85rem;
+            font-family: inherit;
+            cursor: pointer;
+            text-align: left;
+            transition: background-color 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+            user-select: none;
+        }
+
+        .state-toggle:hover {
+            color: #bbb;
+            background-color: #2a2a2a;
+            border-color: #777;
+        }
+
+        .state-toggle .state-toggle-mark {
+            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
+            box-sizing: border-box;
+            border: 2px solid #666;
+            border-radius: 3px;
+            background-color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: border-color 0.15s, background-color 0.15s;
+        }
+
+        .state-toggle .state-toggle-mark::after {
+            content: '';
+            width: 4px;
+            height: 8px;
+            border: solid transparent;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg) translate(-0.5px, -0.5px);
+            opacity: 0;
+            transition: opacity 0.12s, border-color 0.12s;
+        }
+
+        .state-toggle .state-toggle-label {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .state-toggle.is-on {
+            background-color: #1e3a5f;
+            border-color: #4a90d9;
+            color: #fff;
+            box-shadow: inset 0 0 0 1px rgba(74, 144, 217, 0.35);
+        }
+
+        .state-toggle.is-on:hover {
+            background-color: #244a73;
+            color: #fff;
+            border-color: #5aa0e8;
+        }
+
+        .state-toggle.is-on .state-toggle-mark {
+            border-color: #4a90d9;
+            background-color: rgba(74, 144, 217, 0.15);
+        }
+
+        .state-toggle.is-on .state-toggle-mark::after {
+            border-color: #4a90d9;
+            opacity: 1;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .control-row div {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-row input[type="number"] {
+            width: 70px;
+            background-color: #444;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 3px;
+            padding: 4px;
+        }
+
+        .warning {
+            color: #ffaa00;
+            font-size: 0.8rem;
+            display: none;
+            margin-top: 5px;
+        }
+
+        .dep-hint {
+            color: #ffcc66;
+            font-size: 0.8rem;
+            margin-top: 3px;
+            display: none;
+        }
+
+        .editable-val {
+            cursor: text;
+            border-bottom: 1px dashed transparent;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+
+        .editable-val:hover {
+            border-bottom-color: #aaa;
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .inline-edit-input {
+            width: 4.5em;
+            background-color: #222;
+            color: #fff;
+            border: 1px solid #888;
+            border-radius: 3px;
+            padding: 1px 4px;
+            font: inherit;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        #context-menu {
+            display: none;
+            position: absolute;
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 5px 0;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            min-width: 150px;
+        }
+
+        .menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+
+        .menu-item:hover {
+            background-color: #444;
+        }
+
+        .preset-menu-wrap {
+            position: relative;
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .preset-menu-wrap #preset-btn {
+            flex: 1;
+            width: 100%;
+        }
+
+        #preset-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 5px 0;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            min-width: 120px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="canvas-container">
+            <canvas id="minkowski-canvas"></canvas>
+            <div id="context-menu">
+                <div class="menu-item" id="menu-create-event">Crea evento</div>
+                <div class="menu-item" id="menu-create-line">Crea linea spazio-temporale</div>
+            </div>
+        </div>
+        <div id="sidebar">
+            <h2>Diagramma di Minkowski</h2>
+            <!--<div class="help-text">Trascina con il tasto destro per creare una linea spazio-temporale.</div> -->
+            <div class="sidebar-header-actions">
+                <button id="add-line-btn">Crea linea spazio-temporale</button>
+                <button id="add-event-btn">Crea evento</button>
+                <div class="history-preset-stack">
+                    <div class="preset-menu-wrap">
+                        <button id="preset-btn" class="icon-btn" title="Preset">&#x1F4BE;</button>
+                        <div id="preset-menu">
+                            <div class="menu-item" id="menu-preset-twin">Twin</div>
+                            <div class="menu-item" id="menu-preset-muone">Muone</div>
+                            <div class="menu-item" id="menu-preset-treno">Treno</div>
+                            <div class="menu-item" id="menu-preset-save">Salva</div>
+                            <div class="menu-item" id="menu-preset-load">Carica</div>
+                        </div>
+                    </div>
+                    <div class="undo-redo-container">
+                        <button id="undo-btn" class="icon-btn" title="Undo (Ctrl+Z)" disabled>&#x21B6;</button>
+                        <button id="redo-btn" class="icon-btn" title="Redo (Ctrl+Y)" disabled>&#x21B7;</button>
+                    </div>
+                </div>
+            </div>
+            <input type="file" id="preset-file-input" accept=".txt,text/plain" style="display:none">
+            <div id="elements-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('minkowski-canvas');
+        const ctx = canvas.getContext('2d');
+        const sidebarList = document.getElementById('elements-list');
+        const addBtn = document.getElementById('add-line-btn');
+        const addEventBtn = document.getElementById('add-event-btn');
+
+        // Use a longer minus (U+2212) in UI numbers — ASCII "-" looks too short
+        const formatNum = (n, digits) => n.toFixed(digits).replace(/-/g, '\u2212');
+        const toEditableNum = (n, digits) => n.toFixed(digits);
+
+        let activeInlineEdit = null;
+        let inlineEditLock = false;
+
+        const colors = ['#ff5555', '#55ff55', '#5555ff', '#ffff55', '#ff55ff', '#55ffff', '#ffaa55', '#55aaff'];
+        let colorIndex = 0;
+        
+        const eventColors = ['#ff9900', '#00ffcc', '#cc00ff', '#aaff00', '#ff00aa', '#00aaff', '#ffffff'];
+        let eventColorIndex = 0;
+
+        let elements = [];
+        let nextId = 1;
+        let focusedElementId = null;
+
+        let view = {
+            x: 0,
+            t: 0,
+            scale: 50
+        };
+
+        let currentAnimatedFrame = null;
+        let animationTargetEl = null;
+        let animationStartFrame = null;
+        let animationStartTime = null;
+        const ANIMATION_DURATION = 1000;
+
+        let currentHoverSnap = null;
+        let contextMenuSnap = null;
+        
+        let isCreatingLineClick = false;
+        let lineClickStart = null;
+        let lineClickCurrent = null;
+
+        let isCreatingLineDrag = false;
+        let lineDragStart = null;
+        let lineDragCurrent = null;
+
+        let isDraggingVelocityForEl = null;
+
+        // Range in cui i calcoli del sistema proprio sono sospesi (|v| ≈ 1)
+        const LIGHTLIKE_V_EPS = 0.005;
+        const ENDPOINT_INF = 1e5;
+
+        let history = [];
+        let historyIndex = -1;
+
+        function isNearLightSpeed(v) {
+            return Number.isFinite(v) && Math.abs(Math.abs(v) - 1) < LIGHTLIKE_V_EPS;
+        }
+
+        function getLineVelocity(el) {
+            let dt = el.t2 - el.t1;
+            let dx = el.x2 - el.x1;
+            if (Math.abs(dt) > 1e-15) return dx / dt;
+            return dx > 0 ? Infinity : -Infinity;
+        }
+
+        function syncPreservedProperFromGeometry(el) {
+            if (!el || el.type !== 'line') return;
+            let dx = el.x2 - el.x1;
+            let dt = el.t2 - el.t1;
+            let I = dx * dx - dt * dt;
+            let v = getLineVelocity(el);
+            if (el.endpointAtInfinity || isNearLightSpeed(v) || Math.abs(I) < 1e-9) return;
+            el.preservedProperAbs = Math.sqrt(Math.abs(I));
+            el.preservedSignDt = dt >= 0 ? 1 : -1;
+            el.preservedProperKind = I < 0 ? 'tau' : 'L0';
+        }
+
+        function placeEndpointAtInfinity(el, v, signDt) {
+            const sDt = signDt >= 0 ? 1 : -1;
+            let vv = v;
+            if (!Number.isFinite(vv)) vv = vv > 0 ? 1 : -1;
+            // Direzione del moto a velocità v; il 2° estremo resta fuori schermo
+            el.x2 = el.x1 + vv * sDt * ENDPOINT_INF;
+            el.t2 = el.t1 + sDt * ENDPOINT_INF;
+            el.endpointAtInfinity = true;
+            el.preservedSignDt = sDt;
+        }
+
+        function saveState() {
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            
+            history.push({
+                elements: JSON.parse(JSON.stringify(elements)),
+                nextId: nextId,
+                colorIndex: colorIndex,
+                eventColorIndex: eventColorIndex,
+                focusedElementId: focusedElementId
+            });
+            
+            if (history.length > 50) {
+                history.shift();
+            } else {
+                historyIndex++;
+            }
+            updateUndoRedoButtons();
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                draggingTarget = null;
+                didChangeDuringDrag = false;
+                restoreState();
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                draggingTarget = null;
+                didChangeDuringDrag = false;
+                restoreState();
+            }
+        }
+
+        function restoreState() {
+            const state = history[historyIndex];
+            
+            // Mantieni le opzioni di visualizzazione attuali per gli elementi che esistono ancora
+            const currentViewOptions = {};
+            elements.forEach(el => {
+                currentViewOptions[el.id] = {
+                    showAxes: el.showAxes,
+                    viewRestFrame: el.viewRestFrame,
+                    showLightCone: el.showLightCone,
+                    expanded: el.expanded
+                };
+            });
+
+            elements = JSON.parse(JSON.stringify(state.elements));
+            
+            elements.forEach(el => {
+                if (currentViewOptions[el.id]) {
+                    if (currentViewOptions[el.id].showAxes !== undefined) el.showAxes = currentViewOptions[el.id].showAxes;
+                    if (currentViewOptions[el.id].viewRestFrame !== undefined) el.viewRestFrame = currentViewOptions[el.id].viewRestFrame;
+                    if (currentViewOptions[el.id].showLightCone !== undefined) el.showLightCone = currentViewOptions[el.id].showLightCone;
+                    if (currentViewOptions[el.id].expanded !== undefined) el.expanded = currentViewOptions[el.id].expanded;
+                }
+            });
+
+            nextId = state.nextId;
+            colorIndex = state.colorIndex;
+            eventColorIndex = state.eventColorIndex;
+            focusedElementId = state.focusedElementId;
+            
+            // Aggiorna l'animazione se il sistema di riposo è attivo
+            animationTargetEl = elements.find(el => el.viewRestFrame) || null;
+            if (animationTargetEl) {
+                animationStartTime = null; // Forza il rendering immediato sul target
+                let v = 0, x0 = 0, t0 = 0;
+                if (animationTargetEl.type === 'line') {
+                    let dt = animationTargetEl.t2 - animationTargetEl.t1;
+                    let dx = animationTargetEl.x2 - animationTargetEl.x1;
+                    if (Math.abs(dt) > 1e-9) v = dx / dt;
+                    else v = dx > 0 ? Infinity : -Infinity;
+                    let u = Math.abs(v) < 1.0 ? v : (Math.abs(v) > 1.0 ? 1/v : 0);
+                    v = u;
+                    x0 = animationTargetEl.x1;
+                    t0 = animationTargetEl.t1;
+                }
+                currentAnimatedFrame = { v: v, x0: x0, t0: t0 };
+            } else {
+                currentAnimatedFrame = null;
+            }
+
+            sidebarList.innerHTML = '';
+            activeInlineEdit = null;
+            inlineEditLock = false;
+            elements.forEach(el => createElementSidebar(el));
+            updateSidebarUI();
+            draw();
+            updateUndoRedoButtons();
+        }
+
+        function updateUndoRedoButtons() {
+            const undoBtn = document.getElementById('undo-btn');
+            const redoBtn = document.getElementById('redo-btn');
+            if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+            if (redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
+        }
+
+        document.getElementById('undo-btn').addEventListener('click', undo);
+        document.getElementById('redo-btn').addEventListener('click', redo);
+
+        function formatCoord(n) {
+            if (!Number.isFinite(n)) return String(n);
+            const s = Math.abs(n) < 1e-12 ? '0' : String(Number(n.toPrecision(10)));
+            return s;
+        }
+
+        function serializePointDep(dep) {
+            if (!dep) return '';
+            if (dep.type === 'fixed') return `fixed:${formatCoord(dep.x)},${formatCoord(dep.t)}`;
+            if (dep.type === 'event') return `event:${dep.elId}`;
+            if (dep.type === 'movement_point') {
+                const kind = dep.pointType === 'movement_end' ? 'movement_end' : 'movement_start';
+                return `${kind}:${dep.elId}`;
+            }
+            if (dep.type === 'intersection' && dep.lines && dep.lines.length === 2) {
+                const a = dep.lines[0];
+                const b = dep.lines[1];
+                return `intersection(${a.lineType}:${a.elId},${b.lineType}:${b.elId})`;
+            }
+            return '';
+        }
+
+        function serializeLineDep(dep) {
+            if (!dep) return null;
+            if (dep.type === 'start_point') {
+                return `start_point ${serializePointDep(dep.pt)}`;
+            }
+            if (dep.type === 'points') {
+                return `points p1=${serializePointDep(dep.p1)} p2=${serializePointDep(dep.p2)}`;
+            }
+            // Event-style deps accidentally on a line
+            const token = serializePointDep(dep);
+            return token || null;
+        }
+
+        function serializeScene() {
+            const lines = [];
+            lines.push('# MinkowskiPreset');
+            lines.push(`nextId: ${nextId}`);
+            lines.push(`colorIndex: ${colorIndex}`);
+            lines.push(`eventColorIndex: ${eventColorIndex}`);
+            lines.push('');
+
+            elements.forEach(el => {
+                if (el.type === 'line') {
+                    const flags = [
+                        `id=${el.id}`,
+                        `limited=${el.limited === true}`,
+                        `visible=${el.visible !== false}`,
+                        `color=${el.color}`
+                    ];
+                    if (el.showAxes) flags.push('showAxes=true');
+                    if (el.viewRestFrame) flags.push('viewRestFrame=true');
+                    if (el.endpointAtInfinity) flags.push('endpointAtInfinity=true');
+                    if (el.preservedProperAbs !== undefined) flags.push(`preservedProperAbs=${formatCoord(el.preservedProperAbs)}`);
+                    if (el.preservedProperKind) flags.push(`preservedProperKind=${el.preservedProperKind}`);
+                    if (el.preservedSignDt !== undefined) flags.push(`preservedSignDt=${el.preservedSignDt}`);
+                    lines.push(`LINE ${flags.join(' ')}`);
+                    lines.push(`  start: ${formatCoord(el.x1)}, ${formatCoord(el.t1)}`);
+                    lines.push(`  end: ${formatCoord(el.x2)}, ${formatCoord(el.t2)}`);
+                    if (el.dependencies) {
+                        const depStr = serializeLineDep(el.dependencies);
+                        if (depStr) lines.push(`  dep: ${depStr}`);
+                    }
+                    lines.push('');
+                } else if (el.type === 'event') {
+                    const flags = [
+                        `id=${el.id}`,
+                        `visible=${el.visible !== false}`,
+                        `color=${el.color}`,
+                        `showLightCone=${el.showLightCone === true}`
+                    ];
+                    lines.push(`EVENT ${flags.join(' ')}`);
+                    lines.push(`  at: ${formatCoord(el.x)}, ${formatCoord(el.t)}`);
+                    if (el.dependencies) {
+                        const depStr = serializePointDep(el.dependencies);
+                        if (depStr) lines.push(`  dep: ${depStr}`);
+                    }
+                    lines.push('');
+                }
+            });
+
+            return lines.join('\n').trim() + '\n';
+        }
+
+        function parsePointDep(token) {
+            if (!token) return null;
+            token = token.trim();
+            let m = token.match(/^fixed:([-\d.eE+]+),([-\d.eE+]+)$/);
+            if (m) return { type: 'fixed', x: parseFloat(m[1]), t: parseFloat(m[2]) };
+            m = token.match(/^event:(\d+)$/);
+            if (m) return { type: 'event', elId: parseInt(m[1], 10) };
+            m = token.match(/^movement_start:(\d+)$/);
+            if (m) return { type: 'movement_point', elId: parseInt(m[1], 10), pointType: 'movement_start' };
+            m = token.match(/^movement_end:(\d+)$/);
+            if (m) return { type: 'movement_point', elId: parseInt(m[1], 10), pointType: 'movement_end' };
+            m = token.match(/^intersection\(([^:]+):(\d+),([^:]+):(\d+)\)$/);
+            if (m) {
+                return {
+                    type: 'intersection',
+                    lines: [
+                        { lineType: m[1], elId: parseInt(m[2], 10) },
+                        { lineType: m[3], elId: parseInt(m[4], 10) }
+                    ]
+                };
+            }
+            throw new Error(`Dipendenza punto non valida: ${token}`);
+        }
+
+        function parseLineDep(rest) {
+            rest = rest.trim();
+            if (rest.startsWith('start_point ')) {
+                return { type: 'start_point', pt: parsePointDep(rest.slice('start_point '.length).trim()) };
+            }
+            if (rest.startsWith('points ')) {
+                const p1m = rest.match(/\bp1=(\S+)/);
+                const p2m = rest.match(/\bp2=(\S+)/);
+                if (!p1m || !p2m) throw new Error(`Dipendenza points incompleta: ${rest}`);
+                return {
+                    type: 'points',
+                    p1: parsePointDep(p1m[1]),
+                    p2: parsePointDep(p2m[1])
+                };
+            }
+            // bare point dep
+            return parsePointDep(rest);
+        }
+
+        function parseFlags(flagStr) {
+            const flags = {};
+            const re = /(\w+)=(\S+)/g;
+            let m;
+            while ((m = re.exec(flagStr)) !== null) {
+                flags[m[1]] = m[2];
+            }
+            return flags;
+        }
+
+        function parseBool(v, fallback) {
+            if (v === undefined) return fallback;
+            return v === 'true' || v === '1';
+        }
+
+        function parseScene(text) {
+            const rawLines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+            let parsedNextId = null;
+            let parsedColorIndex = 0;
+            let parsedEventColorIndex = 0;
+            const parsedElements = [];
+            let current = null;
+
+            function finishCurrent() {
+                if (!current) return;
+                if (current.type === 'line') {
+                    if (current.x1 === undefined || current.t1 === undefined || current.x2 === undefined || current.t2 === undefined) {
+                        throw new Error(`LINE ${current.id}: mancano start/end`);
+                    }
+                } else if (current.type === 'event') {
+                    if (current.x === undefined || current.t === undefined) {
+                        throw new Error(`EVENT ${current.id}: manca at`);
+                    }
+                }
+                parsedElements.push(current);
+                current = null;
+            }
+
+            for (let i = 0; i < rawLines.length; i++) {
+                const raw = rawLines[i];
+                const line = raw.trim();
+                if (!line || line.startsWith('#')) continue;
+
+                let m = line.match(/^nextId:\s*(\d+)$/i);
+                if (m) { parsedNextId = parseInt(m[1], 10); continue; }
+                m = line.match(/^colorIndex:\s*(\d+)$/i);
+                if (m) { parsedColorIndex = parseInt(m[1], 10); continue; }
+                m = line.match(/^eventColorIndex:\s*(\d+)$/i);
+                if (m) { parsedEventColorIndex = parseInt(m[1], 10); continue; }
+
+                if (line.startsWith('LINE ')) {
+                    finishCurrent();
+                    const flags = parseFlags(line.slice(5));
+                    if (!flags.id) throw new Error(`LINE senza id (riga ${i + 1})`);
+                    current = {
+                        id: parseInt(flags.id, 10),
+                        type: 'line',
+                        color: flags.color || colors[0],
+                        limited: parseBool(flags.limited, false),
+                        expanded: true,
+                        visible: parseBool(flags.visible, true),
+                        showAxes: parseBool(flags.showAxes, false),
+                        viewRestFrame: parseBool(flags.viewRestFrame, false),
+                        isValid: true
+                    };
+                    if (parseBool(flags.endpointAtInfinity, false)) current.endpointAtInfinity = true;
+                    if (flags.preservedProperAbs !== undefined) current.preservedProperAbs = parseFloat(flags.preservedProperAbs);
+                    if (flags.preservedProperKind) current.preservedProperKind = flags.preservedProperKind;
+                    if (flags.preservedSignDt !== undefined) current.preservedSignDt = parseInt(flags.preservedSignDt, 10);
+                    continue;
+                }
+
+                if (line.startsWith('EVENT ')) {
+                    finishCurrent();
+                    const flags = parseFlags(line.slice(6));
+                    if (!flags.id) throw new Error(`EVENT senza id (riga ${i + 1})`);
+                    current = {
+                        id: parseInt(flags.id, 10),
+                        type: 'event',
+                        color: flags.color || eventColors[0],
+                        expanded: true,
+                        visible: parseBool(flags.visible, true),
+                        showLightCone: parseBool(flags.showLightCone, false),
+                        isValid: true
+                    };
+                    continue;
+                }
+
+                if (!current) throw new Error(`Riga fuori da un elemento (riga ${i + 1}): ${line}`);
+
+                m = line.match(/^start:\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)$/i);
+                if (m) {
+                    current.x1 = parseFloat(m[1]);
+                    current.t1 = parseFloat(m[2]);
+                    continue;
+                }
+                m = line.match(/^end:\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)$/i);
+                if (m) {
+                    current.x2 = parseFloat(m[1]);
+                    current.t2 = parseFloat(m[2]);
+                    continue;
+                }
+                m = line.match(/^at:\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)$/i);
+                if (m) {
+                    current.x = parseFloat(m[1]);
+                    current.t = parseFloat(m[2]);
+                    continue;
+                }
+                m = line.match(/^dep:\s*(.+)$/i);
+                if (m) {
+                    if (current.type === 'line') current.dependencies = parseLineDep(m[1]);
+                    else current.dependencies = parsePointDep(m[1].trim());
+                    continue;
+                }
+
+                throw new Error(`Riga non riconosciuta (riga ${i + 1}): ${line}`);
+            }
+            finishCurrent();
+
+            if (parsedElements.length === 0) throw new Error('Nessun elemento nel file');
+
+            const maxId = parsedElements.reduce((mx, el) => Math.max(mx, el.id), 0);
+            if (parsedNextId === null || parsedNextId <= maxId) parsedNextId = maxId + 1;
+
+            return {
+                elements: parsedElements,
+                nextId: parsedNextId,
+                colorIndex: parsedColorIndex,
+                eventColorIndex: parsedEventColorIndex,
+                focusedElementId: null
+            };
+        }
+
+        function applyScene(state, options) {
+            const pushHistory = !options || options.pushHistory !== false;
+
+            draggingTarget = null;
+            didChangeDuringDrag = false;
+            activeInlineEdit = null;
+            inlineEditLock = false;
+            focusedElementId = state.focusedElementId != null ? state.focusedElementId : null;
+
+            elements = JSON.parse(JSON.stringify(state.elements));
+            nextId = state.nextId;
+            colorIndex = state.colorIndex != null ? state.colorIndex : 0;
+            eventColorIndex = state.eventColorIndex != null ? state.eventColorIndex : 0;
+
+            animationTargetEl = elements.find(el => el.viewRestFrame) || null;
+            if (animationTargetEl) {
+                animationStartTime = null;
+                let v = 0, x0 = 0, t0 = 0;
+                if (animationTargetEl.type === 'line') {
+                    let dt = animationTargetEl.t2 - animationTargetEl.t1;
+                    let dx = animationTargetEl.x2 - animationTargetEl.x1;
+                    if (Math.abs(dt) > 1e-9) v = dx / dt;
+                    else v = dx > 0 ? Infinity : -Infinity;
+                    let u = Math.abs(v) < 1.0 ? v : (Math.abs(v) > 1.0 ? 1 / v : 0);
+                    v = u;
+                    x0 = animationTargetEl.x1;
+                    t0 = animationTargetEl.t1;
+                }
+                currentAnimatedFrame = { v: v, x0: x0, t0: t0 };
+            } else {
+                currentAnimatedFrame = null;
+            }
+
+            updateDependencies();
+
+            sidebarList.innerHTML = '';
+            elements.forEach(el => createElementSidebar(el));
+            updateSidebarUI();
+            draw();
+
+            if (pushHistory) saveState();
+            else updateUndoRedoButtons();
+        }
+
+        function buildTwinPreset() {
+            const c0 = colors[0];
+            const c1 = colors[1 % colors.length];
+            const c2 = colors[2 % colors.length];
+            return {
+                elements: [
+                    {
+                        id: 1,
+                        type: 'line',
+                        x1: 0, t1: 0,
+                        x2: 3, t2: 5,
+                        color: c0,
+                        limited: true,
+                        expanded: true,
+                        visible: true,
+                        showAxes: false,
+                        viewRestFrame: false,
+                        isValid: true
+                    },
+                    {
+                        id: 2,
+                        type: 'line',
+                        x1: 3, t1: 5,
+                        x2: 0, t2: 10,
+                        color: c1,
+                        limited: true,
+                        expanded: true,
+                        visible: true,
+                        showAxes: false,
+                        viewRestFrame: false,
+                        isValid: true,
+                        dependencies: {
+                            type: 'start_point',
+                            pt: { type: 'movement_point', elId: 1, pointType: 'movement_end' }
+                        }
+                    },
+                    {
+                        id: 3,
+                        type: 'line',
+                        x1: 0, t1: 0,
+                        x2: 0, t2: 10,
+                        color: c2,
+                        limited: true,
+                        expanded: true,
+                        visible: true,
+                        showAxes: false,
+                        viewRestFrame: false,
+                        isValid: true,
+                        dependencies: {
+                            type: 'points',
+                            p1: { type: 'movement_point', elId: 1, pointType: 'movement_start' },
+                            p2: { type: 'movement_point', elId: 2, pointType: 'movement_end' }
+                        }
+                    }
+                ],
+                nextId: 4,
+                colorIndex: 3,
+                eventColorIndex: 0,
+                focusedElementId: null
+            };
+        }
+
+        const MUONE_PRESET_TEXT = `# MinkowskiPreset
+nextId: 4
+colorIndex: 3
+eventColorIndex: 0
+
+LINE id=1 limited=false visible=true color=#ff5555 preservedProperAbs=0.7742893278 preservedProperKind=tau preservedSignDt=1
+  start: 0, 0
+  end: 0, 0.7742893278
+
+LINE id=2 limited=false visible=true color=#55ff55 preservedProperAbs=0.7875643355 preservedProperKind=tau preservedSignDt=1
+  start: 4, 0
+  end: 4, 0.7875643355
+
+LINE id=3 limited=true visible=true color=#5555ff preservedProperAbs=3 preservedProperKind=tau preservedSignDt=1
+  start: 0, 0
+  end: 4, 5
+`;
+
+        const TRENO_PRESET_TEXT = `# MinkowskiPreset
+nextId: 10
+colorIndex: 5
+eventColorIndex: 4
+
+LINE id=1 limited=false visible=true color=#ff5555 preservedProperAbs=0.7742893278 preservedProperKind=tau preservedSignDt=1
+  start: 0, 0
+  end: 0.1580511472, 0.790255736
+
+LINE id=4 limited=false visible=true color=#ffff55 preservedProperAbs=0.8891613869 preservedProperKind=tau preservedSignDt=1
+  start: 4, 0
+  end: 4.181499308, 0.9074965404
+
+LINE id=5 limited=false visible=true color=#ff55ff preservedProperAbs=0.9592480596 preservedProperKind=tau preservedSignDt=1
+  start: 8, 0
+  end: 8.19580569, 0.9790284512
+
+EVENT id=6 visible=true color=#ff9900 showLightCone=true
+  at: 0, 0
+
+EVENT id=7 visible=true color=#00ffcc showLightCone=true
+  at: 8, 0
+
+EVENT id=8 visible=true color=#cc00ff showLightCone=false
+  at: 4.666666667, 3.333333333
+  dep: intersection(line:4,lightcone_left:7)
+
+EVENT id=9 visible=true color=#aaff00 showLightCone=false
+  at: 5, 5
+  dep: intersection(line:4,lightcone_right:6)
+`;
+
+        function buildMuonePreset() {
+            return parseScene(MUONE_PRESET_TEXT);
+        }
+
+        function buildTrenoPreset() {
+            return parseScene(TRENO_PRESET_TEXT);
+        }
+
+        function downloadPresetFile(text) {
+            let n = parseInt(localStorage.getItem('minkowskiPresetCounter') || '0', 10);
+            if (!Number.isFinite(n) || n < 0) n = 0;
+            n += 1;
+            localStorage.setItem('minkowskiPresetCounter', String(n));
+            const filename = `MinkowskiPreset#${n}.txt`;
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        const presetBtn = document.getElementById('preset-btn');
+        const presetMenu = document.getElementById('preset-menu');
+        const presetFileInput = document.getElementById('preset-file-input');
+
+        function closePresetMenu() {
+            presetMenu.style.display = 'none';
+        }
+
+        presetBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            const open = presetMenu.style.display === 'block';
+            presetMenu.style.display = open ? 'none' : 'block';
+        });
+
+        document.getElementById('menu-preset-twin').addEventListener('click', e => {
+            e.stopPropagation();
+            closePresetMenu();
+            applyScene(buildTwinPreset(), { pushHistory: true });
+        });
+
+        document.getElementById('menu-preset-muone').addEventListener('click', e => {
+            e.stopPropagation();
+            closePresetMenu();
+            applyScene(buildMuonePreset(), { pushHistory: true });
+        });
+
+        document.getElementById('menu-preset-treno').addEventListener('click', e => {
+            e.stopPropagation();
+            closePresetMenu();
+            applyScene(buildTrenoPreset(), { pushHistory: true });
+        });
+
+        document.getElementById('menu-preset-save').addEventListener('click', e => {
+            e.stopPropagation();
+            closePresetMenu();
+            downloadPresetFile(serializeScene());
+        });
+
+        document.getElementById('menu-preset-load').addEventListener('click', e => {
+            e.stopPropagation();
+            closePresetMenu();
+            presetFileInput.value = '';
+            presetFileInput.click();
+        });
+
+        presetFileInput.addEventListener('change', () => {
+            const file = presetFileInput.files && presetFileInput.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const state = parseScene(String(reader.result || ''));
+                    applyScene(state, { pushHistory: true });
+                } catch (err) {
+                    alert('Impossibile caricare il preset:\n' + (err && err.message ? err.message : String(err)));
+                }
+            };
+            reader.onerror = () => {
+                alert('Errore nella lettura del file.');
+            };
+            reader.readAsText(file);
+        });
+
+        document.addEventListener('click', e => {
+            if (!presetMenu.contains(e.target) && e.target !== presetBtn) {
+                closePresetMenu();
+            }
+        });
+
+        window.addEventListener('keydown', e => {
+            if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                undo();
+            } else if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redo();
+            } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                redo(); // Some applications use Ctrl+Shift+Z for redo
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (isTypingTarget(e.target)) return;
+                if (focusedElementId === null) return;
+                e.preventDefault();
+                deleteElementById(focusedElementId);
+            }
+        });
+
+        const contextMenu = document.getElementById('context-menu');
+        const menuCreateEvent = document.getElementById('menu-create-event');
+        const menuCreateLine = document.getElementById('menu-create-line');
+
+        function updateAnimation(timestamp) {
+            if (animationStartTime === null) return;
+            
+            let progress = (timestamp - animationStartTime) / ANIMATION_DURATION;
+            if (progress >= 1) {
+                progress = 1;
+                animationStartTime = null;
+                currentAnimatedFrame = null;
+            } else {
+                let ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+                let startV = animationStartFrame ? animationStartFrame.v : 0;
+                let startX0 = animationStartFrame ? animationStartFrame.x0 : 0;
+                let startT0 = animationStartFrame ? animationStartFrame.t0 : 0;
+                
+                let endV = 0, endX0 = 0, endT0 = 0;
+                if (animationTargetEl) {
+                    let v = 0, x0 = 0, t0 = 0;
+                    if (animationTargetEl.type === 'line') {
+                        let dt = animationTargetEl.t2 - animationTargetEl.t1;
+                        let dx = animationTargetEl.x2 - animationTargetEl.x1;
+                        if (Math.abs(dt) > 1e-9) v = dx / dt;
+                        else v = dx > 0 ? Infinity : -Infinity;
+                        x0 = animationTargetEl.x1;
+                        t0 = animationTargetEl.t1;
+                    }
+                    let targetU = 0;
+                    if (Math.abs(v) < 1.0) targetU = v;
+                    else if (Math.abs(v) > 1.0) targetU = 1/v;
+
+                    if (Math.abs(targetU) < 1.0) {
+                        endV = targetU;
+                        endX0 = x0;
+                        endT0 = t0;
+                    }
+                }
+
+                let startPhi = Math.atanh(startV);
+                let endPhi = Math.atanh(endV);
+                let currentPhi = startPhi + (endPhi - startPhi) * ease;
+
+                currentAnimatedFrame = {
+                    v: Math.tanh(currentPhi),
+                    x0: startX0 + (endX0 - startX0) * ease,
+                    t0: startT0 + (endT0 - startT0) * ease
+                };
+            }
+            
+            draw();
+            
+            if (animationStartTime !== null) {
+                requestAnimationFrame(updateAnimation);
+            }
+        }
+
+        function getDisplayFrameV() {
+            if (animationStartTime !== null && currentAnimatedFrame) {
+                return currentAnimatedFrame;
+            }
+            let restEl = elements.find(e => e.viewRestFrame && e.isValid !== false);
+            if (restEl) {
+                let v = (restEl.x2 - restEl.x1) / (restEl.t2 - restEl.t1);
+                let u = Math.abs(v) < 1.0 ? v : (v !== 0 ? 1/v : 0);
+                
+                return { v: u, x0: restEl.x1, t0: restEl.t1 };
+            }
+            return null;
+        }
+
+        function getActiveRestFrameElement() {
+            return elements.find(e => e.type === 'line' && e.viewRestFrame && e.isValid !== false) || null;
+        }
+
+        // Sistemi di riferimento per cui mostrare i dati primati: rest frame e/o assi.
+        // Basta una delle due opzioni; entrambe sullo stesso oggetto ⇒ una sola riga.
+        function getActivePrimeFrameElements() {
+            return elements.filter(e =>
+                e.type === 'line' &&
+                e.isValid !== false &&
+                (e.viewRestFrame || e.showAxes)
+            );
+        }
+
+        function getRestFrameBoostVelocity(restEl) {
+            if (!restEl) return null;
+            const dt = restEl.t2 - restEl.t1;
+            const dx = restEl.x2 - restEl.x1;
+            let v = dt !== 0 ? dx / dt : (dx > 0 ? Infinity : -Infinity);
+            if (!Number.isFinite(v)) return 0;
+            return Math.abs(v) < 1.0 ? v : (v !== 0 ? 1 / v : 0);
+        }
+
+        // Trasforma β = dx/dt dal lab al sistema boostato con velocità u (|u|<1)
+        function boostBeta(beta, u) {
+            if (!Number.isFinite(u)) return beta;
+            if (!Number.isFinite(beta)) {
+                // lim |β|→∞ di (β−u)/(1−uβ) = −1/u; se u≈0 resta ±∞
+                if (Math.abs(u) < 1e-12) return beta;
+                return -1 / u;
+            }
+            const denom = 1 - u * beta;
+            if (Math.abs(denom) < 1e-12) {
+                const num = beta - u;
+                if (Math.abs(num) < 1e-12) return 0;
+                return num > 0 ? Infinity : -Infinity;
+            }
+            return (beta - u) / denom;
+        }
+
+        function formatBetaText(beta, fallbackSign) {
+            if (beta === Infinity) return '+∞';
+            if (beta === -Infinity) return '\u2212∞';
+            if (!Number.isFinite(beta)) return fallbackSign >= 0 ? '+∞' : '\u2212∞';
+            return formatNum(beta, 3);
+        }
+
+        function labToRestCoords(x, t, restEl) {
+            if (!restEl) return null;
+            const u = getRestFrameBoostVelocity(restEl);
+            if (u == null) return null;
+            return mapDisplayToFrame(x, t, null, { v: u, x0: restEl.x1, t0: restEl.t1 });
+        }
+
+        let draggingTarget = null;
+        let currentHoverTarget = null;
+        let isPanning = false;
+        let startPan = { x: 0, y: 0 };
+        let startView = { x: 0, t: 0 };
+
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function screenToMathX(sx) { return (sx - canvas.width / 2) / view.scale + view.x; }
+        function screenToMathY(sy) { return (canvas.height / 2 - sy) / view.scale + view.t; }
+        function mathToScreenX(mx) { return (mx - view.x) * view.scale + canvas.width / 2; }
+        function mathToScreenY(mt) { return canvas.height / 2 - (mt - view.t) * view.scale; }
+
+        function mapFrameToDisplay(xg, tg, frameG, frameV) {
+            let xa = xg, ta = tg;
+            if (frameG) {
+                let v = frameG.v;
+                if (v > 0.9995) v = 0.9995;
+                if (v < -0.9995) v = -0.9995;
+                let gammaG = 1 / Math.sqrt(1 - v * v);
+                xa = frameG.x0 + gammaG * (xg + v * tg);
+                ta = frameG.t0 + gammaG * (tg + v * xg);
+            }
+            let xd = xa, td = ta;
+            if (frameV) {
+                let v = frameV.v;
+                if (v > 0.9995) v = 0.9995;
+                if (v < -0.9995) v = -0.9995;
+                let gammaV = 1 / Math.sqrt(1 - v * v);
+                let dx = xa - frameV.x0;
+                let dt = ta - frameV.t0;
+                xd = gammaV * (dx - v * dt);
+                td = gammaV * (dt - v * dx);
+            }
+            return { x: xd, t: td };
+        }
+
+        function mapDisplayToFrame(xd, td, frameV, frameG) {
+            let xa = xd, ta = td;
+            if (frameV) {
+                let v = frameV.v;
+                if (v > 0.9995) v = 0.9995;
+                if (v < -0.9995) v = -0.9995;
+                let gammaV = 1 / Math.sqrt(1 - v * v);
+                xa = frameV.x0 + gammaV * (xd + v * td);
+                ta = frameV.t0 + gammaV * (td + v * xd);
+            }
+            let xg = xa, tg = ta;
+            if (frameG) {
+                let v = frameG.v;
+                if (v > 0.9995) v = 0.9995;
+                if (v < -0.9995) v = -0.9995;
+                let gammaG = 1 / Math.sqrt(1 - v * v);
+                let dx = xa - frameG.x0;
+                let dt = ta - frameG.t0;
+                xg = gammaG * (dx - v * dt);
+                tg = gammaG * (dt - v * dx);
+            }
+            return { x: xg, t: tg };
+        }
+
+        function drawFrameGrid(frameG, frameV, isMain, drawGridLines) {
+            let isLightlike = frameG && Math.abs(Math.abs(frameG.v) - 1.0) < 0.005;
+            let isViewLightlike = frameV && Math.abs(Math.abs(frameV.v) - 1.0) < 0.005;
+            
+            const axisColor = isMain ? '#aaa' : (frameG ? frameG.color + 'aa' : '#aaa');
+
+            if (isLightlike || isViewLightlike) {
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = axisColor;
+                
+                let large = 1e5;
+                
+                let x0 = frameG ? frameG.x0 : 0;
+                let t0 = frameG ? frameG.t0 : 0;
+                let v = frameG ? frameG.v : 0;
+                
+                // ct' axis (x = x0 + v*(t - t0))
+                ctx.beginPath();
+                let p1T = mapFrameToDisplay(x0 - v * large, t0 - large, null, frameV);
+                let p2T = mapFrameToDisplay(x0 + v * large, t0 + large, null, frameV);
+                ctx.moveTo(mathToScreenX(p1T.x), mathToScreenY(p1T.t));
+                ctx.lineTo(mathToScreenX(p2T.x), mathToScreenY(p2T.t));
+                ctx.stroke();
+                
+                // x' axis (t = t0 + v*(x - x0))
+                ctx.beginPath();
+                let p1X = mapFrameToDisplay(x0 - large, t0 - v * large, null, frameV);
+                let p2X = mapFrameToDisplay(x0 + large, t0 + v * large, null, frameV);
+                ctx.moveTo(mathToScreenX(p1X.x), mathToScreenY(p1X.t));
+                ctx.lineTo(mathToScreenX(p2X.x), mathToScreenY(p2X.t));
+                ctx.stroke();
+                
+                return;
+            }
+
+            if (drawGridLines === undefined) drawGridLines = true;
+            
+            const cornersScreen = [
+                { sx: 0, sy: 0 },
+                { sx: canvas.width, sy: 0 },
+                { sx: 0, sy: canvas.height },
+                { sx: canvas.width, sy: canvas.height }
+            ];
+            
+            let minXg = Infinity, maxXg = -Infinity;
+            let minTg = Infinity, maxTg = -Infinity;
+            
+            for (let c of cornersScreen) {
+                let xd = screenToMathX(c.sx);
+                let td = screenToMathY(c.sy);
+                let g = mapDisplayToFrame(xd, td, frameV, frameG);
+                if (g.x < minXg) minXg = g.x;
+                if (g.x > maxXg) maxXg = g.x;
+                if (g.t < minTg) minTg = g.t;
+                if (g.t > maxTg) maxTg = g.t;
+            }
+            
+            minXg = Math.floor(minXg) - 1;
+            maxXg = Math.ceil(maxXg) + 1;
+            minTg = Math.floor(minTg) - 1;
+            maxTg = Math.ceil(maxTg) + 1;
+            
+            let rawStep = 50 / view.scale;
+            let power = Math.round(Math.log2(rawStep));
+            let step = Math.pow(2, power);
+            
+            minXg = Math.floor(minXg / step) * step;
+            minTg = Math.floor(minTg / step) * step;
+
+            const gridColor = isMain ? '#333' : (frameG ? frameG.color + '44' : '#333');
+            
+            ctx.lineWidth = 1;
+            
+            if (drawGridLines) {
+                for (let x = minXg; x <= maxXg; x += step) {
+                    if (Math.abs(x) < 1e-6) continue;
+                    ctx.strokeStyle = gridColor;
+                    ctx.beginPath();
+                    let p1 = mapFrameToDisplay(x, minTg, frameG, frameV);
+                    let p2 = mapFrameToDisplay(x, maxTg, frameG, frameV);
+                    ctx.moveTo(mathToScreenX(p1.x), mathToScreenY(p1.t));
+                    ctx.lineTo(mathToScreenX(p2.x), mathToScreenY(p2.t));
+                    ctx.stroke();
+                }
+                
+                for (let t = minTg; t <= maxTg; t += step) {
+                    if (Math.abs(t) < 1e-6) continue;
+                    ctx.strokeStyle = gridColor;
+                    ctx.beginPath();
+                    let p1 = mapFrameToDisplay(minXg, t, frameG, frameV);
+                    let p2 = mapFrameToDisplay(maxXg, t, frameG, frameV);
+                    ctx.moveTo(mathToScreenX(p1.x), mathToScreenY(p1.t));
+                    ctx.lineTo(mathToScreenX(p2.x), mathToScreenY(p2.t));
+                    ctx.stroke();
+                }
+            }
+            
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = axisColor;
+            
+            ctx.beginPath();
+            let p1T = mapFrameToDisplay(0, minTg, frameG, frameV);
+            let p2T = mapFrameToDisplay(0, maxTg, frameG, frameV);
+            ctx.moveTo(mathToScreenX(p1T.x), mathToScreenY(p1T.t));
+            ctx.lineTo(mathToScreenX(p2T.x), mathToScreenY(p2T.t));
+            ctx.stroke();
+            
+            ctx.beginPath();
+            let p1X = mapFrameToDisplay(minXg, 0, frameG, frameV);
+            let p2X = mapFrameToDisplay(maxXg, 0, frameG, frameV);
+            ctx.moveTo(mathToScreenX(p1X.x), mathToScreenY(p1X.t));
+            ctx.lineTo(mathToScreenX(p2X.x), mathToScreenY(p2X.t));
+            ctx.stroke();
+            
+            ctx.fillStyle = axisColor;
+            ctx.font = '12px Arial';
+            
+            function drawTick(xg, tg, isXAxis) {
+                let pCenter = mapFrameToDisplay(xg, tg, frameG, frameV);
+                let cx = mathToScreenX(pCenter.x);
+                let cy = mathToScreenY(pCenter.t);
+                
+                // Direction along the axis in screen space, then rotate 90°
+                // so ticks are Euclidean-perpendicular to the oblique axis.
+                let pAlong = mapFrameToDisplay(
+                    isXAxis ? xg + 1 : xg,
+                    isXAxis ? tg : tg + 1,
+                    frameG, frameV
+                );
+                let ax = mathToScreenX(pAlong.x) - cx;
+                let ay = mathToScreenY(pAlong.t) - cy;
+                let dx = -ay;
+                let dy = ax;
+                
+                let len = Math.hypot(dx, dy);
+                if (len > 0) {
+                    dx /= len;
+                    dy /= len;
+                } else {
+                    dx = isXAxis ? 0 : 1;
+                    dy = isXAxis ? -1 : 0;
+                }
+                
+                // Keep labels on the usual side: below x-axis, left of t-axis.
+                if (isXAxis ? dy > 0 : dx < 0) {
+                    dx = -dx;
+                    dy = -dy;
+                }
+                
+                let tickLen = 5;
+                ctx.strokeStyle = axisColor;
+                ctx.fillStyle = axisColor;
+                ctx.beginPath();
+                ctx.moveTo(cx - dx * tickLen, cy - dy * tickLen);
+                ctx.lineTo(cx + dx * tickLen, cy + dy * tickLen);
+                ctx.stroke();
+                
+                let textX = isXAxis ? xg : tg;
+                textX = parseFloat(textX.toPrecision(12));
+                let text = String(textX);
+                
+                let vx = -dx;
+                let vy = -dy;
+                
+                if (vx > 0.1) ctx.textAlign = 'left';
+                else if (vx < -0.1) ctx.textAlign = 'right';
+                else ctx.textAlign = 'center';
+                
+                if (vy > 0.1) ctx.textBaseline = 'top';
+                else if (vy < -0.1) ctx.textBaseline = 'bottom';
+                else ctx.textBaseline = 'middle';
+                
+                let padding = 8;
+                ctx.fillText(text, cx + vx * (tickLen + padding), cy + vy * (tickLen + padding));
+                
+                ctx.textAlign = 'start';
+                ctx.textBaseline = 'alphabetic';
+            }
+            
+            for (let x = minXg; x <= maxXg; x += step) {
+                if (Math.abs(x) >= 1e-6) drawTick(x, 0, true);
+            }
+            for (let t = minTg; t <= maxTg; t += step) {
+                if (Math.abs(t) >= 1e-6) drawTick(0, t, false);
+            }
+            
+            let pLabelX = mapFrameToDisplay(maxXg - step * 0.5, step * 0.2, frameG, frameV);
+            ctx.fillText(isMain ? 'x' : "x'", mathToScreenX(pLabelX.x), mathToScreenY(pLabelX.t));
+            
+            let pLabelT = mapFrameToDisplay(step * 0.2, maxTg - step * 0.5, frameG, frameV);
+            ctx.fillText(isMain ? 'ct' : "ct'", mathToScreenX(pLabelT.x), mathToScreenY(pLabelT.t));
+        }
+
+        function drawGrid() {
+            let frameV = getDisplayFrameV();
+            
+            let axesElements = elements.filter(e => {
+                if (!e.showAxes || e.isValid === false) return false;
+                return true;
+            });
+            
+            if (axesElements.length > 0) {
+                ctx.globalAlpha = 0.6;
+                drawFrameGrid(null, frameV, true, false);
+                ctx.globalAlpha = 1.0;
+                for (let el of axesElements) {
+                    let v = (el.x2 - el.x1) / (el.t2 - el.t1);
+                    let frameG;
+                    if (Math.abs(v) < 1.0) {
+                        frameG = { v: v, x0: el.x1, t0: el.t1, color: el.color };
+                    } else {
+                        frameG = { v: 1/v, x0: el.x1, t0: el.t1, color: el.color };
+                    }
+                    drawFrameGrid(frameG, frameV, false, true);
+                }
+            } else {
+                drawFrameGrid(null, frameV, true, true);
+            }
+            
+            ctx.strokeStyle = '#555';
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1;
+            
+            let large = 1e5;
+            ctx.beginPath();
+            let pL1 = mapFrameToDisplay(-large, -large, null, frameV);
+            let pL2 = mapFrameToDisplay(large, large, null, frameV);
+            ctx.moveTo(mathToScreenX(pL1.x), mathToScreenY(pL1.t));
+            ctx.lineTo(mathToScreenX(pL2.x), mathToScreenY(pL2.t));
+            ctx.stroke();
+            
+            ctx.beginPath();
+            let pL3 = mapFrameToDisplay(large, -large, null, frameV);
+            let pL4 = mapFrameToDisplay(-large, large, null, frameV);
+            ctx.moveTo(mathToScreenX(pL3.x), mathToScreenY(pL3.t));
+            ctx.lineTo(mathToScreenX(pL4.x), mathToScreenY(pL4.t));
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+        }
+
+        function drawElement(el) {
+            let frameV = getDisplayFrameV();
+            
+            const isFocused = focusedElementId === el.id;
+            const isAnyFocused = focusedElementId !== null;
+
+            if (isFocused) {
+                ctx.lineWidth = 5;
+                ctx.globalAlpha = 1.0;
+            } else if (isAnyFocused) {
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.3;
+            } else {
+                ctx.lineWidth = 3;
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.strokeStyle = el.color;
+            ctx.fillStyle = el.color;
+
+            if (el.type === 'event') {
+                let p = mapFrameToDisplay(el.x, el.t, null, frameV);
+                const sx = mathToScreenX(p.x);
+                const sy = mathToScreenY(p.t);
+                
+                if (el.showLightCone) {
+                    let dx = Math.max(Math.abs(sx), Math.abs(sx - canvas.width));
+                    let dy = Math.max(Math.abs(sy), Math.abs(sy - canvas.height));
+                    let large = dx + dy + 100;
+                    
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.02)';
+                    
+                    // Future cone
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx - large, sy - large);
+                    ctx.lineTo(sx + large, sy - large);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Past cone
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx - large, sy + large);
+                    ctx.lineTo(sx + large, sy + large);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Light lines
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(sx - large, sy - large);
+                    ctx.lineTo(sx + large, sy + large);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(sx - large, sy + large);
+                    ctx.lineTo(sx + large, sy - large);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                }
+
+                if (isFocused) {
+                    let activeFrameG = null;
+                    let axesElements = elements.filter(e => {
+                        if (!e.showAxes || e.isValid === false) return false;
+                        return true;
+                    });
+                    if (axesElements.length > 0) {
+                        let e = axesElements[axesElements.length - 1];
+                        let v = (e.x2 - e.x1) / (e.t2 - e.t1);
+                        let u = Math.abs(v) < 1.0 ? v : 1/v;
+                        activeFrameG = { v: u, x0: e.x1, t0: e.t1, color: e.color };
+                    }
+
+                    let gCoords;
+                    let frameColor;
+                    let sx_x, sy_x, sx_t, sy_t;
+
+                    if (activeFrameG && Math.abs(Math.abs(activeFrameG.v) - 1.0) >= 0.005) {
+                        gCoords = mapDisplayToFrame(el.x, el.t, null, activeFrameG);
+                        
+                        let p_x_axis = mapFrameToDisplay(gCoords.x, 0, activeFrameG, frameV);
+                        let p_t_axis = mapFrameToDisplay(0, gCoords.t, activeFrameG, frameV);
+
+                        sx_x = mathToScreenX(p_x_axis.x);
+                        sy_x = mathToScreenY(p_x_axis.t);
+                        sx_t = mathToScreenX(p_t_axis.x);
+                        sy_t = mathToScreenY(p_t_axis.t);
+
+                        frameColor = activeFrameG.color;
+
+                        ctx.save();
+                        ctx.strokeStyle = frameColor;
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([6, 4]);
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(sx, sy);
+                        ctx.lineTo(sx_x, sy_x);
+                        ctx.stroke();
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(sx, sy);
+                        ctx.lineTo(sx_t, sy_t);
+                        ctx.stroke();
+                        
+                        ctx.restore();
+                    } else {
+                        gCoords = mapDisplayToFrame(el.x, el.t, null, null);
+                        
+                        let p_x_axis = mapFrameToDisplay(gCoords.x, 0, null, frameV);
+                        let p_t_axis = mapFrameToDisplay(0, gCoords.t, null, frameV);
+
+                        sx_x = mathToScreenX(p_x_axis.x);
+                        sy_x = mathToScreenY(p_x_axis.t);
+                        sx_t = mathToScreenX(p_t_axis.x);
+                        sy_t = mathToScreenY(p_t_axis.t);
+
+                        frameColor = '#aaaaaa';
+
+                        ctx.save();
+                        ctx.strokeStyle = frameColor;
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([6, 4]);
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(sx, sy);
+                        ctx.lineTo(sx_x, sy_x);
+                        ctx.stroke();
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(sx, sy);
+                        ctx.lineTo(sx_t, sy_t);
+                        ctx.stroke();
+                        
+                        ctx.restore();
+                    }
+                    
+                    ctx.font = 'bold 14px Arial';
+                    const xText = gCoords.x.toFixed(2);
+                    const tText = gCoords.t.toFixed(2);
+                    
+                    const drawTextWithOutline = (text, x, y) => {
+                        ctx.strokeStyle = '#1e1e1e';
+                        ctx.lineWidth = 4;
+                        ctx.lineJoin = 'round';
+                        ctx.strokeText(text, x, y);
+                        ctx.fillStyle = frameColor;
+                        ctx.fillText(text, x, y);
+                    };
+
+                    drawTextWithOutline(xText, sx_x - ctx.measureText(xText).width / 2, sy_x + 20);
+                    drawTextWithOutline(tText, sx_t - ctx.measureText(tText).width - 10, sy_t + 5);
+                    
+                    const pairText = `(${xText}, ${tText})`;
+                    drawTextWithOutline(pairText, sx + 15, sy - 15);
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(sx, sy - 8);
+                ctx.lineTo(sx + 8, sy);
+                ctx.lineTo(sx, sy + 8);
+                ctx.lineTo(sx - 8, sy);
+                ctx.closePath();
+                ctx.fillStyle = el.color;
+                ctx.fill();
+                ctx.strokeStyle = isFocused ? '#fff' : '#ccc';
+                ctx.lineWidth = isFocused ? 3 : 1;
+                ctx.stroke();
+                
+                ctx.globalAlpha = 1.0;
+                return;
+            }
+
+            if (el.isValid === false) return;
+
+            let v = (el.x2 - el.x1) / (el.t2 - el.t1);
+            let isSpacelikeOrLightlike = Math.abs(v) >= 1.0;
+
+            let tMin, tMax, xMin, xMax;
+            
+            if (el.limited && !el.endpointAtInfinity) {
+                tMin = el.t1;
+                tMax = el.t2;
+                xMin = el.x1;
+                xMax = el.x2;
+            } else {
+                let minT = Infinity, maxT = -Infinity;
+                let minX = Infinity, maxX = -Infinity;
+                const cornersScreen = [
+                    { sx: 0, sy: 0 },
+                    { sx: canvas.width, sy: 0 },
+                    { sx: 0, sy: canvas.height },
+                    { sx: canvas.width, sy: canvas.height }
+                ];
+                for (let c of cornersScreen) {
+                    let xd = screenToMathX(c.sx);
+                    let td = screenToMathY(c.sy);
+                    let g = mapDisplayToFrame(xd, td, frameV, null);
+                    if (g.t < minT) minT = g.t;
+                    if (g.t > maxT) maxT = g.t;
+                    if (g.x < minX) minX = g.x;
+                    if (g.x > maxX) maxX = g.x;
+                }
+                
+                let dt = el.t2 - el.t1;
+                let dx = el.x2 - el.x1;
+                
+                if (el.limited && el.endpointAtInfinity) {
+                    // Raggio da (x1,t1) verso l'infinito nella direzione di v
+                    tMin = el.t1;
+                    xMin = el.x1;
+                    if (Math.abs(dt) < 1e-9) {
+                        tMax = el.t1;
+                        xMax = dx >= 0 ? maxX + 1000 : minX - 1000;
+                    } else {
+                        let tFar = dt > 0 ? maxT + 1000 : minT - 1000;
+                        tMax = tFar;
+                        xMax = el.x1 + (dx / dt) * (tFar - el.t1);
+                    }
+                } else if (Math.abs(dt) < 1e-9) {
+                    tMin = el.t1;
+                    tMax = el.t1;
+                    if (dx >= 0) {
+                        xMin = minX - 1000;
+                        xMax = maxX + 1000;
+                    } else {
+                        xMin = maxX + 1000;
+                        xMax = minX - 1000;
+                    }
+                } else {
+                    tMin = minT - 1000;
+                    tMax = maxT + 1000;
+                    xMin = el.x1 + (dx/dt) * (tMin - el.t1);
+                    xMax = el.x1 + (dx/dt) * (tMax - el.t1);
+                }
+            }
+
+            let pMin = mapFrameToDisplay(xMin, tMin, null, frameV);
+            let pMax = mapFrameToDisplay(xMax, tMax, null, frameV);
+            
+            let sx1 = mathToScreenX(pMin.x);
+            let sy1 = mathToScreenY(pMin.t);
+            let sx2 = mathToScreenX(pMax.x);
+            let sy2 = mathToScreenY(pMax.t);
+            
+            let arrowX = sx2;
+            let arrowY = sy2;
+            let lineEndX = sx2;
+            let lineEndY = sy2;
+            const hideArrow = !!el.endpointAtInfinity;
+
+            if (!el.limited) {
+                let dx = sx2 - sx1;
+                let dy = sy2 - sy1;
+                
+                let tTop = dy !== 0 ? (0 - sy1) / dy : -1;
+                let tBottom = dy !== 0 ? (canvas.height - sy1) / dy : -1;
+                let tLeft = dx !== 0 ? (0 - sx1) / dx : -1;
+                let tRight = dx !== 0 ? (canvas.width - sx1) / dx : -1;
+                
+                let validIntersections = [];
+                if (tTop > 0 && tTop < 1) { let x = sx1 + tTop * dx; if (x >= 0 && x <= canvas.width) validIntersections.push(tTop); }
+                if (tBottom > 0 && tBottom < 1) { let x = sx1 + tBottom * dx; if (x >= 0 && x <= canvas.width) validIntersections.push(tBottom); }
+                if (tLeft > 0 && tLeft < 1) { let y = sy1 + tLeft * dy; if (y >= 0 && y <= canvas.height) validIntersections.push(tLeft); }
+                if (tRight > 0 && tRight < 1) { let y = sy1 + tRight * dy; if (y >= 0 && y <= canvas.height) validIntersections.push(tRight); }
+                
+                if (validIntersections.length > 0) {
+                    let tIntersect = Math.max(...validIntersections);
+                    tIntersect -= 15 / Math.hypot(dx, dy);
+                    arrowX = sx1 + tIntersect * dx;
+                    arrowY = sy1 + tIntersect * dy;
+                }
+            } else if (!hideArrow) {
+                let angle = Math.atan2(sy2 - sy1, sx2 - sx1);
+                let arrowSize = 16;
+                let dist = Math.hypot(sx2 - sx1, sy2 - sy1);
+                if (dist > arrowSize) {
+                    lineEndX = sx2 - (arrowSize * 0.5) * Math.cos(angle);
+                    lineEndY = sy2 - (arrowSize * 0.5) * Math.sin(angle);
+                }
+            }
+            // endpointAtInfinity: segmento fino oltre il bordo (sx2/sy2), nessuna freccia
+
+            if (isSpacelikeOrLightlike) {
+                ctx.setLineDash([16, 10]);
+            } else {
+                ctx.setLineDash([]);
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(sx1, sy1);
+            ctx.lineTo(lineEndX, lineEndY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (!hideArrow) {
+                let angle = Math.atan2(sy2 - sy1, sx2 - sx1);
+                let arrowSize = 16;
+                ctx.beginPath();
+                ctx.moveTo(arrowX, arrowY);
+                ctx.lineTo(arrowX - arrowSize * Math.cos(angle - Math.PI / 6), arrowY - arrowSize * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(arrowX - arrowSize * Math.cos(angle + Math.PI / 6), arrowY - arrowSize * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            if (isAnyFocused && !isFocused) {
+                ctx.globalAlpha = 0.3;
+            } else {
+                ctx.globalAlpha = 1.0;
+            }
+
+            let p0 = mapFrameToDisplay(el.x1, el.t1, null, frameV);
+            const sx0 = mathToScreenX(p0.x);
+            const sy0 = mathToScreenY(p0.t);
+            
+            let showStart = false;
+            let showEnd = false;
+            
+            if (currentHoverTarget && currentHoverTarget.el === el) {
+                if (currentHoverTarget.type === 'start') showStart = true;
+                if (currentHoverTarget.type === 'end') showEnd = true;
+            }
+            if (draggingTarget && draggingTarget.el === el) {
+                if (draggingTarget.type === 'start') showStart = true;
+                if (draggingTarget.type === 'end') showEnd = true;
+            }
+
+            if (showStart) {
+                ctx.beginPath();
+                ctx.arc(sx0, sy0, 6, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            if (el.limited && !el.endpointAtInfinity) {
+                let p2 = mapFrameToDisplay(el.x2, el.t2, null, frameV);
+                const sx2_pt = mathToScreenX(p2.x);
+                const sy2_pt = mathToScreenY(p2.t);
+                if (showEnd) {
+                    ctx.beginPath();
+                    ctx.arc(sx2_pt, sy2_pt, 6, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+
+            const isDraggingThisLine = (draggingTarget && draggingTarget.el === el && draggingTarget.type === 'line') || isDraggingVelocityForEl === el;
+
+            if (isDraggingThisLine) {
+                ctx.save();
+                
+                let dx = Math.max(Math.abs(sx0), Math.abs(sx0 - canvas.width));
+                let dy = Math.max(Math.abs(sy0), Math.abs(sy0 - canvas.height));
+                let large = dx + dy + 100;
+
+                ctx.globalAlpha = 0.02;
+                ctx.fillStyle = el.color;
+
+                ctx.beginPath();
+                ctx.moveTo(sx0, sy0);
+                ctx.lineTo(sx0 - large, sy0 - large);
+                ctx.lineTo(sx0 + large, sy0 - large);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(sx0, sy0);
+                ctx.lineTo(sx0 - large, sy0 + large);
+                ctx.lineTo(sx0 + large, sy0 + large);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.globalAlpha = 1.0;
+                ctx.strokeStyle = el.color;
+                ctx.setLineDash([10, 10]);
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+                ctx.moveTo(sx0 - large, sy0 - large);
+                ctx.lineTo(sx0 + large, sy0 + large);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(sx0 - large, sy0 + large);
+                ctx.lineTo(sx0 + large, sy0 - large);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+
+            // Guida di velocità infinita: visibile sul vettore limitato in focus
+            if (el.limited && (isFocused || isDraggingThisLine)) {
+                let minT = Infinity, maxT = -Infinity;
+                const cornersScreen = [
+                    { sx: 0, sy: 0 },
+                    { sx: canvas.width, sy: 0 },
+                    { sx: 0, sy: canvas.height },
+                    { sx: canvas.width, sy: canvas.height }
+                ];
+                for (let c of cornersScreen) {
+                    let xd = screenToMathX(c.sx);
+                    let td = screenToMathY(c.sy);
+                    let g = mapDisplayToFrame(xd, td, frameV, null);
+                    if (g.t < minT) minT = g.t;
+                    if (g.t > maxT) maxT = g.t;
+                }
+                let tMinInf = minT - 100;
+                let tMaxInf = maxT + 100;
+
+                let xMinInf = el.x1 + v * (tMinInf - el.t1);
+                let xMaxInf = el.x1 + v * (tMaxInf - el.t1);
+
+                let pMinInf = mapFrameToDisplay(xMinInf, tMinInf, null, frameV);
+                let pMaxInf = mapFrameToDisplay(xMaxInf, tMaxInf, null, frameV);
+
+                ctx.save();
+                ctx.globalAlpha = 1.0;
+                ctx.strokeStyle = el.color;
+                ctx.setLineDash([]);
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(mathToScreenX(pMinInf.x), mathToScreenY(pMinInf.t));
+                ctx.lineTo(mathToScreenX(pMaxInf.x), mathToScreenY(pMaxInf.t));
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        let viewAnimation = null;
+
+        function cancelViewAnimation() {
+            if (viewAnimation) {
+                cancelAnimationFrame(viewAnimation.id);
+                viewAnimation = null;
+            }
+        }
+
+        function animateViewTo(targetX, targetT, targetScale) {
+            cancelViewAnimation();
+            
+            let startX = view.x;
+            let startT = view.t;
+            let startScale = view.scale;
+            let startTime = performance.now();
+            let duration = 1000; // 1 second
+            
+            function step(currentTime) {
+                let elapsed = currentTime - startTime;
+                let progress = elapsed / duration;
+                
+                if (progress >= 1) {
+                    view.x = targetX;
+                    view.t = targetT;
+                    view.scale = targetScale;
+                    viewAnimation = null;
+                    draw();
+                    return;
+                }
+                
+                let ease = 1 - Math.pow(1 - progress, 3);
+                
+                view.x = startX + (targetX - startX) * ease;
+                view.t = startT + (targetT - startT) * ease;
+                view.scale = startScale + (targetScale - startScale) * ease;
+                
+                draw();
+                viewAnimation = { id: requestAnimationFrame(step) };
+            }
+            
+            viewAnimation = { id: requestAnimationFrame(step) };
+        }
+
+        function ensureElementVisible(el, fromCanvasInteraction = false) {
+            if (fromCanvasInteraction) return;
+
+            let frameV = getDisplayFrameV();
+            
+            let marginX = canvas.width * 0.1 / view.scale;
+            let marginY = canvas.height * 0.1 / view.scale;
+            let visibleMinX = view.x - canvas.width / (2 * view.scale);
+            let visibleMaxX = view.x + canvas.width / (2 * view.scale);
+            let visibleMinT = view.t - canvas.height / (2 * view.scale);
+            let visibleMaxT = view.t + canvas.height / (2 * view.scale);
+
+            if (el.type === 'line' && !el.limited) {
+                let originDisplay = mapFrameToDisplay(el.x1, el.t1, null, frameV);
+                let originVisible = (
+                    originDisplay.x >= visibleMinX &&
+                    originDisplay.x <= visibleMaxX &&
+                    originDisplay.t >= visibleMinT &&
+                    originDisplay.t <= visibleMaxT
+                );
+                if (originVisible) return;
+            }
+
+            let points = [];
+            if (el.type === 'event') {
+                points.push({x: el.x, t: el.t});
+            } else if (el.type === 'line') {
+                if (el.limited) {
+                    points.push({x: el.x1, t: el.t1});
+                    points.push({x: el.x2, t: el.t2});
+                } else {
+                    let v = (el.x2 - el.x1) / (el.t2 - el.t1);
+                    points.push({x: el.x1, t: el.t1});
+                    points.push({x: el.x1 + v * 10, t: el.t1 + 10});
+                    points.push({x: el.x1 - v * 10, t: el.t1 - 10});
+                }
+            }
+
+            let displayPoints = points.map(p => mapFrameToDisplay(p.x, p.t, null, frameV));
+            displayPoints.push({x: 0, t: 0}); // Include origin
+
+            let minX = Math.min(...displayPoints.map(p => p.x));
+            let maxX = Math.max(...displayPoints.map(p => p.x));
+            let minT = Math.min(...displayPoints.map(p => p.t));
+            let maxT = Math.max(...displayPoints.map(p => p.t));
+
+            let allVisible = (
+                minX >= visibleMinX + marginX &&
+                maxX <= visibleMaxX - marginX &&
+                minT >= visibleMinT + marginY &&
+                maxT <= visibleMaxT - marginY
+            );
+
+            if (allVisible) {
+                return;
+            }
+
+            let targetX = (minX + maxX) / 2;
+            let targetT = (minT + maxT) / 2;
+
+            let widthNeeded = maxX - minX;
+            let heightNeeded = maxT - minT;
+
+            widthNeeded *= 1.4;
+            heightNeeded *= 1.4;
+
+            if (widthNeeded < 10) widthNeeded = 10;
+            if (heightNeeded < 10) heightNeeded = 10;
+
+            let scaleX = canvas.width / widthNeeded;
+            let scaleY = canvas.height / heightNeeded;
+
+            let targetScale = Math.min(scaleX, scaleY);
+            
+            animateViewTo(targetX, targetT, targetScale);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            for (let el of elements) {
+                if (el.isValid === false) continue;
+                if (el.visible === false) continue;
+                drawElement(el);
+            }
+
+            if (isCreatingLineClick && lineClickStart && lineClickCurrent) {
+                let frameV = getDisplayFrameV();
+                let pStart = mapFrameToDisplay(lineClickStart.x, lineClickStart.t, null, frameV);
+                let pCurr = mapFrameToDisplay(lineClickCurrent.x, lineClickCurrent.t, null, frameV);
+                
+                let sx1 = mathToScreenX(pStart.x);
+                let sy1 = mathToScreenY(pStart.t);
+                let sx2 = mathToScreenX(pCurr.x);
+                let sy2 = mathToScreenY(pCurr.t);
+
+                let dt = lineClickCurrent.t - lineClickStart.t;
+                let dx = lineClickCurrent.x - lineClickStart.x;
+                let v = dt !== 0 ? dx / dt : (dx > 0 ? Infinity : -Infinity);
+                
+                ctx.beginPath();
+                ctx.moveTo(sx1, sy1);
+                ctx.lineTo(sx2, sy2);
+                
+                if (Math.abs(v) >= 1) {
+                    ctx.strokeStyle = colors[colorIndex % colors.length];
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.strokeStyle = colors[colorIndex % colors.length];
+                    ctx.setLineDash([]);
+                }
+                
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Draw arrow
+                let angle = Math.atan2(sy2 - sy1, sx2 - sx1);
+                let arrowSize = 16;
+                ctx.beginPath();
+                ctx.moveTo(sx2, sy2);
+                ctx.lineTo(sx2 - arrowSize * Math.cos(angle - Math.PI / 6), sy2 - arrowSize * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(sx2 - arrowSize * Math.cos(angle + Math.PI / 6), sy2 - arrowSize * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fill();
+            }
+            
+            if (isCreatingLineDrag && lineDragStart && lineDragCurrent) {
+                let frameV = getDisplayFrameV();
+                let pStart = mapFrameToDisplay(lineDragStart.x, lineDragStart.t, null, frameV);
+                let pCurr = mapFrameToDisplay(lineDragCurrent.x, lineDragCurrent.t, null, frameV);
+                
+                let sx1 = mathToScreenX(pStart.x);
+                let sy1 = mathToScreenY(pStart.t);
+                let sx2 = mathToScreenX(pCurr.x);
+                let sy2 = mathToScreenY(pCurr.t);
+                
+                ctx.strokeStyle = '#ffffaa';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(sx1, sy1);
+                ctx.lineTo(sx2, sy2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            if (currentHoverSnap && !isPanning) {
+                let frameV = getDisplayFrameV();
+                let p = mapFrameToDisplay(currentHoverSnap.x, currentHoverSnap.t, null, frameV);
+                let sx = mathToScreenX(p.x);
+                let sy = mathToScreenY(p.t);
+                
+                let isCreating = isCreatingLineClick || isCreatingLineDrag;
+                let isDragging = draggingTarget || isCreating;
+                let snapColor = isDragging ? 
+                    (draggingTarget && draggingTarget.el ? draggingTarget.el.color : colors[colorIndex % colors.length]) 
+                    : null;
+                let hasConstraint = !!(currentHoverSnap.snapInfo || currentHoverSnap.isIntersection);
+                let snapRadius = hasConstraint ? 6 : 4;
+                let defaultFill = currentHoverSnap.isIntersection ? '#ffff00' : (hasConstraint ? '#ffcc00' : '#fff');
+
+                ctx.beginPath();
+                ctx.arc(sx, sy, snapRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = snapColor || defaultFill;
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                if (currentHoverSnap.label) {
+                    ctx.fillStyle = snapColor || defaultFill;
+                    ctx.font = '12px Arial';
+                    ctx.fillText(currentHoverSnap.label, sx + 10, sy - 10);
+                }
+            }
+        }
+
+        function getHoveredTarget(screenX, screenY) {
+            const threshold = 10;
+            let frameV = getDisplayFrameV();
+            
+            function absToScreen(x, t) {
+                let p = mapFrameToDisplay(x, t, null, frameV);
+                return { x: mathToScreenX(p.x), y: mathToScreenY(p.t) };
+            }
+
+            function distToSegment(px, py, x1, y1, x2, y2) {
+                let l2 = (x1 - x2)**2 + (y1 - y2)**2;
+                if (l2 === 0) return Math.hypot(px - x1, py - y1);
+                let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+            }
+
+            function distToLine(px, py, x1, y1, x2, y2) {
+                let l2 = (x1 - x2)**2 + (y1 - y2)**2;
+                if (l2 === 0) return Math.hypot(px - x1, py - y1);
+                let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+                return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+            }
+
+            function checkElementPoints(el) {
+                if (el.isValid === false) return null;
+                if (el.type === 'event') {
+                    let p = absToScreen(el.x, el.t);
+                    if (Math.hypot(screenX - p.x, screenY - p.y) < threshold) {
+                        return { type: 'x0', el };
+                    }
+                    return null;
+                }
+                
+                let p1 = absToScreen(el.x1, el.t1);
+                if (Math.hypot(screenX - p1.x, screenY - p1.y) < threshold) {
+                    return { type: 'start', el };
+                }
+                
+                if (el.limited && !el.endpointAtInfinity) {
+                    let p2 = absToScreen(el.x2, el.t2);
+                    if (Math.hypot(screenX - p2.x, screenY - p2.y) < threshold) {
+                        return { type: 'end', el };
+                    }
+                }
+                return null;
+            }
+
+            function checkElementLine(el) {
+                if (el.isValid === false) return null;
+                if (el.type === 'event') return null;
+                
+                let p1 = absToScreen(el.x1, el.t1);
+                let p2 = absToScreen(el.x2, el.t2);
+                const guideActive = focusedElementId === el.id && el.limited;
+                
+                if (el.limited && !el.endpointAtInfinity) {
+                    if (distToSegment(screenX, screenY, p1.x, p1.y, p2.x, p2.y) < threshold) {
+                        return { type: 'line', el };
+                    }
+                    // In focus: la guida infinita è draggabile come un vettore illimitato
+                    if (guideActive && distToLine(screenX, screenY, p1.x, p1.y, p2.x, p2.y) < threshold) {
+                        return { type: 'line', el };
+                    }
+                } else {
+                    if (distToLine(screenX, screenY, p1.x, p1.y, p2.x, p2.y) < threshold) {
+                        // Per raggio all'infinito: solo dal punto iniziale in avanti,
+                        // tranne in focus dove la guida di velocità è bidirezionale
+                        if (el.endpointAtInfinity && !guideActive) {
+                            let dx = p2.x - p1.x, dy = p2.y - p1.y;
+                            let along = (screenX - p1.x) * dx + (screenY - p1.y) * dy;
+                            if (along < 0) return null;
+                        }
+                        return { type: 'line', el };
+                    }
+                }
+                return null;
+            }
+
+            if (focusedElementId !== null) {
+                let focusedEl = elements.find(e => e.id === focusedElementId);
+                if (focusedEl) {
+                    let hit = checkElementPoints(focusedEl);
+                    if (hit) return hit;
+                }
+            }
+
+            for (let i = elements.length - 1; i >= 0; i--) {
+                let el = elements[i];
+                if (el.id === focusedElementId) continue;
+                let hit = checkElementPoints(el);
+                if (hit) return hit;
+            }
+            
+            if (focusedElementId !== null) {
+                let focusedEl = elements.find(e => e.id === focusedElementId);
+                if (focusedEl) {
+                    let hit = checkElementLine(focusedEl);
+                    if (hit) return hit;
+                }
+            }
+
+            for (let i = elements.length - 1; i >= 0; i--) {
+                let el = elements[i];
+                if (el.id === focusedElementId) continue;
+                let hit = checkElementLine(el);
+                if (hit) return hit;
+            }
+            
+            return null;
+        }
+
+        function scrollToElementCard(el) {
+            setTimeout(() => {
+                const card = document.getElementById(`element-card-${el.id}`);
+                if (card) {
+                    const sidebar = document.getElementById('sidebar');
+                    sidebar.scrollTo({
+                        top: card.offsetTop - document.getElementById('add-line-btn').offsetTop - document.getElementById('add-line-btn').offsetHeight - 15,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 50);
+        }
+
+        function resolveInteractionFromDependency(dep) {
+            if (!dep || dep.type === 'fixed') return null;
+
+            if (dep.type === 'event') {
+                const el = elements.find(e => e.id === dep.elId);
+                if (!el || el.isValid === false) return null;
+                if (el.dependencies) {
+                    return resolveInteractionFromDependency(el.dependencies);
+                }
+                return { focusEl: el, dragTarget: { type: 'x0', el } };
+            }
+
+            if (dep.type === 'movement_point') {
+                const el = elements.find(e => e.id === dep.elId);
+                if (!el || el.isValid === false) return null;
+
+                let parentDep = null;
+                if (el.dependencies) {
+                    if (dep.pointType === 'movement_start') {
+                        if (el.dependencies.type === 'start_point') parentDep = el.dependencies.pt;
+                        else if (el.dependencies.type === 'points') parentDep = el.dependencies.p1;
+                    } else if (dep.pointType === 'movement_end') {
+                        if (el.dependencies.type === 'points') parentDep = el.dependencies.p2;
+                    }
+                }
+                if (parentDep) {
+                    const resolved = resolveInteractionFromDependency(parentDep);
+                    if (resolved) return resolved;
+                }
+
+                if (dep.pointType === 'movement_start') {
+                    if (el.dependencies && (el.dependencies.type === 'start_point' || el.dependencies.type === 'points')) {
+                        return { focusEl: el, dragTarget: null };
+                    }
+                    return { focusEl: el, dragTarget: { type: 'start', el } };
+                }
+                if (dep.pointType === 'movement_end') {
+                    if (el.dependencies && el.dependencies.type === 'points') {
+                        return { focusEl: el, dragTarget: null };
+                    }
+                    if (!el.limited) return { focusEl: el, dragTarget: null };
+                    return { focusEl: el, dragTarget: { type: 'end', el } };
+                }
+            }
+
+            if (dep.type === 'intersection' && dep.lines && dep.lines.length > 0) {
+                const el = elements.find(e => e.id === dep.lines[0].elId);
+                if (!el || el.isValid === false) return null;
+                return { focusEl: el, dragTarget: null };
+            }
+
+            return null;
+        }
+
+        function beginElementInteraction(target) {
+            let focusEl = target.el;
+            let dragTarget = null;
+            let redirected = false;
+
+            if (target.el.type === 'line' && (target.type === 'start' || target.type === 'end')) {
+                const { startDep, endDep } = getLineEndpointDependencies(target.el);
+                const dep = target.type === 'start' ? startDep : endDep;
+                const resolved = resolveInteractionFromDependency(dep);
+                if (resolved) {
+                    focusEl = resolved.focusEl;
+                    dragTarget = resolved.dragTarget;
+                    redirected = true;
+                }
+            } else if (target.el.type === 'event' && target.el.dependencies) {
+                const resolved = resolveInteractionFromDependency(target.el.dependencies);
+                if (resolved) {
+                    focusEl = resolved.focusEl;
+                    dragTarget = resolved.dragTarget;
+                    redirected = true;
+                }
+            }
+
+            if (!redirected) {
+                if (target.el.dependencies) {
+                    if (target.el.type === 'line') {
+                        if (target.el.dependencies.type === 'start_point') {
+                            if (target.type === 'line' || target.type === 'end') {
+                                dragTarget = target;
+                            }
+                        }
+                    }
+                } else {
+                    dragTarget = target;
+                }
+            }
+
+            if (dragTarget && dragTarget.el.type === 'line') {
+                const lineEl = dragTarget.el;
+                if (lineEl.endpointAtInfinity && lineEl.preservedProperAbs != null) {
+                    const signI = lineEl.preservedProperKind === 'L0' ? 1 : -1;
+                    dragTarget.initialI = signI * lineEl.preservedProperAbs * lineEl.preservedProperAbs;
+                } else {
+                    dragTarget.initialI = (lineEl.x2 - lineEl.x1)**2 - (lineEl.t2 - lineEl.t1)**2;
+                    if (Math.abs(dragTarget.initialI) > 1e-9) {
+                        lineEl.preservedProperAbs = Math.sqrt(Math.abs(dragTarget.initialI));
+                        lineEl.preservedProperKind = dragTarget.initialI < 0 ? 'tau' : 'L0';
+                        lineEl.preservedSignDt = (lineEl.t2 - lineEl.t1) >= 0 ? 1 : -1;
+                    }
+                }
+            }
+
+            draggingTarget = dragTarget;
+            focusedElementId = focusEl.id;
+            if (!focusEl.expanded) {
+                focusEl.expanded = true;
+                const card = document.getElementById(`element-card-${focusEl.id}`);
+                if (card) {
+                    const toggleExpand = card.querySelector('.toggle-expand');
+                    const cardContent = card.querySelector('.card-content');
+                    if (cardContent) cardContent.style.display = 'block';
+                    if (toggleExpand) toggleExpand.textContent = '▼';
+                }
+            }
+            updateSidebarUI();
+            updateFocusedCardStyling();
+            draw();
+            scrollToElementCard(focusEl);
+        }
+
+        canvas.addEventListener('mousedown', e => {
+            cancelViewAnimation();
+            
+            if (e.button === 2) {
+                if (currentHoverSnap) {
+                    isCreatingLineDrag = true;
+                    lineDragStart = { x: currentHoverSnap.x, t: currentHoverSnap.t, snapInfo: currentHoverSnap.snapInfo };
+                    lineDragCurrent = { x: currentHoverSnap.x, t: currentHoverSnap.t, snapInfo: currentHoverSnap.snapInfo };
+                }
+                return;
+            }
+            
+            if (e.button !== 0) return; // Only handle left click here
+            
+            if (isCreatingLineClick) {
+                if (lineClickStart && lineClickCurrent && (lineClickStart.x !== lineClickCurrent.x || lineClickStart.t !== lineClickCurrent.t)) {
+                    isCreatingLineClick = false;
+                    
+                    const newLine = {
+                        id: nextId++,
+                        type: 'line',
+                        x1: lineClickStart.x,
+                        t1: lineClickStart.t,
+                        x2: lineClickCurrent.x,
+                        t2: lineClickCurrent.t,
+                        color: colors[colorIndex % colors.length],
+                        limited: false,
+                        expanded: true,
+                        visible: true,
+                        showAxes: false,
+                        viewRestFrame: false,
+                        isValid: true
+                    };
+                    
+                    let p1Dep = lineClickStart.snapInfo ? getDependencyFromSnap(lineClickStart.snapInfo) : null;
+                    let p2Dep = lineClickCurrent.snapInfo ? getDependencyFromSnap(lineClickCurrent.snapInfo) : null;
+                    
+                    if (p1Dep && p2Dep) {
+                        newLine.dependencies = {
+                            type: 'points',
+                            p1: p1Dep,
+                            p2: p2Dep
+                        };
+                    } else if (p1Dep) {
+                        newLine.dependencies = {
+                            type: 'start_point',
+                            pt: p1Dep
+                        };
+                    } else if (p2Dep) {
+                        newLine.dependencies = {
+                            type: 'points',
+                            p1: { type: 'fixed', x: lineClickStart.x, t: lineClickStart.t },
+                            p2: p2Dep
+                        };
+                    }
+                    
+                    colorIndex++;
+                    focusedElementId = newLine.id;
+                    elements.push(newLine);
+                    updateDependencies();
+                    createElementSidebar(newLine);
+                    
+                    saveState();
+
+                    scrollToElementCard(newLine);
+                } else {
+                    return; // start and end points are the same, keep waiting
+                }
+                draw();
+                return;
+            }
+
+            const target = getHoveredTarget(e.offsetX, e.offsetY);
+            if (target) {
+                beginElementInteraction(target);
+            } else {
+                isPanning = true;
+                startPan = { x: e.offsetX, y: e.offsetY };
+                startView = { x: view.x, t: view.t };
+                canvas.style.cursor = 'grabbing';
+                if (focusedElementId !== null) {
+                    focusedElementId = null;
+                    updateSidebarUI();
+                    updateFocusedCardStyling();
+                    draw();
+                }
+            }
+        });
+
+        canvas.addEventListener('dblclick', e => {
+            if (e.button !== 0) return;
+            const target = getHoveredTarget(e.offsetX, e.offsetY);
+            if (target) {
+                ensureElementVisible(target.el, true);
+            }
+        });
+
+        canvas.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            if (isCreatingLineClick) {
+                isCreatingLineClick = false;
+                draw();
+                return;
+            }
+            if (lineDragStart) {
+                lineDragStart = null;
+                return;
+            }
+            if (currentHoverSnap) {
+                contextMenuSnap = { x: currentHoverSnap.x, t: currentHoverSnap.t, snapInfo: currentHoverSnap.snapInfo };
+                contextMenu.style.display = 'block';
+                contextMenu.style.left = e.pageX + 'px';
+                contextMenu.style.top = e.pageY + 'px';
+            }
+        });
+
+        document.addEventListener('click', e => {
+            if (e.target !== menuCreateEvent && e.target !== menuCreateLine) {
+                contextMenu.style.display = 'none';
+            }
+        });
+
+        menuCreateEvent.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+            if (contextMenuSnap) {
+                const newEvent = {
+                    id: nextId++,
+                    type: 'event',
+                    x: contextMenuSnap.x,
+                    t: contextMenuSnap.t,
+                    color: eventColors[eventColorIndex % eventColors.length],
+                    expanded: true,
+                    visible: true,
+                    showLightCone: false,
+                    isValid: true
+                };
+                
+                if (contextMenuSnap.snapInfo) {
+                    let dep = getDependencyFromSnap(contextMenuSnap.snapInfo);
+                    if (dep) {
+                        newEvent.dependencies = dep;
+                    }
+                }
+                
+                eventColorIndex++;
+                focusedElementId = newEvent.id;
+                elements.push(newEvent);
+                updateDependencies();
+                createElementSidebar(newEvent);
+                draw();
+                
+                saveState();
+
+                setTimeout(() => {
+                    const card = document.getElementById(`element-card-${newEvent.id}`);
+                    if (card) {
+                        const sidebar = document.getElementById('sidebar');
+                        sidebar.scrollTo({
+                            top: card.offsetTop - document.getElementById('add-line-btn').offsetTop - document.getElementById('add-line-btn').offsetHeight - 15,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 50);
+            }
+        });
+
+        menuCreateLine.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+            if (contextMenuSnap) {
+                isCreatingLineClick = true;
+                lineClickStart = { x: contextMenuSnap.x, t: contextMenuSnap.t, snapInfo: contextMenuSnap.snapInfo };
+                lineClickCurrent = { x: contextMenuSnap.x, t: contextMenuSnap.t, snapInfo: contextMenuSnap.snapInfo };
+                draw();
+            }
+        });
+
+        let didChangeDuringDrag = false;
+
+        canvas.addEventListener('mousemove', e => {
+            processInteractionMove(e.offsetX, e.offsetY);
+        });
+
+        canvas.addEventListener('mouseup', e => {
+            if (e.button === 2 && isCreatingLineDrag) {
+                isCreatingLineDrag = false;
+                if (lineDragStart && lineDragCurrent && (lineDragStart.x !== lineDragCurrent.x || lineDragStart.t !== lineDragCurrent.t)) {
+                    const newLine = {
+                        id: nextId++,
+                        type: 'line',
+                        visible: true,
+                        expanded: true,
+                        isValid: true,
+                        limited: false,
+                        showAxes: false,
+                        viewRestFrame: false,
+                        color: colors[colorIndex % colors.length]
+                    };
+                    colorIndex++;
+                    
+                    let p1Dep = lineDragStart.snapInfo ? getDependencyFromSnap(lineDragStart.snapInfo) : null;
+                    let p2Dep = lineDragCurrent.snapInfo ? getDependencyFromSnap(lineDragCurrent.snapInfo) : null;
+                    
+                    if (p1Dep && p2Dep) {
+                        newLine.dependencies = { type: 'points', p1: p1Dep, p2: p2Dep };
+                    } else if (p1Dep) {
+                        newLine.dependencies = { type: 'start_point', pt: p1Dep };
+                    } else if (p2Dep) {
+                        newLine.dependencies = { type: 'points', p1: { type: 'fixed', x: lineDragStart.x, t: lineDragStart.t }, p2: p2Dep };
+                    } else {
+                        // Nessuna dipendenza, linea libera
+                    }
+                    
+                    newLine.x1 = lineDragStart.x;
+                    newLine.t1 = lineDragStart.t;
+                    newLine.x2 = lineDragCurrent.x;
+                    newLine.t2 = lineDragCurrent.t;
+                    
+                    focusedElementId = newLine.id;
+                    elements.push(newLine);
+                    updateDependencies();
+                    draw();
+                    createElementSidebar(newLine);
+                    
+                    saveState();
+                    
+                    setTimeout(() => {
+                        const card = document.getElementById(`element-card-${newLine.id}`);
+                        if (card) {
+                            const sidebar = document.getElementById('sidebar');
+                            sidebar.scrollTo({
+                                top: card.offsetTop - document.getElementById('add-line-btn').offsetTop - document.getElementById('add-line-btn').offsetHeight - 15,
+                                behavior: 'smooth'
+                            });
+                        }
+                    }, 50);
+                } else {
+                    lineDragStart = null;
+                }
+                draw();
+                return;
+            }
+
+            if (didChangeDuringDrag) {
+                saveState();
+                didChangeDuringDrag = false;
+            }
+            draggingTarget = null;
+            isPanning = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDraggingVelocityForEl) {
+                isDraggingVelocityForEl = null;
+                draw();
+            }
+        });
+        
+        window.addEventListener('touchend', () => {
+            if (isDraggingVelocityForEl) {
+                isDraggingVelocityForEl = null;
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            if (didChangeDuringDrag) {
+                saveState();
+                didChangeDuringDrag = false;
+            }
+            isCreatingLineDrag = false;
+            lineDragStart = null;
+            draggingTarget = null;
+            currentHoverTarget = null;
+            isPanning = false;
+            canvas.style.cursor = 'grab';
+            draw();
+        });
+
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            cancelViewAnimation();
+            let factor;
+            if (e.ctrlKey) {
+                // Pinch to zoom su trackpad (Mac e alcuni Windows)
+                factor = Math.exp(-e.deltaY / 100);
+            } else {
+                const zoomFactor = 1.1;
+                const direction = e.deltaY < 0 ? 1 : -1;
+                factor = Math.pow(zoomFactor, direction);
+            }
+            
+            const xd = screenToMathX(e.offsetX);
+            const td = screenToMathY(e.offsetY);
+            
+            view.scale *= factor;
+            
+            view.x = xd - (e.offsetX - canvas.width/2) / view.scale;
+            view.t = td - (canvas.height/2 - e.offsetY) / view.scale;
+            
+            draw();
+        }, { passive: false });
+
+        let initialPinchDistance = null;
+        let initialViewScale = null;
+        let initialPinchMathX = null;
+        let initialPinchMathT = null;
+
+        function getTouchOffset(touch) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                offsetX: touch.clientX - rect.left,
+                offsetY: touch.clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            cancelViewAnimation();
+            if (e.touches.length === 1) {
+                const { offsetX, offsetY } = getTouchOffset(e.touches[0]);
+                const target = getHoveredTarget(offsetX, offsetY);
+                if (target) {
+                    beginElementInteraction(target);
+                } else {
+                    isPanning = true;
+                    startPan = { x: offsetX, y: offsetY };
+                    startView = { x: view.x, t: view.t };
+                    if (focusedElementId !== null) {
+                        focusedElementId = null;
+                        updateSidebarUI();
+                        updateFocusedCardStyling();
+                        draw();
+                    }
+                }
+            } else if (e.touches.length === 2) {
+                draggingTarget = null;
+                isPanning = false;
+                
+                const t1 = getTouchOffset(e.touches[0]);
+                const t2 = getTouchOffset(e.touches[1]);
+                
+                initialPinchDistance = Math.hypot(t2.offsetX - t1.offsetX, t2.offsetY - t1.offsetY);
+                const centerX = (t1.offsetX + t2.offsetX) / 2;
+                const centerY = (t1.offsetY + t2.offsetY) / 2;
+                
+                initialViewScale = view.scale;
+                initialPinchMathX = screenToMathX(centerX);
+                initialPinchMathT = screenToMathY(centerY);
+            }
+        }, { passive: false });
+
+        function getLineFromElement(el, lineType) {
+            if (el.type === 'event') {
+                if (lineType === 'lightcone_right' && el.showLightCone) {
+                    return { x0: el.x, t0: el.t, v: 1, isSegment: false };
+                }
+                if (lineType === 'lightcone_left' && el.showLightCone) {
+                    return { x0: el.x, t0: el.t, v: -1, isSegment: false };
+                }
+            } else if (el.type === 'line' && lineType === 'line') {
+                let v = (el.x2 - el.x1) / (el.t2 - el.t1);
+                if (el.limited) {
+                    let t1 = el.t1;
+                    let t2 = el.t2;
+                    return { x0: el.x1, t0: el.t1, v: v, isSegment: true, tMin: Math.min(t1, t2), tMax: Math.max(t1, t2) };
+                } else {
+                    return { x0: el.x1, t0: el.t1, v: v, isSegment: false };
+                }
+            }
+            return null;
+        }
+
+        function resolveDependencyPoint(dep) {
+            if (!dep) return null;
+            if (dep.type === 'fixed') return { x: dep.x, t: dep.t };
+            if (dep.type === 'event') {
+                let parent = elements.find(e => e.id === dep.elId);
+                if (parent && parent.isValid !== false) return { x: parent.x, t: parent.t };
+                return null;
+            }
+            if (dep.type === 'movement_point') {
+                let parent = elements.find(e => e.id === dep.elId);
+                if (parent && parent.isValid !== false && parent.limited) {
+                    if (dep.pointType === 'movement_start') return { x: parent.x1, t: parent.t1 };
+                    if (dep.pointType === 'movement_end') return { x: parent.x2, t: parent.t2 };
+                }
+                return null;
+            }
+            if (dep.type === 'intersection') {
+                let parent1 = elements.find(e => e.id === dep.lines[0].elId);
+                let parent2 = elements.find(e => e.id === dep.lines[1].elId);
+                if (!parent1 || !parent2 || parent1.isValid === false || parent2.isValid === false) return null;
+                
+                let l1 = getLineFromElement(parent1, dep.lines[0].lineType);
+                let l2 = getLineFromElement(parent2, dep.lines[1].lineType);
+                if (!l1 || !l2 || Math.abs(l1.v - l2.v) < 1e-6) return null;
+                
+                let c1 = l1.x0 - l1.v * l1.t0;
+                let c2 = l2.x0 - l2.v * l2.t0;
+                let t = (c2 - c1) / (l1.v - l2.v);
+                let x = c1 + l1.v * t;
+                
+                if (l1.isSegment && (t < l1.tMin - 1e-5 || t > l1.tMax + 1e-5)) return null;
+                if (l2.isSegment && (t < l2.tMin - 1e-5 || t > l2.tMax + 1e-5)) return null;
+                
+                return { x, t };
+            }
+            return null;
+        }
+
+        function updateDependencies() {
+            for (let el of elements) {
+                if (!el.dependencies) {
+                    el.isValid = true;
+                    continue;
+                }
+                
+                if (el.dependencies.type === 'intersection' || el.dependencies.type === 'event' || el.dependencies.type === 'movement_point') {
+                    let pt = resolveDependencyPoint(el.dependencies);
+                    if (pt) {
+                        el.x = pt.x;
+                        el.t = pt.t;
+                        el.isValid = true;
+                    } else {
+                        el.isValid = false;
+                    }
+                } else if (el.dependencies.type === 'start_point') {
+                    let pt = resolveDependencyPoint(el.dependencies.pt);
+                    if (pt) {
+                        let dx = el.x2 - el.x1;
+                        let dt = el.t2 - el.t1;
+                        el.x1 = pt.x;
+                        el.t1 = pt.t;
+                        el.x2 = pt.x + dx;
+                        el.t2 = pt.t + dt;
+                        el.isValid = true;
+                    } else {
+                        el.isValid = false;
+                    }
+                } else if (el.dependencies.type === 'points') {
+                    let p1 = resolveDependencyPoint(el.dependencies.p1);
+                    let p2 = resolveDependencyPoint(el.dependencies.p2);
+                    if (p1 && p2) {
+                        el.x1 = p1.x;
+                        el.t1 = p1.t;
+                        el.x2 = p2.x;
+                        el.t2 = p2.t;
+                        el.isValid = true;
+                    } else {
+                        el.isValid = false;
+                    }
+                }
+            }
+        }
+
+        function getDependencyFromSnap(snapInfo) {
+            if (!snapInfo) return null;
+            if (snapInfo.snapType === 'event') {
+                return { type: 'event', elId: snapInfo.elId };
+            } else if (snapInfo.snapType === 'movement_start' || snapInfo.snapType === 'movement_end') {
+                return { type: 'movement_point', elId: snapInfo.elId, pointType: snapInfo.snapType };
+            } else if (snapInfo.snapType === 'intersection') {
+                return { 
+                    type: 'intersection', 
+                    lines: [
+                        { elId: snapInfo.lines[0].elId, lineType: snapInfo.lines[0].lineType },
+                        { elId: snapInfo.lines[1].elId, lineType: snapInfo.lines[1].lineType }
+                    ] 
+                };
+            }
+            return null;
+        }
+
+        function getSnapPoints() {
+            let points = [];
+            let lines = [];
+            
+            for (let el of elements) {
+                if (el.isValid === false) continue;
+                if (el.visible === false) continue;
+                
+                if (el.type === 'event') {
+                    points.push({ x: el.x, t: el.t, label: `evento ${el.id}`, snapType: 'event', elId: el.id });
+                    if (el.showLightCone) {
+                        lines.push({ x0: el.x, t0: el.t, v: 1, isSegment: false, label: `cono di luce ${el.id}`, elId: el.id, lineType: 'lightcone_right' });
+                        lines.push({ x0: el.x, t0: el.t, v: -1, isSegment: false, label: `cono di luce ${el.id}`, elId: el.id, lineType: 'lightcone_left' });
+                    }
+                } else if (el.type === 'line') {
+                    if (el.limited) {
+                        points.push({ x: el.x1, t: el.t1, label: `inizio linea ${el.id}`, snapType: 'movement_start', elId: el.id });
+                        points.push({ x: el.x2, t: el.t2, label: `fine linea ${el.id}`, snapType: 'movement_end', elId: el.id });
+                        
+                        let v = (el.x2 - el.x1) / (el.t2 - el.t1);
+                        lines.push({ x0: el.x1, t0: el.t1, v: v, isSegment: true, tMin: Math.min(el.t1, el.t2), tMax: Math.max(el.t1, el.t2), label: `linea ${el.id}`, elId: el.id, lineType: 'line' });
+                    } else {
+                        let v = (el.x2 - el.x1) / (el.t2 - el.t1);
+                        lines.push({ x0: el.x1, t0: el.t1, v: v, isSegment: false, label: `linea ${el.id}`, elId: el.id, lineType: 'line' });
+                    }
+                }
+            }
+            
+            for (let i = 0; i < lines.length; i++) {
+                for (let j = i + 1; j < lines.length; j++) {
+                    let l1 = lines[i];
+                    let l2 = lines[j];
+                    if (l1.elId === l2.elId) continue;
+                    if (Math.abs(l1.v - l2.v) < 1e-6) continue;
+                    let c1 = l1.x0 - l1.v * l1.t0;
+                    let c2 = l2.x0 - l2.v * l2.t0;
+                    let t = (c2 - c1) / (l1.v - l2.v);
+                    let x = c1 + l1.v * t;
+                    
+                    if (l1.isSegment && (t < l1.tMin - 1e-5 || t > l1.tMax + 1e-5)) continue;
+                    if (l2.isSegment && (t < l2.tMin - 1e-5 || t > l2.tMax + 1e-5)) continue;
+                    
+                    points.push({ x, t, label: `${l1.label} ∩ ${l2.label}`, snapType: 'intersection', lines: [l1, l2] });
+                }
+            }
+            
+            return points;
+        }
+
+        function getSnapPoint(mx, mt, excludeEl = null) {
+            let points = getSnapPoints();
+            let bestDist = Infinity;
+            let bestPoint = null;
+            let frameV = getDisplayFrameV();
+            
+            let mDisp = mapFrameToDisplay(mx, mt, null, frameV);
+            let mScreenX = mathToScreenX(mDisp.x);
+            let mScreenY = mathToScreenY(mDisp.t);
+
+            for (let p of points) {
+                if (excludeEl) {
+                    if (p.elId === excludeEl.id) continue;
+                    if (p.lines && p.lines.some(l => l.elId === excludeEl.id)) continue;
+                }
+                
+                let pDisp = mapFrameToDisplay(p.x, p.t, null, frameV);
+                let pScreenX = mathToScreenX(pDisp.x);
+                let pScreenY = mathToScreenY(pDisp.t);
+                
+                let dist = Math.hypot(mScreenX - pScreenX, mScreenY - pScreenY);
+                if (dist < 15 && dist < bestDist) {
+                    bestDist = dist;
+                    bestPoint = p;
+                }
+            }
+            
+            if (bestPoint) {
+                return { x: bestPoint.x, t: bestPoint.t, point: bestPoint, isIntersection: bestPoint.snapType === 'intersection', label: bestPoint.label, snapInfo: bestPoint };
+            }
+            return null;
+        }
+
+        function processInteractionMove(offsetX, offsetY) {
+            const xd = screenToMathX(offsetX);
+            const td = screenToMathY(offsetY);
+            let frameV = getDisplayFrameV();
+            
+            let activeFrameG = null;
+            let axesElements = elements.filter(e => {
+                if (!e.showAxes || e.isValid === false) return false;
+                return true;
+            });
+            if (axesElements.length > 0) {
+                let e = axesElements[axesElements.length - 1];
+                let v = (e.x2 - e.x1) / (e.t2 - e.t1);
+                let u = Math.abs(v) < 1.0 ? v : 1/v;
+                let candidateFrameG = { v: u, x0: e.x1, t0: e.t1, color: e.color };
+                if (Math.abs(Math.abs(candidateFrameG.v) - 1.0) >= 0.005) {
+                    activeFrameG = candidateFrameG;
+                }
+            }
+
+            let gCoords = mapDisplayToFrame(xd, td, frameV, activeFrameG);
+            let mx_g = gCoords.x;
+            let mt_g = gCoords.t;
+
+            let abs = mapDisplayToFrame(xd, td, frameV, null);
+            let mx = abs.x;
+            let mt = abs.t;
+            
+            let rawStep = 50 / view.scale;
+            let power = Math.round(Math.log2(rawStep));
+            let step = Math.pow(2, power);
+            
+            let snapX_g = Math.round(mx_g / step) * step;
+            let snapT_g = Math.round(mt_g / step) * step;
+
+            let snapAbs = mapFrameToDisplay(snapX_g, snapT_g, activeFrameG, null);
+            let snapX = snapAbs.x;
+            let snapT = snapAbs.t;
+            let isIntersectionSnap = false;
+            let snapLabel = '';
+
+            let snapPoint = getSnapPoint(mx, mt, draggingTarget ? draggingTarget.el : null);
+            let bestPoint = null;
+            if (snapPoint) {
+                snapX = snapPoint.x;
+                snapT = snapPoint.t;
+                bestPoint = snapPoint.point;
+                isIntersectionSnap = snapPoint.isIntersection;
+                snapLabel = snapPoint.label;
+            }
+            
+            currentHoverSnap = { x: snapX, t: snapT, isIntersection: isIntersectionSnap, label: snapLabel, snapInfo: bestPoint };
+
+            if (isCreatingLineDrag) {
+                lineDragCurrent = { x: snapX, t: snapT, snapInfo: bestPoint };
+                draw();
+                return;
+            }
+
+            if (isCreatingLineClick) {
+                lineClickCurrent = { x: snapX, t: snapT, snapInfo: bestPoint };
+                draw();
+                return;
+            }
+
+            if (draggingTarget) {
+                let snapDisp = mapFrameToDisplay(snapX, snapT, null, frameV);
+                let snapScreenX = mathToScreenX(snapDisp.x);
+                let snapScreenY = mathToScreenY(snapDisp.t);
+                
+                if (Math.hypot(offsetX - snapScreenX, offsetY - snapScreenY) < 15) {
+                    mx = snapX;
+                    mt = snapT;
+                }
+                
+                const el = draggingTarget.el;
+
+                if (draggingTarget.type === 'x0') {
+                    if (el.type === 'event') {
+                        el.x = mx;
+                        el.t = mt;
+                    }
+                } else if (draggingTarget.type === 'end') {
+                    if (el.type === 'line') {
+                        let vx = el.x2 - el.x1;
+                        let vt = el.t2 - el.t1;
+                        let ux = mx - el.x1;
+                        let ut = mt - el.t1;
+                        let l2 = vx*vx + vt*vt;
+                        if (l2 > 0) {
+                            let k = (ux*vx + ut*vt) / l2;
+                            el.x2 = el.x1 + k * vx;
+                            el.t2 = el.t1 + k * vt;
+                        } else {
+                            el.x2 = mx;
+                            el.t2 = mt;
+                        }
+                        el.endpointAtInfinity = false;
+                        syncPreservedProperFromGeometry(el);
+                    }
+                } else if (draggingTarget.type === 'start') {
+                    if (el.type === 'line') {
+                        let dx = el.x2 - el.x1;
+                        let dt = el.t2 - el.t1;
+                        el.x1 = mx;
+                        el.t1 = mt;
+                        el.x2 = mx + dx;
+                        el.t2 = mt + dt;
+                        syncPreservedProperFromGeometry(el);
+                    }
+                } else if (draggingTarget.type === 'line') {
+                    if (el.type === 'line') {
+                        let I = draggingTarget.initialI !== undefined ? draggingTarget.initialI : ((el.x2 - el.x1)**2 - (el.t2 - el.t1)**2);
+                        let dx_new = mx - el.x1;
+                        let dt_new = mt - el.t1;
+                        let Inew = dx_new**2 - dt_new**2;
+
+                        if (Math.abs(I) > 1e-9 && Math.abs(Inew) < 1e-6) {
+                            // Passaggio vicino al cono di luce: endpoint all'infinito, misura preservata
+                            let signDt = dt_new >= 0 ? 1 : -1;
+                            let vApprox = Math.abs(dt_new) > 1e-12 ? dx_new / dt_new : (dx_new >= 0 ? 1 : -1);
+                            el.preservedProperAbs = Math.sqrt(Math.abs(I));
+                            el.preservedProperKind = I < 0 ? 'tau' : 'L0';
+                            placeEndpointAtInfinity(el, vApprox, signDt);
+                        } else if (Math.abs(Inew) < 1e-6) {
+                            // Segmento genuinamente nullo: preserva lunghezza euclidea
+                            let L2 = el.endpointAtInfinity ? 1 : ((el.x2 - el.x1)**2 + (el.t2 - el.t1)**2);
+                            let Lnew2 = dx_new**2 + dt_new**2;
+                            let k = Lnew2 > 0 ? Math.sqrt(Math.max(L2, 1e-12) / Lnew2) : 1;
+                            el.x2 = el.x1 + k * dx_new;
+                            el.t2 = el.t1 + k * dt_new;
+                            el.endpointAtInfinity = false;
+                        } else {
+                            let k = Math.sqrt(Math.abs(I) / Math.abs(Inew));
+                            el.x2 = el.x1 + k * dx_new;
+                            el.t2 = el.t1 + k * dt_new;
+                            el.endpointAtInfinity = false;
+                            el.preservedProperAbs = Math.sqrt(Math.abs(I));
+                            el.preservedProperKind = (k * k * Inew) < 0 ? 'tau' : 'L0';
+                            el.preservedSignDt = (el.t2 - el.t1) >= 0 ? 1 : -1;
+                        }
+                    }
+                }
+                
+                updateDependencies();
+                updateSidebarUI();
+                draw();
+                didChangeDuringDrag = true;
+            } else if (isPanning) {
+                const dx = (offsetX - startPan.x) / view.scale;
+                const dt = (startPan.y - offsetY) / view.scale;
+                view.x = startView.x - dx;
+                view.t = startView.t - dt;
+                draw();
+            } else {
+                const target = getHoveredTarget(offsetX, offsetY);
+                currentHoverTarget = target;
+                if (target) {
+                    if (target.type === 'line' && target.el.viewRestFrame) {
+                        canvas.style.cursor = 'pointer';
+                    } else {
+                        canvas.style.cursor = target.type === 'line' ? 'crosshair' : 'pointer';
+                    }
+                } else {
+                    canvas.style.cursor = 'grab';
+                }
+                draw(); // to update hover snap
+            }
+        }
+
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                const { offsetX, offsetY } = getTouchOffset(e.touches[0]);
+                processInteractionMove(offsetX, offsetY);
+            } else if (e.touches.length === 2 && initialPinchDistance) {
+                const t1 = getTouchOffset(e.touches[0]);
+                const t2 = getTouchOffset(e.touches[1]);
+                
+                const currentDistance = Math.hypot(t2.offsetX - t1.offsetX, t2.offsetY - t1.offsetY);
+                const centerX = (t1.offsetX + t2.offsetX) / 2;
+                const centerY = (t1.offsetY + t2.offsetY) / 2;
+                
+                const factor = currentDistance / initialPinchDistance;
+                view.scale = initialViewScale * factor;
+                
+                view.x = initialPinchMathX - (centerX - canvas.width/2) / view.scale;
+                view.t = initialPinchMathT - (canvas.height/2 - centerY) / view.scale;
+                
+                draw();
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            e.preventDefault();
+            if (e.touches.length === 0) {
+                if (didChangeDuringDrag) {
+                    saveState();
+                    didChangeDuringDrag = false;
+                }
+                draggingTarget = null;
+                isPanning = false;
+                initialPinchDistance = null;
+            } else if (e.touches.length === 1) {
+                initialPinchDistance = null;
+                const { offsetX, offsetY } = getTouchOffset(e.touches[0]);
+                isPanning = true;
+                startPan = { x: offsetX, y: offsetY };
+                startView = { x: view.x, t: view.t };
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchcancel', () => {
+            if (didChangeDuringDrag) {
+                saveState();
+                didChangeDuringDrag = false;
+            }
+            draggingTarget = null;
+            isPanning = false;
+            initialPinchDistance = null;
+        });
+
+        function updateFocusedCardStyling() {
+            elements.forEach(el => {
+                const card = document.getElementById(`element-card-${el.id}`);
+                if (card) {
+                    if (focusedElementId === el.id) {
+                        card.style.boxShadow = `0 0 10px ${el.color}`;
+                        card.style.backgroundColor = '#444';
+                    } else {
+                        card.style.boxShadow = 'none';
+                        card.style.backgroundColor = '#333';
+                    }
+                }
+            });
+        }
+
+        function isTypingTarget(target) {
+            if (!target || target === document.body || target === document.documentElement) return false;
+            if (target.isContentEditable) return true;
+            const tag = target.tagName;
+            if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+            if (tag === 'INPUT') {
+                const type = (target.type || 'text').toLowerCase();
+                // Checkbox, range, buttons: Canc must still delete the selected object
+                return !['checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'file', 'color'].includes(type);
+            }
+            return false;
+        }
+
+        function deleteElementById(id) {
+            const elIndex = elements.findIndex(e => e.id === id);
+            if (elIndex === -1) {
+                if (focusedElementId === id) {
+                    focusedElementId = null;
+                    updateFocusedCardStyling();
+                    draw();
+                }
+                return;
+            }
+
+            const el = elements[elIndex];
+            let prevFrame = getDisplayFrameV() || { v: 0, x0: 0, t0: 0 };
+            let wasRestFrame = el.viewRestFrame;
+
+            elements = elements.filter(e => e.id !== id);
+
+            // Keep selection on a remaining element so Canc can delete several in a row
+            if (focusedElementId === id) {
+                if (elements.length === 0) {
+                    focusedElementId = null;
+                } else {
+                    const nextIndex = Math.min(elIndex, elements.length - 1);
+                    focusedElementId = elements[nextIndex].id;
+                }
+            }
+
+            elements.forEach(otherEl => {
+                if (otherEl.dependencies) {
+                    if (otherEl.dependencies.elId === id ||
+                        (otherEl.dependencies.lines && otherEl.dependencies.lines.some(l => l.elId === id)) ||
+                        (otherEl.dependencies.p1 && otherEl.dependencies.p1.elId === id) ||
+                        (otherEl.dependencies.p2 && otherEl.dependencies.p2.elId === id) ||
+                        (otherEl.dependencies.pt && otherEl.dependencies.pt.elId === id)) {
+                        otherEl.isValid = false;
+                    }
+                }
+            });
+
+            if (wasRestFrame) {
+                animationTargetEl = null;
+                animationStartFrame = prevFrame;
+                currentAnimatedFrame = prevFrame;
+                animationStartTime = performance.now();
+                requestAnimationFrame(updateAnimation);
+            }
+
+            const card = document.getElementById(`element-card-${id}`);
+            if (card) card.remove();
+
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                const activeTag = document.activeElement.tagName;
+                if (activeTag === 'INPUT' || activeTag === 'BUTTON' || activeTag === 'SELECT' || activeTag === 'TEXTAREA') {
+                    document.activeElement.blur();
+                }
+            }
+
+            updateFocusedCardStyling();
+            updateDependencies();
+            updateSidebarUI();
+            draw();
+            saveState();
+        }
+
+        function setStateToggle(btn, on) {
+            if (!btn) return;
+            const active = !!on;
+            btn.classList.toggle('is-on', active);
+            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        }
+
+        function createElementSidebar(el) {
+            const div = document.createElement('div');
+            div.className = 'element-card';
+            div.style.borderLeftColor = el.color;
+            div.id = `element-card-${el.id}`;
+            div.style.transition = 'all 0.2s ease';
+            div.style.cursor = 'pointer';
+            
+            if (el.type === 'event') {
+                div.innerHTML = `
+                    <div class="element-header">
+                        <span class="toggle-expand" style="cursor: pointer; padding-right: 5px; user-select: none;">▼</span>
+                        <strong class="header-title" style="flex:1;">Evento ${el.id}</strong>
+                        <span class="toggle-visibility" style="cursor: pointer; padding-right: 8px; user-select: none; opacity: ${el.visible !== false ? '1' : '0.4'};" title="Mostra/Nascondi">&#128065;</span>
+                        <button class="delete-btn" data-id="${el.id}">&times;</button>
+                    </div>
+                    <div class="card-content">
+                        <div class="control-group">
+                            <button type="button" class="state-toggle" id="lightcone-btn-${el.id}" aria-pressed="false">
+                                <span class="state-toggle-mark" aria-hidden="true"></span>
+                                <span class="state-toggle-label">Cono di luce</span>
+                            </button>
+                        </div>
+                        <div class="control-group">
+                            <label style="justify-content: flex-start;">
+                                ( x ; ct ) = ( <span id="x-val-${el.id}">${formatNum(el.x, 2)}</span> ; <span id="t-val-${el.id}">${formatNum(el.t, 2)}</span> )
+                            </label>
+                            <div id="event-prime-rows-${el.id}"></div>
+                            <div class="dep-hint" id="dep-val-${el.id}"></div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="element-header">
+                        <span class="toggle-expand" style="cursor: pointer; padding-right: 5px; user-select: none;">▼</span>
+                        <strong class="header-title" style="flex:1;">Linea spazio-temporale ${el.id}</strong>
+                        <span class="toggle-visibility" style="cursor: pointer; padding-right: 8px; user-select: none; opacity: ${el.visible !== false ? '1' : '0.4'};" title="Mostra/Nascondi">&#128065;</span>
+                        <button class="delete-btn" data-id="${el.id}">&times;</button>
+                    </div>
+                    <div class="card-content">
+                        <div class="control-group" style="text-align: center; margin-top: 10px;">
+                            <div id="interval-type-${el.id}" style="font-size: 0.9rem;"></div>
+                            <div id="interval-val-${el.id}" style="font-size: 1rem; margin-top: 5px; display: none;">
+                                <span id="interval-label-${el.id}"></span>
+                                <span id="proper-val-${el.id}"></span>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <button type="button" class="state-toggle" id="axes-btn-${el.id}" aria-pressed="false">
+                                <span class="state-toggle-mark" aria-hidden="true"></span>
+                                <span class="state-toggle-label">Assi x′-ct′</span>
+                            </button>
+                        </div>
+                        <div class="control-group">
+                            <button type="button" class="state-toggle" id="rest-btn-${el.id}" aria-pressed="false">
+                                <span class="state-toggle-mark" aria-hidden="true"></span>
+                                <span class="state-toggle-label" id="rest-label-${el.id}">Sistema di riposo</span>
+                            </button>
+                        </div>
+                        <div class="control-group">
+                            <div class="velocity-params">
+                                <div class="velocity-params-row">
+                                    <span>β = v/c = <span id="v-val-${el.id}"></span></span>
+                                    <span>γ = <span id="gamma-val-${el.id}"></span></span>
+                                </div>
+                                <div id="velocity-prime-rows-${el.id}" class="velocity-prime-rows"></div>
+                            </div>
+                            <input type="range" id="v-slider-${el.id}" min="-1" max="1" step="0.01">
+                        </div>
+                        <div class="control-group">
+                            <label style="justify-content: flex-start;">
+                                ( x₁ ; ct₁ ) = ( <span id="x1-val-${el.id}">${formatNum(el.x1, 2)}</span> ; <span id="t1-val-${el.id}">${formatNum(el.t1, 2)}</span> )
+                            </label>
+                            <div class="dep-hint" id="dep1-val-${el.id}"></div>
+                        </div>
+                        <div class="control-group">
+                            <label style="justify-content: flex-start;">
+                                ( x₂ ; ct₂ ) = ( <span id="x2-val-${el.id}">${formatNum(el.x2, 2)}</span> ; <span id="t2-val-${el.id}">${formatNum(el.t2, 2)}</span> )
+                            </label>
+                            <div class="dep-hint" id="dep2-val-${el.id}"></div>
+                        </div>
+                        <div class="control-group">
+                            <div class="radio-switch-row">
+                                <span>Estensione:</span>
+                                <div class="radio-switch">
+                                    <input type="radio" name="limit-${el.id}" id="limit-unlimited-${el.id}" value="unlimited">
+                                    <label for="limit-unlimited-${el.id}">Illimitata</label>
+                                    <input type="radio" name="limit-${el.id}" id="limit-limited-${el.id}" value="limited">
+                                    <label for="limit-limited-${el.id}">Limitata</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            sidebarList.prepend(div);
+
+            const toggleExpand = div.querySelector('.toggle-expand');
+            const cardContent = div.querySelector('.card-content');
+
+            div.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-btn, .toggle-visibility, .toggle-expand')) return;
+                if (focusedElementId === el.id) return;
+                focusedElementId = el.id;
+                updateFocusedCardStyling();
+                draw();
+            });
+
+            toggleExpand.addEventListener('click', (e) => {
+                e.stopPropagation();
+                el.expanded = !el.expanded;
+                if (el.expanded) {
+                    cardContent.style.display = 'block';
+                    toggleExpand.textContent = '▼';
+                } else {
+                    cardContent.style.display = 'none';
+                    toggleExpand.textContent = '▶';
+                }
+                saveState();
+            });
+
+            if (!el.expanded) {
+                cardContent.style.display = 'none';
+                toggleExpand.textContent = '▶';
+            }
+
+            const toggleVisibility = div.querySelector('.toggle-visibility');
+            toggleVisibility.addEventListener('click', (e) => {
+                e.stopPropagation();
+                el.visible = el.visible === false ? true : false;
+                toggleVisibility.style.opacity = el.visible ? '1' : '0.4';
+                draw();
+                saveState();
+            });
+
+            div.querySelector('.delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteElementById(el.id);
+            });
+
+            if (el.type === 'event') {
+                const lcBtn = document.getElementById(`lightcone-btn-${el.id}`);
+
+                setStateToggle(lcBtn, el.showLightCone);
+
+                lcBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    el.showLightCone = !el.showLightCone;
+                    setStateToggle(lcBtn, el.showLightCone);
+                    draw();
+                    saveState();
+                });
+            } else {
+                const axesBtn = document.getElementById(`axes-btn-${el.id}`);
+                const restBtn = document.getElementById(`rest-btn-${el.id}`);
+                const limitUnlimited = document.getElementById(`limit-unlimited-${el.id}`);
+                const limitLimited = document.getElementById(`limit-limited-${el.id}`);
+                const vSlider = document.getElementById(`v-slider-${el.id}`);
+
+                setStateToggle(axesBtn, el.showAxes);
+                setStateToggle(restBtn, el.viewRestFrame);
+                if (el.limited) {
+                    limitLimited.checked = true;
+                } else {
+                    limitUnlimited.checked = true;
+                }
+
+                axesBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    el.showAxes = !el.showAxes;
+                    setStateToggle(axesBtn, el.showAxes);
+                    updateSidebarUI(axesBtn);
+                    draw();
+                    saveState();
+                });
+
+                restBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    let prevFrame = getDisplayFrameV() || { v: 0, x0: 0, t0: 0 };
+                    el.viewRestFrame = !el.viewRestFrame;
+                    if (el.viewRestFrame) {
+                        elements.forEach(other => {
+                            if (other.id !== el.id && other.type === 'line') other.viewRestFrame = false;
+                        });
+                        
+                        animationTargetEl = el;
+                        animationStartFrame = prevFrame;
+                        currentAnimatedFrame = prevFrame;
+                        animationStartTime = performance.now();
+                        requestAnimationFrame(updateAnimation);
+                    } else {
+                        animationTargetEl = null;
+                        animationStartFrame = prevFrame;
+                        currentAnimatedFrame = prevFrame;
+                        animationStartTime = performance.now();
+                        requestAnimationFrame(updateAnimation);
+                    }
+                    updateSidebarUI(restBtn);
+                    saveState();
+                });
+
+                const onLimitChange = (e) => {
+                    el.limited = limitLimited.checked;
+                    updateSidebarUI(e.target.closest('.radio-switch-row') || e.target);
+                    draw();
+                    saveState();
+                };
+                limitUnlimited.addEventListener('change', onLimitChange);
+                limitLimited.addEventListener('change', onLimitChange);
+
+                if (vSlider) {
+                    vSlider.addEventListener('input', e => {
+                        applyLineVelocity(el, parseFloat(e.target.value));
+                        updateDependencies();
+                        updateSidebarUI();
+                        draw();
+                    });
+                    vSlider.addEventListener('change', () => saveState());
+                }
+            }
+
+            updateSidebarUI();
+        }
+
+        function applyLineVelocity(el, newV) {
+            if (!Number.isFinite(newV)) return;
+            let dx0 = el.x2 - el.x1;
+            let dt0 = el.t2 - el.t1;
+            let I = dx0 * dx0 - dt0 * dt0;
+            let v0 = Math.abs(dt0) > 1e-15 ? dx0 / dt0 : (dx0 > 0 ? Infinity : -Infinity);
+            let signDt = (el.endpointAtInfinity && el.preservedSignDt != null)
+                ? el.preservedSignDt
+                : (dt0 >= 0 ? 1 : -1);
+
+            // Misura propria da preservare (tempo proprio / lunghezza propria in valore assoluto)
+            let measure;
+            if (el.endpointAtInfinity || isNearLightSpeed(v0) || Math.abs(I) < 1e-9) {
+                measure = el.preservedProperAbs != null ? el.preservedProperAbs : 0;
+            } else {
+                measure = Math.sqrt(Math.abs(I));
+                el.preservedProperAbs = measure;
+                el.preservedProperKind = I < 0 ? 'tau' : 'L0';
+            }
+            el.preservedSignDt = signDt;
+
+            // Vicino a c: sospendi il calcolo del 2° punto e collegalo all'infinito
+            if (isNearLightSpeed(newV)) {
+                placeEndpointAtInfinity(el, newV, signDt);
+                // Aggiorna solo il 2° estremo: i vincoli sul 1° restano
+                syncFixedEndpoint(el, 2);
+                return;
+            }
+
+            el.endpointAtInfinity = false;
+
+            if (measure < 1e-12) {
+                // Intervallo nullo genuino: resta lungo il nuovo v con lunghezza euclidea unitaria
+                let L = Math.sqrt(dx0 * dx0 + dt0 * dt0) || 1;
+                let dt = signDt * L / Math.sqrt(1 + newV * newV);
+                el.x2 = el.x1 + newV * dt;
+                el.t2 = el.t1 + dt;
+            } else {
+                // Preserva |I| = measure²; il segno di I segue il tipo (tempo/spazio) di newV
+                // I = dt²(v² - 1) ⇒ dt = ±√(measure² / |v² - 1|)
+                let dt = signDt * measure / Math.sqrt(Math.abs(newV * newV - 1));
+                el.x2 = el.x1 + newV * dt;
+                el.t2 = el.t1 + dt;
+                el.preservedProperAbs = measure;
+                el.preservedProperKind = Math.abs(newV) < 1 ? 'tau' : 'L0';
+            }
+
+            // Come per τ/L₀: muove il 2° punto, senza rompere un vincolo sul 1°
+            syncFixedEndpoint(el, 2);
+        }
+
+        function isCoordEditable(dep) {
+            return !describeDependency(dep);
+        }
+
+        function isSpanBeingEdited(span) {
+            return !!(span && activeInlineEdit && activeInlineEdit.span === span);
+        }
+
+        function updateEditableDisplay(span, text, editable) {
+            if (!span) return;
+            if (!isSpanBeingEdited(span)) {
+                span.textContent = text;
+            }
+            span.classList.toggle('editable-val', !!editable);
+            span.title = editable ? 'Clicca per modificare' : '';
+        }
+
+        function parseInlineNumber(raw) {
+            const cleaned = String(raw).trim().replace(/\u2212/g, '-').replace(/,/g, '.');
+            if (cleaned === '') return NaN;
+            return parseFloat(cleaned);
+        }
+
+        function syncFixedEndpoint(el, which) {
+            if (!el.dependencies || el.dependencies.type !== 'points') return;
+            const dep = which === 1 ? el.dependencies.p1 : el.dependencies.p2;
+            if (dep && dep.type === 'fixed') {
+                if (which === 1) {
+                    dep.x = el.x1;
+                    dep.t = el.t1;
+                } else {
+                    dep.x = el.x2;
+                    dep.t = el.t2;
+                }
+            }
+        }
+
+        function applyProperIntervalValue(el, kind, val) {
+            if (!Number.isFinite(val)) return;
+            let dx = el.x2 - el.x1;
+            let dt = el.t2 - el.t1;
+
+            if (kind === 'tau') {
+                let v = Math.abs(dt) > 1e-9 ? dx / dt : 0;
+                if (Math.abs(v) >= 1) v = 0;
+                const s = Math.sqrt(Math.max(0, 1 - v * v));
+                if (s < 1e-12) return;
+                const dtNew = val / s;
+                const dxNew = v * dtNew;
+                el.x2 = el.x1 + dxNew;
+                el.t2 = el.t1 + dtNew;
+            } else if (kind === 'L0') {
+                if (Math.abs(dt) < 1e-9) {
+                    el.x2 = el.x1 + val;
+                    el.t2 = el.t1;
+                } else {
+                    let v = dx / dt;
+                    if (Math.abs(v) <= 1) {
+                        el.x2 = el.x1 + val;
+                        el.t2 = el.t1;
+                    } else {
+                        const s = Math.sqrt(Math.max(0, 1 - 1 / (v * v)));
+                        if (s < 1e-12) return;
+                        const dxNew = val / s;
+                        const dtNew = dxNew / v;
+                        el.x2 = el.x1 + dxNew;
+                        el.t2 = el.t1 + dtNew;
+                    }
+                }
+            }
+
+            el.endpointAtInfinity = false;
+            el.preservedProperAbs = Math.abs(val);
+            el.preservedProperKind = kind;
+            el.preservedSignDt = (el.t2 - el.t1) >= 0 ? 1 : -1;
+            syncFixedEndpoint(el, 2);
+        }
+
+        function applyEditedProp(el, prop, val) {
+            if (prop === 'v') {
+                applyLineVelocity(el, val);
+                return;
+            }
+            if (prop === 'gamma') {
+                if (!Number.isFinite(val) || val < 1) return;
+                const dt = el.t2 - el.t1;
+                const dx = el.x2 - el.x1;
+                const vPrev = dt !== 0 ? dx / dt : (dx >= 0 ? 1 : -1);
+                const sign = vPrev < 0 ? -1 : 1;
+                const beta = val === 1 ? 0 : sign * Math.sqrt(Math.max(0, 1 - 1 / (val * val)));
+                applyLineVelocity(el, beta);
+                return;
+            }
+            if (prop === 'tau' || prop === 'L0') {
+                applyProperIntervalValue(el, prop, val);
+                return;
+            }
+            el[prop] = val;
+            if (prop === 'x1' || prop === 't1') syncFixedEndpoint(el, 1);
+            if (prop === 'x2' || prop === 't2') {
+                el.endpointAtInfinity = false;
+                syncPreservedProperFromGeometry(el);
+                syncFixedEndpoint(el, 2);
+            }
+            if (prop === 'x1' || prop === 't1') {
+                syncPreservedProperFromGeometry(el);
+            }
+        }
+
+        function getPropDigits(prop) {
+            return (prop === 'v' || prop === 'gamma') ? 3 : 2;
+        }
+
+        function getPropValue(el, prop) {
+            if (prop === 'v') {
+                let dt = el.t2 - el.t1;
+                let dx = el.x2 - el.x1;
+                return dt !== 0 ? dx / dt : (dx > 0 ? Infinity : -Infinity);
+            }
+            if (prop === 'gamma') {
+                const v = getPropValue(el, 'v');
+                if (!Number.isFinite(v) || Math.abs(v) >= 1) return Infinity;
+                return 1 / Math.sqrt(1 - v * v);
+            }
+            if (prop === 'tau' || prop === 'L0') {
+                if (el.endpointAtInfinity && el.preservedProperAbs != null) {
+                    const sign = el.preservedSignDt != null ? el.preservedSignDt : 1;
+                    return sign * el.preservedProperAbs;
+                }
+                let dx = el.x2 - el.x1;
+                let dt = el.t2 - el.t1;
+                let I = dx * dx - dt * dt;
+                if (prop === 'tau') {
+                    return (dt >= 0 ? 1 : -1) * Math.sqrt(Math.max(0, -I));
+                }
+                return (dx >= 0 ? 1 : -1) * Math.sqrt(Math.max(0, I));
+            }
+            return el[prop];
+        }
+
+        function cancelInlineEdit() {
+            if (!activeInlineEdit || inlineEditLock) return;
+            inlineEditLock = true;
+            activeInlineEdit = null;
+            updateSidebarUI();
+            inlineEditLock = false;
+        }
+
+        function commitInlineEdit() {
+            if (!activeInlineEdit || inlineEditLock) return;
+            inlineEditLock = true;
+            const { el, prop, input } = activeInlineEdit;
+            const val = parseInlineNumber(input.value);
+            activeInlineEdit = null;
+
+            if (Number.isFinite(val)) {
+                applyEditedProp(el, prop, val);
+                updateDependencies();
+                updateSidebarUI();
+                draw();
+                saveState();
+            } else {
+                updateSidebarUI();
+            }
+            inlineEditLock = false;
+        }
+
+        function startInlineEdit(span, el, prop) {
+            if (!span || isSpanBeingEdited(span)) return;
+            if (activeInlineEdit) cancelInlineEdit();
+
+            const digits = getPropDigits(prop);
+            const current = getPropValue(el, prop);
+            if (!Number.isFinite(current) && (prop === 'v' || prop === 'gamma')) return;
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'inline-edit-input';
+            input.value = toEditableNum(current, digits);
+            input.setAttribute('aria-label', 'Modifica valore');
+
+            span.textContent = '';
+            span.appendChild(input);
+            activeInlineEdit = { span, el, prop, input };
+
+            focusedElementId = el.id;
+            updateFocusedCardStyling();
+
+            input.addEventListener('keydown', e => {
+                e.stopPropagation();
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitInlineEdit();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelInlineEdit();
+                }
+            });
+            input.addEventListener('click', e => e.stopPropagation());
+            input.addEventListener('mousedown', e => e.stopPropagation());
+            input.addEventListener('blur', () => cancelInlineEdit());
+
+            input.focus();
+            input.select();
+        }
+
+        sidebarList.addEventListener('click', e => {
+            const span = e.target.closest('.editable-val');
+            if (!span || !sidebarList.contains(span)) return;
+            if (span.querySelector('input.inline-edit-input')) return;
+
+            const match = span.id && span.id.match(/^(x|t|x1|t1|x2|t2|v|gamma|proper)-val-(\d+)$/);
+            if (!match) return;
+
+            const prop = match[1] === 'proper' ? span.dataset.properKind : match[1];
+            if (!prop) return;
+            const elId = parseInt(match[2], 10);
+            const el = elements.find(item => item.id === elId);
+            if (!el) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            startInlineEdit(span, el, prop);
+        });
+
+        function describeLineRef(elId, lineType) {
+            if (lineType === 'lightcone_right' || lineType === 'lightcone_left') {
+                return `cono di luce ${elId}`;
+            }
+            return `linea ${elId}`;
+        }
+
+        function describeDependency(dep) {
+            if (!dep || dep.type === 'fixed') return null;
+            if (dep.type === 'event') {
+                return `evento ${dep.elId}`;
+            }
+            if (dep.type === 'movement_point') {
+                if (dep.pointType === 'movement_start') return `inizio linea ${dep.elId}`;
+                if (dep.pointType === 'movement_end') return `fine linea ${dep.elId}`;
+                return `linea ${dep.elId}`;
+            }
+            if (dep.type === 'intersection' && dep.lines && dep.lines.length >= 2) {
+                return `${describeLineRef(dep.lines[0].elId, dep.lines[0].lineType)} ∩ ${describeLineRef(dep.lines[1].elId, dep.lines[1].lineType)}`;
+            }
+            return null;
+        }
+
+        function getLineEndpointDependencies(el) {
+            let startDep = null;
+            let endDep = null;
+            if (!el.dependencies) return { startDep, endDep };
+            if (el.dependencies.type === 'start_point') {
+                startDep = el.dependencies.pt;
+            } else if (el.dependencies.type === 'points') {
+                startDep = el.dependencies.p1;
+                endDep = el.dependencies.p2;
+            }
+            return { startDep, endDep };
+        }
+
+        function setDepHint(elId, suffix, dep) {
+            const hint = document.getElementById(`dep${suffix}-val-${elId}`);
+            if (!hint) return;
+            const label = describeDependency(dep);
+            if (label) {
+                hint.textContent = `Vincolato a: ${label}`;
+                hint.style.display = 'block';
+            } else {
+                hint.textContent = '';
+                hint.style.display = 'none';
+            }
+        }
+
+        function syncPrimeRows(container, frameEls, ensureRow, updateRow) {
+            if (!container) return;
+            const wanted = new Set(frameEls.map(f => String(f.id)));
+            [...container.children].forEach(child => {
+                if (!wanted.has(child.dataset.frameId)) child.remove();
+            });
+            frameEls.forEach((frameEl, index) => {
+                let row = container.querySelector(`[data-frame-id="${frameEl.id}"]`);
+                if (!row) {
+                    row = ensureRow(frameEl);
+                    row.dataset.frameId = String(frameEl.id);
+                }
+                const current = container.children[index];
+                if (current !== row) {
+                    container.insertBefore(row, current || null);
+                }
+                updateRow(row, frameEl);
+            });
+        }
+
+        // Dopo un cambio di layout nella sidebar, ripristina lo scroll così che
+        // l'elemento cliccato resti nella stessa posizione assoluta sullo schermo.
+        function preserveSidebarAnchor(anchorEl, beforeTop) {
+            if (!anchorEl || beforeTop == null || !anchorEl.isConnected) return;
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar) return;
+            const delta = anchorEl.getBoundingClientRect().top - beforeTop;
+            if (delta !== 0) sidebar.scrollTop += delta;
+        }
+
+        function updateSidebarUI(anchorEl) {
+            const sidebar = document.getElementById('sidebar');
+            const beforeTop = (anchorEl && sidebar) ? anchorEl.getBoundingClientRect().top : null;
+            const primeFrames = getActivePrimeFrameElements();
+
+            elements.forEach(el => {
+                if (el.type === 'event') {
+                    const xVal = document.getElementById(`x-val-${el.id}`);
+                    const tVal = document.getElementById(`t-val-${el.id}`);
+                    const eventEditable = isCoordEditable(el.dependencies);
+                    const lcBtn = document.getElementById(`lightcone-btn-${el.id}`);
+                    const primeRows = document.getElementById(`event-prime-rows-${el.id}`);
+
+                    updateEditableDisplay(xVal, formatNum(el.x, 2), eventEditable);
+                    updateEditableDisplay(tVal, formatNum(el.t, 2), eventEditable);
+                    setDepHint(el.id, '', el.dependencies);
+                    setStateToggle(lcBtn, el.showLightCone);
+
+                    syncPrimeRows(
+                        primeRows,
+                        primeFrames,
+                        () => {
+                            const row = document.createElement('div');
+                            row.style.display = 'flex';
+                            row.style.justifyContent = 'flex-start';
+                            row.style.marginBottom = '5px';
+                            row.style.fontSize = '0.9rem';
+                            row.innerHTML = '( x′ ; ct′ ) = ( <span class="x-prime-val"></span> ; <span class="t-prime-val"></span> )';
+                            return row;
+                        },
+                        (row, frameEl) => {
+                            const xPrimeVal = row.querySelector('.x-prime-val');
+                            const tPrimeVal = row.querySelector('.t-prime-val');
+                            const primed = labToRestCoords(el.x, el.t, frameEl);
+                            if (primed && xPrimeVal && tPrimeVal) {
+                                xPrimeVal.textContent = formatNum(primed.x, 2);
+                                tPrimeVal.textContent = formatNum(primed.t, 2);
+                                row.style.display = 'flex';
+                                row.style.color = frameEl.color || '';
+                            } else {
+                                row.style.display = 'none';
+                                row.style.color = '';
+                                if (xPrimeVal) xPrimeVal.textContent = '';
+                                if (tPrimeVal) tPrimeVal.textContent = '';
+                            }
+                        }
+                    );
+                } else {
+                    const x1Val = document.getElementById(`x1-val-${el.id}`);
+                    const t1Val = document.getElementById(`t1-val-${el.id}`);
+                    const x2Val = document.getElementById(`x2-val-${el.id}`);
+                    const t2Val = document.getElementById(`t2-val-${el.id}`);
+                    const restBtn = document.getElementById(`rest-btn-${el.id}`);
+                    const axesBtn = document.getElementById(`axes-btn-${el.id}`);
+                    const intervalVal = document.getElementById(`interval-val-${el.id}`);
+                    const intervalType = document.getElementById(`interval-type-${el.id}`);
+                    const restLabel = document.getElementById(`rest-label-${el.id}`);
+                    const vVal = document.getElementById(`v-val-${el.id}`);
+                    const gammaVal = document.getElementById(`gamma-val-${el.id}`);
+                    const vSlider = document.getElementById(`v-slider-${el.id}`);
+                    const primeRows = document.getElementById(`velocity-prime-rows-${el.id}`);
+
+                    const { startDep, endDep } = getLineEndpointDependencies(el);
+                    const startEditable = isCoordEditable(startDep);
+                    const endEditable = isCoordEditable(endDep);
+
+                    updateEditableDisplay(x1Val, formatNum(el.x1, 2), startEditable);
+                    updateEditableDisplay(t1Val, formatNum(el.t1, 2), startEditable);
+                    if (el.endpointAtInfinity) {
+                        updateEditableDisplay(x2Val, '∞', false);
+                        updateEditableDisplay(t2Val, '∞', false);
+                    } else {
+                        updateEditableDisplay(x2Val, formatNum(el.x2, 2), endEditable);
+                        updateEditableDisplay(t2Val, formatNum(el.t2, 2), endEditable);
+                    }
+
+                    setDepHint(el.id, '1', startDep);
+                    setDepHint(el.id, '2', endDep);
+                    
+                    let dt = el.t2 - el.t1;
+                    let dx = el.x2 - el.x1;
+                    let v = dt !== 0 ? dx / dt : Infinity;
+                    let isTimeLike = Math.abs(v) < 1.0;
+                    let isSpaceLike = Math.abs(v) > 1.0;
+                    // v è editabile se il 2° estremo è libero (anche con il 1° vincolato)
+                    const velocityEditable = endEditable && Number.isFinite(v);
+                    
+                    if (vVal) {
+                        if (Math.abs(v) <= 1.0) {
+                            updateEditableDisplay(vVal, formatNum(v, 3), velocityEditable);
+                            if (vSlider) {
+                                vSlider.style.display = 'block';
+                                vSlider.value = v;
+                                vSlider.disabled = !velocityEditable;
+                            }
+                        } else {
+                            const vText = Math.abs(v) === Infinity ? (dx > 0 ? "+∞" : "\u2212∞") : formatNum(v, 3);
+                            updateEditableDisplay(vVal, vText, velocityEditable);
+                            if (vSlider) vSlider.style.display = 'none';
+                        }
+                    }
+
+                    if (gammaVal) {
+                        let gammaText;
+                        const gammaEditable = velocityEditable && Math.abs(v) < 1.0;
+                        if (Math.abs(v) < 1.0) {
+                            gammaText = formatNum(1 / Math.sqrt(1 - v * v), 3);
+                        } else {
+                            gammaText = '∞';
+                        }
+                        updateEditableDisplay(gammaVal, gammaText, gammaEditable);
+                    }
+
+                    const betaLab = dt !== 0 ? dx / dt : (dx > 0 ? Infinity : -Infinity);
+                    syncPrimeRows(
+                        primeRows,
+                        primeFrames,
+                        () => {
+                            const row = document.createElement('div');
+                            row.className = 'velocity-params-row';
+                            row.innerHTML =
+                                '<span>β′ = v′/c = <span class="v-prime-val"></span></span>' +
+                                '<span>γ′ = <span class="gamma-prime-val"></span></span>';
+                            return row;
+                        },
+                        (row, frameEl) => {
+                            const vPrimeVal = row.querySelector('.v-prime-val');
+                            const gammaPrimeVal = row.querySelector('.gamma-prime-val');
+                            const boostU = getRestFrameBoostVelocity(frameEl);
+                            if (boostU != null && vPrimeVal && gammaPrimeVal) {
+                                const betaPrime = boostBeta(betaLab, boostU);
+                                vPrimeVal.textContent = formatBetaText(betaPrime, dx);
+                                if (Number.isFinite(betaPrime) && Math.abs(betaPrime) < 1.0) {
+                                    gammaPrimeVal.textContent = formatNum(1 / Math.sqrt(1 - betaPrime * betaPrime), 3);
+                                } else {
+                                    gammaPrimeVal.textContent = '∞';
+                                }
+                                row.style.display = '';
+                                row.style.color = frameEl.color || '';
+                            } else {
+                                row.style.display = 'none';
+                                row.style.color = '';
+                                if (vPrimeVal) vPrimeVal.textContent = '';
+                                if (gammaPrimeVal) gammaPrimeVal.textContent = '';
+                            }
+                        }
+                    );
+
+                    if (restLabel) {
+                        if (isTimeLike) {
+                            restLabel.textContent = "Sistema di riposo";
+                        } else if (isSpaceLike) {
+                            restLabel.textContent = "Sistema di simultaneità";
+                        } else {
+                            restLabel.textContent = "Sistema di riposo";
+                        }
+                    }
+                    
+                    if (restBtn) {
+                        setStateToggle(restBtn, el.viewRestFrame);
+                    }
+                    if (axesBtn) {
+                        setStateToggle(axesBtn, el.showAxes);
+                    }
+                    
+                    if (intervalVal && intervalType) {
+                        const intervalLabel = document.getElementById(`interval-label-${el.id}`);
+                        const properVal = document.getElementById(`proper-val-${el.id}`);
+                        let ds2 = dx*dx - dt*dt;
+                        const endFree = isCoordEditable(endDep);
+
+                        // Endpoint sospeso vicino a c: misura propria tenuta in preservedProperAbs
+                        // (non mostrata se tipo luce: non ha senso fisico, ma serve al cambio di v)
+                        if (el.endpointAtInfinity && el.preservedProperAbs != null) {
+                            const sign = el.preservedSignDt != null ? el.preservedSignDt : 1;
+                            const nearLight = isNearLightSpeed(v);
+                            if (nearLight) {
+                                intervalType.textContent = "Intervallo di tipo LUCE";
+                                intervalType.style.color = "#ffff55";
+                                intervalVal.style.display = 'none';
+                                if (properVal) updateEditableDisplay(properVal, '', false);
+                            } else if (Math.abs(v) < 1) {
+                                intervalType.textContent = "Intervallo di tipo TEMPO";
+                                intervalType.style.color = "#55ff55";
+                                el.preservedProperKind = 'tau';
+                                if (el.limited) {
+                                    intervalVal.style.display = '';
+                                    if (intervalLabel) intervalLabel.textContent = 'tempo proprio = ';
+                                    if (properVal) properVal.dataset.properKind = 'tau';
+                                    updateEditableDisplay(properVal, formatNum(sign * el.preservedProperAbs, 2), endFree);
+                                } else {
+                                    intervalVal.style.display = 'none';
+                                    if (properVal) updateEditableDisplay(properVal, '', false);
+                                }
+                            } else {
+                                intervalType.textContent = "Intervallo di tipo SPAZIO";
+                                intervalType.style.color = "#ff5555";
+                                el.preservedProperKind = 'L0';
+                                if (el.limited) {
+                                    intervalVal.style.display = '';
+                                    if (intervalLabel) intervalLabel.textContent = 'lunghezza propria = ';
+                                    if (properVal) properVal.dataset.properKind = 'L0';
+                                    updateEditableDisplay(properVal, formatNum(sign * el.preservedProperAbs, 2), endFree);
+                                } else {
+                                    intervalVal.style.display = 'none';
+                                    if (properVal) updateEditableDisplay(properVal, '', false);
+                                }
+                            }
+                        } else if (ds2 > 1e-6) {
+                            intervalType.textContent = "Intervallo di tipo SPAZIO";
+                            intervalType.style.color = "#ff5555";
+                            if (el.limited) {
+                                let sign = dx >= 0 ? 1 : -1;
+                                let L0 = sign * Math.sqrt(ds2);
+                                intervalVal.style.display = '';
+                                if (intervalLabel) intervalLabel.textContent = 'lunghezza propria = ';
+                                if (properVal) properVal.dataset.properKind = 'L0';
+                                updateEditableDisplay(properVal, formatNum(L0, 2), endFree);
+                                el.preservedProperAbs = Math.abs(L0);
+                                el.preservedProperKind = 'L0';
+                            } else {
+                                intervalVal.style.display = 'none';
+                                if (properVal) updateEditableDisplay(properVal, '', false);
+                            }
+                        } else if (ds2 < -1e-6) {
+                            intervalType.textContent = "Intervallo di tipo TEMPO";
+                            intervalType.style.color = "#55ff55";
+                            if (el.limited) {
+                                let sign = dt >= 0 ? 1 : -1;
+                                let tau = sign * Math.sqrt(-ds2);
+                                intervalVal.style.display = '';
+                                if (intervalLabel) intervalLabel.textContent = 'tempo proprio = ';
+                                if (properVal) properVal.dataset.properKind = 'tau';
+                                updateEditableDisplay(properVal, formatNum(tau, 2), endFree);
+                                el.preservedProperAbs = Math.abs(tau);
+                                el.preservedProperKind = 'tau';
+                            } else {
+                                intervalVal.style.display = 'none';
+                                if (properVal) updateEditableDisplay(properVal, '', false);
+                            }
+                        } else {
+                            intervalType.textContent = "Intervallo di tipo LUCE";
+                            intervalType.style.color = "#ffff55";
+                            intervalVal.style.display = 'none';
+                            if (properVal) updateEditableDisplay(properVal, '', false);
+                        }
+                    }
+                }
+            });
+
+            preserveSidebarAnchor(anchorEl, beforeTop);
+        }
+
+        addBtn.addEventListener('click', () => {
+            const randomV = (Math.random() * 1.6 - 0.8); // Casuale tra -0.8 e 0.8
+            const newElement = {
+                id: nextId++,
+                type: 'line',
+                x1: 0,
+                t1: 0,
+                x2: randomV,
+                t2: 1,
+                color: colors[colorIndex % colors.length],
+                limited: false,
+                expanded: true,
+                visible: true,
+                showAxes: false,
+                viewRestFrame: false,
+                isValid: true
+            };
+            colorIndex++;
+            focusedElementId = newElement.id;
+            elements.push(newElement);
+            updateDependencies();
+            createElementSidebar(newElement);
+            draw();
+            
+            saveState();
+
+            setTimeout(() => {
+                const card = document.getElementById(`element-card-${newElement.id}`);
+                if (card) {
+                    const sidebar = document.getElementById('sidebar');
+                    sidebar.scrollTo({
+                        top: card.offsetTop - document.getElementById('add-line-btn').offsetTop - document.getElementById('add-line-btn').offsetHeight - 15,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 50);
+        });
+
+        addEventBtn.addEventListener('click', () => {
+            const marginX = canvas.width * 0.1;
+            const marginY = canvas.height * 0.1;
+            const sx = marginX + Math.random() * (canvas.width - 2 * marginX);
+            const sy = marginY + Math.random() * (canvas.height - 2 * marginY);
+            
+            const mx = screenToMathX(sx);
+            const mt = screenToMathY(sy);
+            
+            let frameV = getDisplayFrameV();
+            let gCoords = mapDisplayToFrame(mx, mt, frameV, null);
+
+            const newEvent = {
+                id: nextId++,
+                type: 'event',
+                x: gCoords.x,
+                t: gCoords.t,
+                color: eventColors[eventColorIndex % eventColors.length],
+                expanded: true,
+                visible: true,
+                showLightCone: false,
+                isValid: true
+            };
+            eventColorIndex++;
+            focusedElementId = newEvent.id;
+            elements.push(newEvent);
+            updateDependencies();
+            createElementSidebar(newEvent);
+            draw();
+            
+            saveState();
+
+            setTimeout(() => {
+                const card = document.getElementById(`element-card-${newEvent.id}`);
+                if (card) {
+                    const sidebar = document.getElementById('sidebar');
+                    sidebar.scrollTo({
+                        top: card.offsetTop - document.getElementById('add-event-btn').offsetTop - document.getElementById('add-event-btn').offsetHeight - 15,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 50);
+        });
+
+        // Inizializzazione
+        resize();
+        
+        // Aggiungi un primo elemento di default
+        addBtn.click();
+    </script>
+</body>
+</html>

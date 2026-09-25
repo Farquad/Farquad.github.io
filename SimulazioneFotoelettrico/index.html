@@ -1,0 +1,2411 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulazione Effetto Fotoelettrico</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #000;
+      color: #222;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #wrap {
+      display: flex;
+      flex-wrap: nowrap;
+      flex-direction: row;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+    #stage {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      position: relative;
+      background: linear-gradient(to bottom, #000000, #3d3d3d);
+    }
+    #c {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #panel {
+      background: #1c1c1c;
+      color: #e8e8e8;
+      color-scheme: dark;
+      border-left: 1px solid #333;
+      padding: 16px 14px;
+      flex: 0 0 clamp(380px, 34vw, 540px);
+      width: clamp(380px, 34vw, 540px);
+      height: 100%;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-gutter: stable;
+    }
+    #panel::-webkit-scrollbar { width: 8px; }
+    #panel::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 4px;
+    }
+    #panel::-webkit-scrollbar-track { background: #141414; }
+    .graph-box {
+      flex: 0 0 auto;
+      margin-bottom: 14px;
+    }
+    .graph-box label {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    #ivGraph,
+    #kfGraph {
+      display: block;
+      width: 100%;
+      height: 228px;
+      background: #121212;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      touch-action: none;
+      cursor: default;
+      user-select: none;
+    }
+    #ivGraph.is-over-dot,
+    #ivGraph.is-dragging,
+    #kfGraph.is-over-dot,
+    #kfGraph.is-dragging { cursor: pointer; }
+    .ctrl { margin-bottom: 12px; }
+    .ctrl-head {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .ctrl-head label {
+      display: block;
+      flex: 1;
+      min-width: 0;
+      margin-bottom: 0;
+    }
+    .graph-box .ctrl-head { margin-bottom: 6px; }
+    .ctrl label {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .help {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.15em;
+      height: 1.15em;
+      padding: 0;
+      border: 1px solid #6a8aaa;
+      border-radius: 50%;
+      background: transparent;
+      color: #8ab4d8;
+      font-size: 0.68rem;
+      font-weight: 700;
+      font-family: Georgia, "Times New Roman", serif;
+      font-style: italic;
+      line-height: 1;
+      cursor: help;
+      user-select: none;
+      vertical-align: middle;
+    }
+    .help:hover,
+    .help:focus-visible,
+    .help.is-open {
+      background: #2a4a66;
+      color: #fff;
+      border-color: #9ec4e8;
+      outline: none;
+    }
+    .tip-src { display: none; }
+    #floatTip {
+      position: fixed;
+      z-index: 4000;
+      display: none;
+      max-width: min(340px, calc(100vw - 20px));
+      padding: 9px 11px;
+      font-size: 0.75rem;
+      line-height: 1.45;
+      color: #d4d4d4;
+      background: #1a1a1a;
+      border: 1px solid #555;
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+    }
+    #floatTip.is-open { display: block; }
+    #floatTip strong { color: #f0f0f0; }
+    #floatTip div { margin-bottom: 2px; }
+    .ctrl .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .radio-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+    }
+    .radio-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 0;
+      cursor: pointer;
+      color: #ddd;
+    }
+    .radio-row input[type="radio"] {
+      accent-color: #5aa8e8;
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      cursor: pointer;
+    }
+    .ctrl input[type="range"] { flex: 1; accent-color: #3a7fc4; }
+    .freq-wrap {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .freq-wrap input[type="range"] { width: 100%; flex: none; }
+    .freq-wrap + .val { align-self: start; }
+    .freq-scale {
+      position: relative;
+      height: 14px;
+      user-select: none;
+      pointer-events: none;
+    }
+    .freq-scale span {
+      position: absolute;
+      top: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      border-top: 1px solid #5c5668;
+      padding-top: 1px;
+    }
+    .freq-scale .vis {
+      left: 0;
+      right: calc(100% - var(--uv-start, 35%));
+      color: #b0b0b0;
+    }
+    .freq-scale .uv {
+      left: var(--uv-start, 35%);
+      right: 0;
+      color: #8e849c;
+    }
+    .freq-scale .uv::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: -4px;
+      width: 1px;
+      height: 8px;
+      background: #7a7388;
+    }
+    #freq, #er, #volt {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 10px;
+      border-radius: 999px;
+      accent-color: transparent;
+      outline: none;
+    }
+    #freq {
+      --freq-hatch: repeating-linear-gradient(
+        -45deg,
+        transparent 0 3px,
+        rgba(0, 0, 0, 0.62) 3px 5px
+      );
+      background:
+        var(--freq-hatch) right / calc(100% - var(--uv-start, 35%)) 100% no-repeat,
+        var(--freq-rainbow);
+    }
+    #er { background: var(--int-gradient); }
+    #volt { background: var(--volt-gradient); }
+    #freq::-webkit-slider-thumb,
+    #er::-webkit-slider-thumb,
+    #volt::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.35);
+      cursor: pointer;
+    }
+    #freq::-webkit-slider-thumb { background: var(--freq-thumb); }
+    #er::-webkit-slider-thumb { background: var(--int-thumb); }
+    #volt::-webkit-slider-thumb { background: var(--volt-thumb); }
+    #freq::-moz-range-track,
+    #er::-moz-range-track,
+    #volt::-moz-range-track {
+      height: 10px;
+      border-radius: 999px;
+      border: none;
+    }
+    #freq::-moz-range-track {
+      background:
+        var(--freq-hatch) right / calc(100% - var(--uv-start, 35%)) 100% no-repeat,
+        var(--freq-rainbow);
+    }
+    #er::-moz-range-track { background: var(--int-gradient); }
+    #volt::-moz-range-track { background: var(--volt-gradient); }
+    #freq::-moz-range-thumb,
+    #er::-moz-range-thumb,
+    #volt::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.35);
+      cursor: pointer;
+    }
+    #freq::-moz-range-thumb { background: var(--freq-thumb); }
+    #er::-moz-range-thumb { background: var(--int-thumb); }
+    #volt::-moz-range-thumb { background: var(--volt-thumb); }
+    @supports (-moz-appearance: none) {
+      #freq, #er, #volt { background: transparent; height: 18px; }
+    }
+    .ctrl-view {
+      margin: -2px 0 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #3a3a3a;
+    }
+    .ctrl-view .view-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ctrl-view .view-slow {
+      flex: 1;
+      min-width: 0;
+    }
+    .ctrl-view label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #9a9a9a;
+      letter-spacing: 0.02em;
+    }
+    #slow {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 18px;
+      background: transparent;
+      accent-color: transparent;
+      outline: none;
+    }
+    #slow::-webkit-slider-runnable-track {
+      height: 2px;
+      border-radius: 0;
+      background: #6a6a6a;
+    }
+    #slow::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 8px;
+      height: 18px;
+      margin-top: -8px;
+      border-radius: 1px;
+      border: 1px solid #2a2a2a;
+      background: #1a1a1a;
+      box-shadow: 0 0 0 1px #888, 0 1px 2px rgba(0,0,0,0.45);
+      cursor: pointer;
+    }
+    #slow::-moz-range-track {
+      height: 2px;
+      border-radius: 0;
+      border: none;
+      background: #6a6a6a;
+    }
+    #slow::-moz-range-thumb {
+      width: 8px;
+      height: 18px;
+      border-radius: 1px;
+      border: 1px solid #2a2a2a;
+      background: #1a1a1a;
+      box-shadow: 0 0 0 1px #888;
+      cursor: pointer;
+    }
+    .lock-tag {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #e0a040;
+      margin-left: 6px;
+    }
+    .ctrl .val {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.9rem;
+      min-width: 12.5em;
+      text-align: right;
+      color: #b8b8b8;
+    }
+    select {
+      width: 100%;
+      padding: 7px 8px;
+      border: 1px solid #4a4a4a;
+      border-radius: 6px;
+      background: #2a2a2a;
+      color: #eee;
+      font-size: 1rem;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #141414;
+      border: 1px solid #333;
+      border-radius: 6px;
+      cursor: help;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .badge.on { background: #1e4d2a; color: #8fe0a0; }
+    .badge.warn { background: #4a3500; color: #ffcc66; }
+    .badge.off { background: #4a2020; color: #f0a0a0; }
+    #pauseBtn {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: 1px solid #4a4a4a;
+      border-radius: 4px;
+      background: #111;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #pauseBtn:hover { background: #2a2a2a; }
+    #pauseBtn:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 2px;
+    }
+    #pauseBtn svg {
+      width: 16px;
+      height: 16px;
+      fill: #fff;
+      display: none;
+    }
+    #pauseBtn .icon-pause { display: block; }
+    #pauseBtn.is-paused .icon-pause { display: none; }
+    #pauseBtn.is-paused .icon-play { display: block; }
+
+    @media (max-width: 900px) {
+      #wrap {
+        flex-direction: column;
+      }
+      #stage {
+        flex: 0 0 min(48dvh, 380px);
+        width: 100%;
+        height: min(48dvh, 380px);
+        min-height: 220px;
+      }
+      #panel {
+        flex: 1 1 auto;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        border-left: none;
+        border-top: 1px solid #333;
+      }
+    }
+    @media (max-width: 900px) and (orientation: landscape) {
+      #wrap {
+        flex-direction: row;
+      }
+      #stage {
+        flex: 1 1 0;
+        width: auto;
+        height: 100%;
+        min-height: 0;
+      }
+      #panel {
+        flex: 0 0 min(42vw, 360px);
+        width: min(42vw, 360px);
+        height: 100%;
+        border-left: 1px solid #333;
+        border-top: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="stage">
+      <canvas id="c" width="800" height="580"></canvas>
+    </div>
+    <aside id="panel">
+      <div class="ctrl ctrl-view">
+        <div class="view-main">
+          <button id="pauseBtn" type="button" aria-label="Pausa" title="Pausa">
+            <svg class="icon-pause" viewBox="0 0 20 20" aria-hidden="true">
+              <rect x="4" y="3" width="4.5" height="14" rx="0.8" />
+              <rect x="11.5" y="3" width="4.5" height="14" rx="0.8" />
+            </svg>
+            <svg class="icon-play" viewBox="0 0 20 20" aria-hidden="true">
+              <polygon points="5,3 17,10 5,17" />
+            </svg>
+          </button>
+          <div class="view-slow">
+            <div class="ctrl-head">
+              <label for="slow">Fattore di rallentamento</label>
+              <button type="button" class="help" aria-expanded="false" data-tip="slowHint" aria-label="Informazioni sul fattore di rallentamento">i</button>
+            </div>
+            <div class="row">
+              <input id="slow" type="range" min="60" max="90" step="1" value="75" />
+              <span class="val" id="slowVal"></span>
+            </div>
+          </div>
+        </div>
+        <div id="slowHint" class="tip-src" hidden></div>
+      </div>
+      <div class="ctrl">
+        <label for="freq">Frequenza della radiazione f</label>
+        <div class="row">
+          <div class="freq-wrap">
+            <input id="freq" type="range" min="384" max="1700" step="2" value="620" />
+            <div class="freq-scale" aria-hidden="true">
+              <span class="vis">visibile</span>
+              <span class="uv">UV</span>
+            </div>
+          </div>
+          <span class="val" id="freqVal"></span>
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label for="er">Irradiamento E<sub>R</sub> (intensità)</label>
+          <button type="button" class="help" aria-expanded="false" data-tip="tip-er" aria-label="Informazioni sull’irradiamento">i</button>
+        </div>
+        <div class="row">
+          <input id="er" type="range" min="0" max="10" step="0.1" value="5" />
+          <span class="val" id="erVal"></span>
+        </div>
+        <div id="tip-er" class="tip-src" hidden>
+          Energia della luce per unità di area e di tempo. A 0 la luce è spenta. Area del catodo A = 1 cm².
+          Resa quantica η = 0.1: in media un fotone su dieci (sopra soglia) estrae un elettrone (fotocatodo).
+          <div id="phiReadout"></div>
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label for="volt">Tensione della batteria V</label>
+          <button type="button" class="help" aria-expanded="false" data-tip="tip-volt" aria-label="Informazioni sulla tensione">i</button>
+        </div>
+        <div class="row">
+          <input id="volt" type="range" min="-80" max="80" step="1" value="20" />
+          <span class="val" id="voltVal"></span>
+        </div>
+        <div id="tip-volt" class="tip-src" hidden>
+          Valori negativi: i poli si invertono e il campo rallenta gli elettroni (potenziale di frenamento V<sub>s</sub>).
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label for="mat">Materiale emettitore (lavoro di estrazione φ)</label>
+          <button type="button" class="help" aria-expanded="false" data-tip="tip-mat" aria-label="Informazioni sul lavoro di estrazione">i</button>
+        </div>
+        <select id="mat"></select>
+        <div id="tip-mat" class="tip-src" hidden>
+          φ è l’energia minima per far uscire un elettrone dal metallo.
+        </div>
+      </div>
+      <div class="graph-box">
+        <div class="ctrl-head">
+          <label>Corrente–tensione (I–V)</label>
+          <button type="button" class="help" aria-expanded="false" data-tip="ivHint" aria-label="Informazioni sul grafico I–V">i</button>
+        </div>
+        <canvas id="ivGraph" width="360" height="228"></canvas>
+        <div id="ivHint" class="tip-src" hidden>
+          Trascina il punto rosso: asse x = tensione V, asse y = corrente I.
+          I<sub>sat</sub> = η e A E<sub>R</sub> / (hf) è la corrente massima (e = carica dell’elettrone, η = 0.1).
+          −V<sub>s</sub>: la corrente si annulla. Poi I sale in modo graduale verso I<sub>sat</sub> (distribuzione di K e raccolta delle piastre).
+        </div>
+      </div>
+      <div class="graph-box">
+        <div class="ctrl-head">
+          <label>Energia cinetica massima K<sub>max</sub> in funzione della frequenza</label>
+          <button type="button" class="help" aria-expanded="false" data-tip="tip-kf" aria-label="Informazioni sul grafico K max">i</button>
+        </div>
+        <canvas id="kfGraph" width="360" height="228"></canvas>
+        <div id="tip-kf" class="tip-src" hidden>
+          K<sub>max</sub> = hf − φ, indipendente dall’irradiamento. Trascina il punto in orizzontale: frequenza.
+          Sotto la frequenza di soglia f<sub>0</sub> del materiale, K<sub>max</sub> = 0.
+        </div>
+      </div>
+      <div class="status-row" id="info" data-tip="infoDetail">
+        <span class="badge off" id="statusBadge"></span>
+        <button type="button" class="help" aria-expanded="false" data-tip="infoDetail" aria-label="Dati numerici della simulazione">i</button>
+      </div>
+      <div id="infoDetail" class="tip-src" hidden></div>
+    </aside>
+  </div>
+  <div id="floatTip" role="tooltip"></div>
+
+  <script>
+(() => {
+  "use strict";
+
+  const H_EV = 4.135667696e-15; // eV·s
+  const H_J = 6.62607015e-34; // J·s
+  const Q_E = 1.602176634e-19; // C
+  const M_E = 9.1093837015e-31; // kg
+  const C = 2.99792458e8;
+  const CATHODE_A = 1e-4; // 1 cm²
+  const QE = 0.1; // resa quantica fotocatodo (η)
+  const KE_MIN_FRAC = 0.08; // KE_min / K_max all'emissione
+  const IV_COLL_V = 2.5; // scala in volt della salita I(V) dopo −Vs (raccolta)
+  const ER_MAX_MWCM2 = 10;
+  const S_DEFAULT = 10 ** 7.5;
+  // Ogni punto visivo = tanti eventi reali; S·VIS_SAMPLE ≈ 5×10¹⁴ al default dello slider.
+  const VIS_SAMPLE = 5e14 / S_DEFAULT;
+  const IV_MA_MAX = 1;
+
+  const MATERIALS = [
+    { name: "Cesio",    phi: 2.14 },
+    { name: "Potassio", phi: 2.30 },
+    { name: "Sodio",   phi: 2.36 },
+    { name: "Litio",   phi: 2.90 },
+    { name: "Calcio",  phi: 2.87 },
+    { name: "Zinco",   phi: 4.33 },
+    { name: "Rame",    phi: 4.65 },
+    { name: "Argento", phi: 4.73 },
+    { name: "Platino", phi: 6.35 },
+  ];
+
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const SCENE_W = 800;
+  const SCENE_H = 580;
+  let sceneBg = null;
+  let sceneBgKey = "";
+
+  function ensureSceneBg() {
+    const key = `${canvas.width}x${canvas.height}`;
+    if (sceneBg && sceneBgKey === key) return sceneBg;
+    sceneBgKey = key;
+    sceneBg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    sceneBg.addColorStop(0, "#000000");
+    sceneBg.addColorStop(1, "#3d3d3d");
+    return sceneBg;
+  }
+
+  function fitMainCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width * dpr));
+    const h = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    const scale = Math.min(canvas.width / SCENE_W, canvas.height / SCENE_H);
+    return {
+      scale,
+      ox: (canvas.width - SCENE_W * scale) / 2,
+      oy: (canvas.height - SCENE_H * scale) / 2,
+    };
+  }
+  const ivCanvas = document.getElementById("ivGraph");
+  const ivCtx = ivCanvas.getContext("2d");
+  const kfCanvas = document.getElementById("kfGraph");
+  const kfCtx = kfCanvas.getContext("2d");
+  const freqEl = document.getElementById("freq");
+  const voltEl = document.getElementById("volt");
+  const erEl = document.getElementById("er");
+  const slowEl = document.getElementById("slow");
+  const matEl = document.getElementById("mat");
+  const freqVal = document.getElementById("freqVal");
+  const voltVal = document.getElementById("voltVal");
+  const erVal = document.getElementById("erVal");
+  const slowVal = document.getElementById("slowVal");
+  const slowHint = document.getElementById("slowHint");
+  const statusBadge = document.getElementById("statusBadge");
+  const infoDetail = document.getElementById("infoDetail");
+  const phiReadout = document.getElementById("phiReadout");
+  const floatTip = document.getElementById("floatTip");
+
+  let tipAnchor = null;
+  let tipHideTimer = 0;
+
+  function tipSource(anchor) {
+    const id = anchor && anchor.getAttribute("data-tip");
+    return id ? document.getElementById(id) : null;
+  }
+
+  function placeTip(anchor) {
+    const r = anchor.getBoundingClientRect();
+    const pad = 8;
+    const tw = floatTip.offsetWidth;
+    const th = floatTip.offsetHeight;
+    let left = r.left;
+    if (r.right - tw >= pad) left = Math.min(r.left, r.right - tw);
+    left = Math.max(pad, Math.min(left, window.innerWidth - pad - tw));
+    let top = r.bottom + 6;
+    if (top + th > window.innerHeight - pad) top = r.top - 6 - th;
+    top = Math.max(pad, Math.min(top, window.innerHeight - pad - th));
+    floatTip.style.left = `${left}px`;
+    floatTip.style.top = `${top}px`;
+  }
+
+  function setTipOpen(anchor, open) {
+    document.querySelectorAll(".help.is-open").forEach((el) => {
+      el.classList.remove("is-open");
+      el.setAttribute("aria-expanded", "false");
+    });
+    if (open && anchor) {
+      const btn = anchor.classList.contains("help")
+        ? anchor
+        : anchor.querySelector(".help");
+      if (btn) {
+        btn.classList.add("is-open");
+        btn.setAttribute("aria-expanded", "true");
+      }
+    }
+  }
+
+  function showTip(anchor) {
+    const src = tipSource(anchor);
+    if (!src) return;
+    clearTimeout(tipHideTimer);
+    tipAnchor = anchor;
+    floatTip.innerHTML = src.innerHTML;
+    floatTip.classList.add("is-open");
+    setTipOpen(anchor, true);
+    placeTip(anchor);
+  }
+
+  function hideTip(immediate) {
+    const close = () => {
+      floatTip.classList.remove("is-open");
+      setTipOpen(null, false);
+      tipAnchor = null;
+    };
+    clearTimeout(tipHideTimer);
+    if (immediate) close();
+    else tipHideTimer = setTimeout(close, 140);
+  }
+
+  function refreshOpenTip() {
+    if (!tipAnchor || !floatTip.classList.contains("is-open")) return;
+    const src = tipSource(tipAnchor);
+    if (!src) return;
+    const html = src.innerHTML;
+    if (floatTip.innerHTML === html) return;
+    floatTip.innerHTML = html;
+    placeTip(tipAnchor);
+  }
+
+  function tipFromEvent(e) {
+    const el = e.target && e.target.closest ? e.target.closest("[data-tip]") : null;
+    if (!el || el.id === "floatTip") return null;
+    return el;
+  }
+
+  document.querySelectorAll("[data-tip]").forEach((el) => {
+    el.addEventListener("pointerenter", (e) => {
+      if (e.pointerType === "mouse") showTip(el);
+    });
+    el.addEventListener("pointerleave", (e) => {
+      if (e.pointerType !== "mouse") return;
+      const next = e.relatedTarget;
+      if (next && next.closest && next.closest("[data-tip]")) return;
+      hideTip();
+    });
+    el.addEventListener("focus", () => {
+      if (el.classList.contains("help")) showTip(el);
+    });
+    el.addEventListener("blur", (e) => {
+      const next = e.relatedTarget;
+      if (next && next.closest && next.closest(".help")) return;
+      hideTip();
+    });
+  });
+
+  document.addEventListener("pointerdown", (e) => {
+    const anchor = tipFromEvent(e);
+    if (anchor && e.pointerType !== "mouse") {
+      if (anchor.classList.contains("help") || anchor.id === "info") {
+        e.preventDefault();
+      }
+      if (tipAnchor === anchor && floatTip.classList.contains("is-open")) hideTip(true);
+      else showTip(anchor);
+      return;
+    }
+    if (!anchor) hideTip(true);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hideTip(true);
+  });
+
+  window.addEventListener("resize", () => {
+    if (tipAnchor) placeTip(tipAnchor);
+  });
+  document.getElementById("panel").addEventListener("scroll", () => {
+    if (tipAnchor) placeTip(tipAnchor);
+  }, { passive: true });
+
+  const FREQ_MIN = (+freqEl.min) * 1e12;
+  const FREQ_MAX = (+freqEl.max) * 1e12;
+
+  const V_MIN = -8;
+  const V_MAX = 8;
+  const IV_VMAX = 5;
+  const IV_VMIN_FLOOR = -2.5;
+
+  MATERIALS.forEach((m, i) => {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = `${m.name} — φ = ${m.phi.toFixed(2)} eV`;
+    matEl.appendChild(opt);
+  });
+  matEl.value = "2";
+
+  // Layout come nello schema: emettitore (fotocatodo) a SINISTRA, collettore a DESTRA
+  const tube = { x: 160, y: 70, w: 480, h: 200 };
+  const emitter = { x: 224, y: 100, w: 16, h: 140 };   // piastra sinistra (luce)
+  const collector = { x: 560, y: 100, w: 16, h: 140 }; // piastra destra
+  const BEAM_PLATE_INSET = 6;
+  // Scala geometrica: catodo quadrato di area A → lato √A = 1 cm ≙ emitter.h px
+  const PLATE_H_M = Math.sqrt(CATHODE_A);
+  const GAP_PX = collector.x - (emitter.x + emitter.w);
+  const GAP_M = GAP_PX / emitter.h * PLATE_H_M;
+  const DT_UNIT_MS = 16;
+  const V_1EV = Math.sqrt(2 * Q_E / M_E); // m/s per 1 eV
+  const plateMidY = emitter.y + emitter.h / 2;
+  const leftRail = 95;
+  const rightRail = 705;
+  const botY = 455;
+  const battery = { x: 175, y: botY + 8, w: 110, h: 52 };
+  const ammeter = { cx: 560, cy: botY, r: 42 };
+  const batL = battery.x + 22;
+  const batR = battery.x + battery.w - 22;
+
+  // Elettroni di conduzione nel filo: dal collettore (dx) verso l'emettitore (sx)
+  const wire = [
+    { x: collector.x + collector.w, y: plateMidY },
+    { x: rightRail, y: plateMidY },
+    { x: rightRail, y: botY },
+    { x: ammeter.cx + ammeter.r + 4, y: botY },
+    { x: ammeter.cx - ammeter.r - 4, y: botY },
+    { x: batR, y: botY },
+    { x: batL, y: botY },
+    { x: leftRail, y: botY },
+    { x: leftRail, y: plateMidY },
+    { x: emitter.x, y: plateMidY },
+  ];
+  const SKIP_STROKE = new Set([3, 5]);
+
+  function segLen(a, b) {
+    return Math.hypot(b.x - a.x, b.y - a.y);
+  }
+
+  function pathMeta(pts) {
+    const lens = [];
+    let total = 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const L = segLen(pts[i], pts[i + 1]);
+      lens.push(L);
+      total += L;
+    }
+    return { lens, total };
+  }
+
+  const wireMeta = pathMeta(wire);
+
+  function pointOnWire(s) {
+    let rem = ((s % wireMeta.total) + wireMeta.total) % wireMeta.total;
+    for (let i = 0; i < wire.length - 1; i++) {
+      const L = wireMeta.lens[i];
+      if (rem <= L) {
+        const t = L < 1e-9 ? 0 : rem / L;
+        return {
+          x: wire[i].x + (wire[i + 1].x - wire[i].x) * t,
+          y: wire[i].y + (wire[i + 1].y - wire[i].y) * t,
+          seg: i,
+        };
+      }
+      rem -= L;
+    }
+    const p = wire[wire.length - 1];
+    return { x: p.x, y: p.y, seg: wire.length - 2 };
+  }
+
+  /** Slider: THz → Hz */
+  function getFreq() {
+    return (+freqEl.value) * 1e12;
+  }
+
+  /** Slider tenths of volt → volts */
+  function getVolt() {
+    return (+voltEl.value) / 10;
+  }
+
+  /** Irradiamento in mW/cm² (0–10). */
+  function getER_mwcm2() {
+    return +erEl.value;
+  }
+
+  /** mW/cm² → W/m² */
+  function erToSI(mwcm2) {
+    return mwcm2 * 10;
+  }
+
+  function photonFluxSI(erSI, f) {
+    const hf = H_J * f;
+    if (erSI <= 0 || hf <= 0) return 0;
+    return erSI / hf;
+  }
+
+  function visualIntervalMs(rate) {
+    if (!(rate > 0)) return Infinity;
+    return 1000 * getSlowS() * VIS_SAMPLE / rate;
+  }
+
+  function formatSciHTML(x) {
+    if (!(x > 0) || !isFinite(x)) return "0";
+    const exp = Math.floor(Math.log10(x) + 1e-12);
+    const m = x / 10 ** exp;
+    return `${m.toFixed(2)}×10<sup>${exp}</sup>`;
+  }
+
+  /** Flash sull'emettitore: raggio ∝ √(hf), energia del quanto. */
+  function emitterFlashRadius(p) {
+    const u = Math.sqrt(p.f / FREQ_MIN);
+    const uMax = Math.sqrt(FREQ_MAX / FREQ_MIN);
+    return 4 + 4 * (u - 1) / (uMax - 1);
+  }
+
+  function wavelengthNm(f) {
+    return (C / f) * 1e9;
+  }
+
+  /** Soglia visibile/UV: λ < 400 nm è invisibile. */
+  const NM_UV = 400;
+
+  function freqToRGB(f) {
+    const nm = wavelengthNm(f);
+    const stops = [
+      { nm: 780, rgb: [255, 40, 40] },
+      { nm: 650, rgb: [255, 40, 40] },
+      { nm: 600, rgb: [255, 120, 30] },
+      { nm: 570, rgb: [245, 220, 40] },
+      { nm: 510, rgb: [50, 200, 60] },
+      { nm: 480, rgb: [40, 180, 200] },
+      { nm: 450, rgb: [50, 100, 255] },
+      { nm: 400, rgb: [140, 50, 230] },
+      { nm: 200, rgb: [170, 70, 255] },
+    ];
+    if (nm >= stops[0].nm) return stops[0].rgb.slice();
+    const last = stops[stops.length - 1];
+    if (nm <= last.nm) return last.rgb.slice();
+    for (let i = 0; i < stops.length - 1; i++) {
+      const a = stops[i];
+      const b = stops[i + 1];
+      if (nm <= a.nm && nm >= b.nm) {
+        const t = (a.nm - nm) / (a.nm - b.nm);
+        return [
+          Math.round(a.rgb[0] + (b.rgb[0] - a.rgb[0]) * t),
+          Math.round(a.rgb[1] + (b.rgb[1] - a.rgb[1]) * t),
+          Math.round(a.rgb[2] + (b.rgb[2] - a.rgb[2]) * t),
+        ];
+      }
+    }
+    return last.rgb.slice();
+  }
+
+  function rgbCss(rgb) {
+    return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+  }
+
+  function initFreqSliderLook() {
+    const min = +freqEl.min;
+    const max = +freqEl.max;
+    const n = 48;
+    const stops = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const rgb = freqToRGB((min + t * (max - min)) * 1e12);
+      stops.push(`${rgbCss(rgb)} ${(t * 100).toFixed(2)}%`);
+    }
+    freqEl.style.setProperty("--freq-rainbow", `linear-gradient(to right, ${stops.join(",")})`);
+    const fUvTHz = (C / (NM_UV * 1e-9)) / 1e12;
+    const uvPct = ((fUvTHz - min) / (max - min)) * 100;
+    const uvStart = `${uvPct.toFixed(2)}%`;
+    freqEl.style.setProperty("--uv-start", uvStart);
+    const wrap = freqEl.closest(".freq-wrap");
+    if (wrap) wrap.style.setProperty("--uv-start", uvStart);
+  }
+
+  const COL_RED = [255, 72, 72];
+  const COL_AZURE = [70, 200, 255];
+  const COL_GRAY = [176, 176, 176];
+
+  function mixRgb(a, b, t) {
+    return [
+      Math.round(a[0] + (b[0] - a[0]) * t),
+      Math.round(a[1] + (b[1] - a[1]) * t),
+      Math.round(a[2] + (b[2] - a[2]) * t),
+    ];
+  }
+
+  function voltageRgb(V) {
+    const t = Math.min(1, Math.abs(V) / V_MAX);
+    return mixRgb(COL_GRAY, V >= 0 ? COL_RED : COL_AZURE, t);
+  }
+
+  function voltageNumberColor(V) {
+    return rgbCss(voltageRgb(V));
+  }
+
+  function intensityGray(t) {
+    const g = Math.round(Math.max(0, Math.min(1, t)) * 255);
+    return [g, g, g];
+  }
+
+  function initIntensitySliderLook() {
+    const grad = `linear-gradient(to right, ${rgbCss(intensityGray(0))}, ${rgbCss(intensityGray(1))})`;
+    erEl.style.setProperty("--int-gradient", grad);
+  }
+  initFreqSliderLook();
+  initIntensitySliderLook();
+
+  function initVoltSliderLook() {
+    voltEl.style.setProperty(
+      "--volt-gradient",
+      `linear-gradient(to right, ${rgbCss(COL_AZURE)}, ${rgbCss(COL_GRAY)} 50%, ${rgbCss(COL_RED)})`
+    );
+  }
+  initVoltSliderLook();
+
+  /** Slider: decimi di log10(S) → fattore di rallentamento t_vis / t_reale. */
+  function getSlowS() {
+    return 10 ** ((+slowEl.value) / 10);
+  }
+
+  /** v = E_SPEED · √(KE/eV) in px per unità dt/16, con S = v_reale / v_visiva. */
+  function eSpeedFromS(S) {
+    const pxPerSecReal = V_1EV * (GAP_PX / GAP_M);
+    const unitsPerSec = 1000 / DT_UNIT_MS;
+    return pxPerSecReal / (S * unitsPerSec);
+  }
+
+  function formatDuration(seconds) {
+    if (seconds >= 1) return `${seconds.toFixed(2)} s`;
+    if (seconds >= 1e-3) return `${(seconds * 1e3).toFixed(1)} ms`;
+    if (seconds >= 1e-6) return `${(seconds * 1e6).toFixed(0)} µs`;
+    return `${(seconds * 1e9).toFixed(0)} ns`;
+  }
+
+  let prevESpeed = 0;
+
+  function rgba(rgb, a) {
+    return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+  }
+
+  function smooth01(t) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    return t * t * (3 - 2 * t);
+  }
+
+  /**
+   * Corrente in ampere. Isat = η e A E_R / hf (η = QE);
+   * I = 0 per V ≤ −Vs; salita morbida verso Isat su una scala ~ Vs + IV_COLL_V
+   * (energia degli elettroni + efficienza di raccolta), non uno scalino a V = 0.
+   */
+  function currentShape(V, KEmax, above, light) {
+    if (!light || !above || KEmax <= 0) return 0;
+    const Vs = KEmax;
+    const u = V + Vs;
+    if (u <= 0) return 0;
+    const rise = u / (Vs + IV_COLL_V);
+    const k = 3.6;
+    const kr = k * rise;
+    return Math.min(1, Math.max(0, 1 - (1 + kr) * Math.exp(-kr)));
+  }
+
+  function currentAt(V, KEmax, Isat, above, light) {
+    return Isat * currentShape(V, KEmax, above, light);
+  }
+
+  /** Campioni V per la curva I–V: griglia uniforme + infittimento intorno a −Vs. */
+  function ivSampleVoltages(vMin, vMax, Vs) {
+    const out = [];
+    const n = 220;
+    for (let i = 0; i <= n; i++) out.push(vMin + (i / n) * (vMax - vMin));
+    if (Vs > 1e-6) {
+      const c = -Vs;
+      if (c > vMin - 1e-9 && c < vMax + 1e-9) {
+        out.push(c);
+        const span = Math.max(0.45, (vMax - vMin) * 0.1);
+        const nFine = 72;
+        for (let i = 0; i <= nFine; i++) {
+          const t = i / nFine;
+          const V = c + (t * t) * span;
+          if (V > vMin && V < vMax) out.push(V);
+        }
+      }
+    }
+    out.sort((a, b) => a - b);
+    const uniq = [];
+    for (const V of out) {
+      if (!uniq.length || V - uniq[uniq.length - 1] > 1e-6) uniq.push(V);
+    }
+    return uniq;
+  }
+
+  function physics() {
+    const f = getFreq();
+    const V = getVolt();
+    const erMw = getER_mwcm2();
+    const erSI = erToSI(erMw);
+    const flux = photonFluxSI(erSI, f);
+    const gamma = flux * CATHODE_A;
+    const lightOn = erMw > 0;
+    const mat = MATERIALS[+matEl.value];
+    const E = H_EV * f;
+    const f0 = mat.phi / H_EV;
+    const above = lightOn && E > mat.phi + 1e-9;
+    const KEmax = above ? E - mat.phi : 0;
+    const Vs = KEmax;
+    const canReach = above && KEmax + V > 0.02;
+    const Isat = above ? Q_E * QE * gamma : 0;
+    const I = currentAt(V, KEmax, Isat, above, lightOn);
+    const visMs = visualIntervalMs(above ? QE * gamma : gamma);
+    return {
+      f, V, erMw, erSI, flux, gamma, Isat, visMs,
+      lightOn, mat, E, f0, above, KEmax, Vs, canReach, I,
+      nm: wavelengthNm(f),
+      rgb: freqToRGB(f),
+    };
+  }
+
+  // —— Particles ——
+  const electrons = [];
+  const charges = [];
+  const plateSigns = [];
+  const flashes = [];
+  const MAX_E = 60;
+  const MAX_C = 48;
+  const MAX_SIGNS = 36;
+  // Deriva visiva a Irel = 1 e S = S_DEFAULT (px per unità dt/16). v_d ∝ I.
+  const WIRE_SPEED = 3.2;
+  // Pop in/out in tempo rallentato: N̄ ≈ (1000/WIRE_POP_MS) × vita media, indipendente da I.
+  const WIRE_POP_MS = 32;
+
+  function spawnFlash(x, y, r) {
+    flashes.push({
+      x, y, r,
+      age: 0,
+      life: 0.32,
+    });
+  }
+
+  function spawnAbsorptionFlash(p) {
+    const y = emitter.y + BEAM_PLATE_INSET + Math.random() * (emitter.h - 2 * BEAM_PLATE_INSET);
+    spawnFlash(emitter.x + emitter.w, y, emitterFlashRadius(p));
+  }
+
+  function spawnElectron(p) {
+    const y = emitter.y + BEAM_PLATE_INSET + Math.random() * (emitter.h - 2 * BEAM_PLATE_INSET);
+    // KE tra KE_MIN_FRAC·Kmax e Kmax: a potenziale di frenamento solo i più energetici arrivano
+    const ke0 = p.KEmax * (KE_MIN_FRAC + (1 - KE_MIN_FRAC) * Math.random());
+    const x = emitter.x + emitter.w + 3;
+    const r = 5.5;
+    electrons.push({
+      x,
+      y,
+      vx: eSpeedFromS(getSlowS()) * Math.sqrt(Math.max(0, ke0)),
+      r,
+    });
+    spawnFlash(emitter.x + emitter.w, y, emitterFlashRadius(p));
+  }
+
+  function spawnCharge(seeded) {
+    const life = 0.75 + Math.random() * 0.55;
+    charges.push({
+      s: Math.random() * wireMeta.total,
+      r: 2.2 + Math.random() * 1.6,
+      age: seeded ? Math.random() * life : 0,
+      life,
+    });
+  }
+
+  (function seedWireElectrons() {
+    const nTarget = Math.round(1000 / WIRE_POP_MS * 1.02);
+    for (let i = 0; i < nTarget; i++) spawnCharge(true);
+  })();
+
+  function spawnPlateSign(side, sign) {
+    const pl = side === "emitter" ? emitter : collector;
+    const pad = 10;
+    plateSigns.push({
+      x: pl.x + pl.w / 2,
+      y: pl.y + pad + Math.random() * (pl.h - pad * 2),
+      sign, side,
+      age: 0,
+      life: 0.32 + Math.random() * 0.55,
+    });
+  }
+
+  let accSpawn = 0;
+  let prevSpawnInterval = NaN;
+  let accWire = 0;
+  let accSigns = 0;
+
+  function updateUI(p) {
+    freqVal.textContent = `${(p.f / 1e12).toFixed(0)} THz · λ = ${p.nm.toFixed(0)} nm`;
+    freqEl.style.setProperty("--freq-thumb", rgbCss(p.rgb));
+    voltVal.textContent = `${p.V >= 0 ? "+" : ""}${p.V.toFixed(1)} V`;
+    voltEl.style.setProperty("--volt-thumb", voltageNumberColor(p.V));
+    erVal.textContent = `${p.erMw.toFixed(1)} mW/cm²`;
+    erEl.style.setProperty("--int-thumb", rgbCss(intensityGray(p.erMw / ER_MAX_MWCM2)));
+
+    const S = getSlowS();
+    slowVal.innerHTML = `× ${formatSciHTML(S)}`;
+    const nsOnScreen = S * 1e-9;
+    const tCross = S * GAP_M / V_1EV;
+    slowHint.innerHTML =
+      `Il tempo in schermo è <strong>S</strong> volte quello reale: vale per il volo e per l’intervallo tra un’estrazione e la successiva. ` +
+      `1 ns reale → ${formatDuration(nsOnScreen)} qui. ` +
+      `Attraversamento a 1 eV, V = 0: ${formatDuration(tCross)}. ` +
+      `Distanza piastre <strong>d = ${(GAP_M * 100).toFixed(2)} cm</strong> ` +
+      `(scala: altezza catodo √A = ${(PLATE_H_M * 100).toFixed(2)} cm ≙ ${emitter.h} px; ` +
+      `gap ${GAP_PX} px).`;
+    phiReadout.innerHTML = p.lightOn
+      ? `Flusso di fotoni Φ<sub>f</sub> = E<sub>R</sub> / (hf) = ${formatSciHTML(p.flux)} m<sup>−2</sup> s<sup>−1</sup>. Sul catodo (× A): ${formatSciHTML(p.gamma)} fotoni/s.`
+      : "Flusso di fotoni Φ<sub>f</sub> = 0 (luce spenta)";
+
+    let badgeClass = "off";
+    let stato;
+    if (!p.lightOn) {
+      stato = "Luce spenta";
+    } else if (!p.above) {
+      stato = "Luce assorbita, nessuna estrazione";
+    } else if (!p.canReach) {
+      stato = "Emissione sì, ma potenziale di frenamento";
+      badgeClass = "warn";
+    } else {
+      stato = "Effetto fotoelettrico — corrente presente";
+      badgeClass = "on";
+    }
+
+    statusBadge.className = `badge ${badgeClass}`;
+    statusBadge.textContent = stato;
+    infoDetail.innerHTML =
+      `<div><strong>Materiale:</strong> ${p.mat.name} (lavoro di estrazione φ = ${p.mat.phi.toFixed(2)} eV)</div>` +
+      `<div><strong>Energia del fotone hf:</strong> ${p.E.toFixed(2)} eV</div>` +
+      `<div><strong>Frequenza di soglia f₀ = φ/h:</strong> ${(p.f0 / 1e12).toFixed(0)} THz</div>` +
+      `<div><strong>Energia cinetica max. K<sub>max</sub> = hf − φ:</strong> ${p.KEmax.toFixed(2)} eV</div>` +
+      `<div><strong>Potenziale di frenamento V<sub>s</sub> = K<sub>max</sub>/e:</strong> ${p.Vs.toFixed(2)} V (in volt vale quanto K<sub>max</sub> in eV)</div>` +
+      `<div><strong>Irradiamento E<sub>R</sub>:</strong> ${p.erMw.toFixed(1)} mW/cm² (= ${p.erSI.toFixed(1)} W/m² nel SI)</div>` +
+      `<div><strong>Flusso di fotoni Φ<sub>f</sub>:</strong> ${formatSciHTML(p.flux)} m<sup>−2</sup> s<sup>−1</sup></div>` +
+      `<div><strong>Corrente I:</strong> ${(p.I * 1e3).toFixed(2)} mA (saturazione I<sub>sat</sub> = ${(p.Isat * 1e3).toFixed(2)} mA, η = 0.1)</div>`;
+    refreshOpenTip();
+  }
+
+  const IV_PAD = { l: 48, r: 28, t: 20, b: 24 };
+  let ivDrag = null;
+  let ivHoverDot = false;
+
+  /** I_sat massima a frequenza f (E_R al massimo, sopra soglia). */
+  function isatMaxAmps(f) {
+    const hf = H_J * f;
+    if (!(hf > 0)) return 0;
+    return QE * Q_E * CATHODE_A * erToSI(ER_MAX_MWCM2) / hf;
+  }
+
+  /** Fondo scala I–V in mA: poco sopra I_sat(E_R max) alla frequenza attuale. */
+  function ivYMax_mA(f) {
+    const need = 1000 * isatMaxAmps(f) * 1.08;
+    const caps = [0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1];
+    for (const c of caps) {
+      if (c >= need - 1e-12) return c;
+    }
+    return IV_MA_MAX;
+  }
+
+  function currentTickStep(yMax) {
+    const raw = yMax / 4;
+    const exp = Math.floor(Math.log10(raw) + 1e-12);
+    const p = 10 ** exp;
+    const m = raw / p;
+    const nice = m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10;
+    return nice * p;
+  }
+
+  function currentTicks(yMax) {
+    const step = currentTickStep(yMax);
+    const ticks = [];
+    for (let I = step; I <= yMax + 1e-9; I += step) {
+      if (I > yMax * 0.92) continue;
+      ticks.push(Number(I.toFixed(6)));
+    }
+    return ticks;
+  }
+
+  function formatCurrentTick(I, step) {
+    return I.toFixed(step < 0.1 ? 2 : 1);
+  }
+
+  /** Vs teorico (anche a luce spenta): hf − φ, in volt. */
+  function theoreticalVs(p) {
+    p = p || physics();
+    return p.E > p.mat.phi + 1e-9 ? p.E - p.mat.phi : 0;
+  }
+
+  /** Asse V: pavimento −2,5 V, si allarga se −1,3 Vs è più a sinistra. */
+  function ivAxisRange(Vs) {
+    const vs = Math.max(0, Vs);
+    let vMin = Math.min(IV_VMIN_FLOOR, -1.3 * vs);
+    vMin = Math.floor(vMin * 2) / 2;
+    return { vMin, vMax: IV_VMAX };
+  }
+
+  function voltTicks(vMin, vMax, step) {
+    const ticks = [];
+    const start = Math.ceil((vMin - 1e-9) / step) * step;
+    for (let v = start; v <= vMax + 1e-9; v += step) {
+      ticks.push(Number((Math.round(v / step) * step).toFixed(4)));
+    }
+    return ticks;
+  }
+
+  function formatVoltTick(v) {
+    if (Math.abs(v) < 1e-9) return "0";
+    const n = Math.round(v * 10) / 10;
+    const s = Number.isInteger(n) ? String(n) : n.toFixed(1);
+    return n > 0 ? "+" + s : s;
+  }
+
+  function getIVPlot(p) {
+    const rect = ivCanvas.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+    const pad = IV_PAD;
+    const plotW = w - pad.l - pad.r;
+    const plotH = h - pad.t - pad.b;
+    const yMax = ivYMax_mA(getFreq());
+    const { vMin, vMax } = ivAxisRange(theoreticalVs(p));
+    return {
+      rect, w, h, pad, plotW, plotH, yMax, vMin, vMax,
+      xOf: (V) => pad.l + ((V - vMin) / (vMax - vMin)) * plotW,
+      yOf: (ImA) => pad.t + plotH - (ImA / yMax) * plotH,
+      VOf: (x) => vMin + ((x - pad.l) / plotW) * (vMax - vMin),
+      IOf: (y) => ((pad.t + plotH - y) / plotH) * yMax,
+    };
+  }
+
+  function clamp(n, a, b) {
+    return Math.max(a, Math.min(b, n));
+  }
+
+  function applyIVFromPointer(e) {
+    const plot = getIVPlot();
+    const x = e.clientX - plot.rect.left;
+    const y = e.clientY - plot.rect.top;
+    const V = clamp(plot.VOf(x), plot.vMin, plot.vMax);
+    voltEl.value = String(Math.round(V * 10));
+
+    const f = getFreq();
+    const mat = MATERIALS[+matEl.value];
+    const E = H_EV * f;
+    const above = E > mat.phi + 1e-9;
+    const ke = above ? E - mat.phi : 0;
+    const shape = currentShape(V, ke, above, true);
+    const Iwant_mA = clamp(plot.IOf(y), 0, plot.yMax);
+    const dy = ivDrag ? Math.abs(y - ivDrag.y0) : 0;
+    if (shape > 0.02 && (!ivDrag || !ivDrag.fromCutoff || dy > 8)) {
+      const IsatWant = (Iwant_mA / 1000) / shape;
+      const gammaWant = IsatWant / (Q_E * QE);
+      const fluxWant = gammaWant / CATHODE_A;
+      const erMw = (fluxWant * H_J * f) / 10;
+      erEl.value = String(Math.round(clamp(erMw, 0, ER_MAX_MWCM2) * 10) / 10);
+      if (ivDrag) ivDrag.fromCutoff = false;
+    }
+  }
+
+  function ivPointerPos(e, plot) {
+    return { x: e.clientX - plot.rect.left, y: e.clientY - plot.rect.top };
+  }
+
+  function ivHitDot(x, y, plot) {
+    const p = physics();
+    const px = plot.xOf(clamp(p.V, plot.vMin, plot.vMax));
+    const py = plot.yOf(p.I * 1e3);
+    return Math.hypot(x - px, y - py) <= 18;
+  }
+
+  function setIVCursor() {
+    ivCanvas.classList.toggle("is-dragging", !!ivDrag);
+    ivCanvas.classList.toggle("is-over-dot", !ivDrag && ivHoverDot);
+  }
+
+  ivCanvas.addEventListener("pointerdown", (e) => {
+    const plot = getIVPlot();
+    const { x, y } = ivPointerPos(e, plot);
+    if (!ivHitDot(x, y, plot)) return;
+    e.preventDefault();
+    ivCanvas.setPointerCapture(e.pointerId);
+    ivDrag = {
+      id: e.pointerId,
+      y0: y,
+      fromCutoff: physics().I < plot.yMax * 2.5e-6,
+    };
+    setIVCursor();
+  });
+
+  ivCanvas.addEventListener("pointermove", (e) => {
+    if (ivDrag && e.pointerId === ivDrag.id) {
+      applyIVFromPointer(e);
+      return;
+    }
+    const plot = getIVPlot();
+    const { x, y } = ivPointerPos(e, plot);
+    ivHoverDot = ivHitDot(x, y, plot);
+    setIVCursor();
+  });
+
+  function endIVDrag(e) {
+    if (!ivDrag || e.pointerId !== ivDrag.id) return;
+    ivDrag = null;
+    const plot = getIVPlot();
+    const { x, y } = ivPointerPos(e, plot);
+    ivHoverDot = ivHitDot(x, y, plot);
+    setIVCursor();
+  }
+
+  ivCanvas.addEventListener("pointerup", endIVDrag);
+  ivCanvas.addEventListener("pointercancel", endIVDrag);
+  ivCanvas.addEventListener("pointerleave", () => {
+    if (ivDrag) return;
+    ivHoverDot = false;
+    setIVCursor();
+  });
+
+  function drawArrowHead(ctx, x, y, dir, size) {
+    ctx.beginPath();
+    if (dir === "up") {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - size * 0.55, y + size);
+      ctx.lineTo(x + size * 0.55, y + size);
+    } else {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - size, y - size * 0.55);
+      ctx.lineTo(x - size, y + size * 0.55);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawIVGraph(p) {
+    const dpr = window.devicePixelRatio || 1;
+    const plot = getIVPlot(p);
+    const w = plot.w;
+    const h = plot.h;
+    if (w < 8 || h < 8) return;
+    const bw = Math.max(1, Math.round(w * dpr));
+    const bh = Math.max(1, Math.round(h * dpr));
+    if (ivCanvas.width !== bw || ivCanvas.height !== bh) {
+      ivCanvas.width = bw;
+      ivCanvas.height = bh;
+    }
+    ivCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const { pad, plotW, vMin, vMax, xOf, yOf, yMax } = plot;
+    const yStep = currentTickStep(yMax);
+    const yTicks = currentTicks(yMax);
+    const xGrid = voltTicks(vMin, vMax, 1);
+    const xLabels = voltTicks(vMin, vMax, 2);
+    const x0 = xOf(0);
+    const y0 = yOf(0);
+    const xRight = pad.l + plotW;
+    const yTop = pad.t;
+
+    ivCtx.clearRect(0, 0, w, h);
+    ivCtx.fillStyle = "#121212";
+    ivCtx.fillRect(0, 0, w, h);
+
+    // Griglia
+    ivCtx.strokeStyle = "#2c2c2c";
+    ivCtx.lineWidth = 1;
+    xGrid.forEach((v) => {
+      ivCtx.beginPath();
+      ivCtx.moveTo(xOf(v), yTop);
+      ivCtx.lineTo(xOf(v), y0);
+      ivCtx.stroke();
+    });
+    yTicks.forEach((I) => {
+      ivCtx.beginPath();
+      ivCtx.moveTo(pad.l, yOf(I));
+      ivCtx.lineTo(xRight, yOf(I));
+      ivCtx.stroke();
+    });
+
+    // Curva I(V) teorica (intensità e f attuali; luce considerata accesa)
+    const theoAbove = p.E > p.mat.phi + 1e-9;
+    const ke = theoAbove ? p.E - p.mat.phi : 0;
+    const VsTheo = ke;
+    ivCtx.beginPath();
+    ivCtx.strokeStyle = "#5aa8e8";
+    ivCtx.lineWidth = 2.2;
+    ivCtx.lineJoin = "round";
+    ivCtx.lineCap = "round";
+    let started = false;
+    for (const V of ivSampleVoltages(vMin, vMax, VsTheo)) {
+      const I = currentAt(V, ke, p.Isat, theoAbove, true);
+      const x = xOf(V);
+      const y = yOf(I * 1e3);
+      if (!started) { ivCtx.moveTo(x, y); started = true; }
+      else ivCtx.lineTo(x, y);
+    }
+    ivCtx.stroke();
+
+    // Assi cartesiani: Y su V = 0, X su I = 0
+    ivCtx.strokeStyle = "#d8d8d8";
+    ivCtx.fillStyle = "#d8d8d8";
+    ivCtx.lineWidth = 1.6;
+    ivCtx.beginPath();
+    ivCtx.moveTo(pad.l, y0);
+    ivCtx.lineTo(xRight, y0);
+    ivCtx.moveTo(x0, y0);
+    ivCtx.lineTo(x0, yTop);
+    ivCtx.stroke();
+    drawArrowHead(ivCtx, xRight, y0, "right", 9);
+    drawArrowHead(ivCtx, x0, yTop, "up", 9);
+
+    // Tacche Y
+    ivCtx.strokeStyle = "#d8d8d8";
+    ivCtx.lineWidth = 1.2;
+    yTicks.forEach((I) => {
+      const y = yOf(I);
+      ivCtx.beginPath();
+      ivCtx.moveTo(x0 - 4, y);
+      ivCtx.lineTo(x0 + 4, y);
+      ivCtx.stroke();
+    });
+    xLabels.forEach((v) => {
+      if (Math.abs(v) < 1e-9) return;
+      const x = xOf(v);
+      ivCtx.beginPath();
+      ivCtx.moveTo(x, y0 - 4);
+      ivCtx.lineTo(x, y0 + 4);
+      ivCtx.stroke();
+    });
+
+    // Numeri assi
+    ivCtx.fillStyle = "#d0d0d0";
+    ivCtx.font = "12px Segoe UI";
+    ivCtx.textBaseline = "middle";
+    ivCtx.textAlign = "right";
+    yTicks.forEach((I) => {
+      ivCtx.fillText(formatCurrentTick(I, yStep), pad.l - 6, yOf(I));
+    });
+    ivCtx.textBaseline = "top";
+    xLabels.forEach((v) => {
+      if (Math.abs(v) < 1e-9) return;
+      const label = formatVoltTick(v);
+      const x = xOf(v);
+      if (x > xRight - 18) {
+        ivCtx.textAlign = "right";
+        ivCtx.fillText(label, x - 8, y0 + 7);
+      } else if (x < pad.l + 14) {
+        ivCtx.textAlign = "left";
+        ivCtx.fillText(label, x, y0 + 7);
+      } else {
+        ivCtx.textAlign = "center";
+        ivCtx.fillText(label, x, y0 + 7);
+      }
+    });
+
+    // Grandezze accanto alle frecce (x: variabile sopra la punta)
+    ivCtx.fillStyle = "#f0f0f0";
+    ivCtx.font = "bold 14px Segoe UI";
+    ivCtx.textAlign = "left";
+    ivCtx.textBaseline = "middle";
+    ivCtx.fillText("I", x0 + 10, yTop + 2);
+    ivCtx.font = "10px Segoe UI";
+    ivCtx.fillStyle = "#9a9a9a";
+    ivCtx.fillText("mA", x0 + 22, yTop + 2);
+    ivCtx.font = "bold 14px Segoe UI";
+    ivCtx.fillStyle = "#f0f0f0";
+    ivCtx.textAlign = "center";
+    ivCtx.textBaseline = "bottom";
+    ivCtx.fillText("V", xRight - 5, y0 - 12);
+
+    // −Vs sempre visibile: arancio se c'è emissione, grigio (Vs = 0) sotto soglia
+    const vsActive = theoAbove && VsTheo > 1e-6;
+    const vx = xOf(vsActive ? -VsTheo : 0);
+    const vsColor = vsActive ? "#e0a040" : "#6e6e6e";
+    ivCtx.strokeStyle = vsColor;
+    ivCtx.setLineDash([3, 3]);
+    ivCtx.lineWidth = 1.6;
+    ivCtx.beginPath();
+    ivCtx.moveTo(vx, yTop);
+    ivCtx.lineTo(vx, y0);
+    ivCtx.stroke();
+    ivCtx.setLineDash([]);
+
+    ivCtx.beginPath();
+    ivCtx.arc(vx, y0, 4.5, 0, Math.PI * 2);
+    ivCtx.fillStyle = vsColor;
+    ivCtx.fill();
+
+    ivCtx.font = "12px Segoe UI";
+    const vsLabel = "−Vₛ";
+    const vsW = ivCtx.measureText(vsLabel).width;
+    const roomLeft = vx - pad.l;
+    const roomRight = x0 - vx;
+    const putLeft = roomLeft >= vsW + 8 || roomLeft >= roomRight;
+    const lx = putLeft ? vx - 6 : vx + 6;
+    const ly = yTop + 15;
+    ivCtx.textAlign = putLeft ? "right" : "left";
+    ivCtx.textBaseline = "bottom";
+    ivCtx.lineWidth = 3;
+    ivCtx.strokeStyle = "rgba(18,18,18,0.85)";
+    ivCtx.strokeText(vsLabel, lx, ly);
+    ivCtx.fillStyle = vsColor;
+    ivCtx.fillText(vsLabel, lx, ly);
+
+    // Punto attuale (trascinabile)
+    const px = xOf(Math.max(vMin, Math.min(vMax, p.V)));
+    const py = yOf(p.I * 1e3);
+    const active = !!(ivDrag || ivHoverDot);
+    if (active) {
+      ivCtx.beginPath();
+      ivCtx.arc(px, py, 12, 0, Math.PI * 2);
+      ivCtx.fillStyle = "rgba(192, 57, 43, 0.28)";
+      ivCtx.fill();
+    }
+    ivCtx.beginPath();
+    ivCtx.arc(px, py, active ? 7 : 5.5, 0, Math.PI * 2);
+    ivCtx.fillStyle = "#c0392b";
+    ivCtx.fill();
+    ivCtx.strokeStyle = "#fff";
+    ivCtx.lineWidth = 1.6;
+    ivCtx.stroke();
+  }
+
+  const KF_PAD = { l: 40, r: 28, t: 22, b: 28 };
+  const KF_FMAX_THZ = 1800;
+  const KF_KMAX = 5;
+  let kfDrag = null;
+  let kfHoverDot = false;
+
+  function kmaxAt(fHz, phi) {
+    return Math.max(0, H_EV * fHz - phi);
+  }
+
+  function getKFPlot() {
+    const rect = kfCanvas.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+    const pad = KF_PAD;
+    const plotW = w - pad.l - pad.r;
+    const plotH = h - pad.t - pad.b;
+    const fMin = 0;
+    const fMax = KF_FMAX_THZ;
+    const kMax = KF_KMAX;
+    return {
+      rect, w, h, pad, plotW, plotH, fMin, fMax, kMax,
+      xOf: (fTHz) => pad.l + ((fTHz - fMin) / (fMax - fMin)) * plotW,
+      yOf: (K) => pad.t + plotH - (K / kMax) * plotH,
+      fTHzOf: (x) => fMin + ((x - pad.l) / plotW) * (fMax - fMin),
+    };
+  }
+
+  function applyKFFromPointer(e) {
+    const plot = getKFPlot();
+    const x = e.clientX - plot.rect.left;
+    const fTHz = clamp(plot.fTHzOf(x), +freqEl.min, +freqEl.max);
+    const step = +freqEl.step || 2;
+    freqEl.value = String(Math.round(fTHz / step) * step);
+  }
+
+  function kfPointerPos(e, plot) {
+    return { x: e.clientX - plot.rect.left, y: e.clientY - plot.rect.top };
+  }
+
+  function kfHitDot(x, y, plot) {
+    const p = physics();
+    const fTHz = p.f / 1e12;
+    const K = kmaxAt(p.f, p.mat.phi);
+    const px = plot.xOf(clamp(fTHz, plot.fMin, plot.fMax));
+    const py = plot.yOf(K);
+    return Math.hypot(x - px, y - py) <= 18;
+  }
+
+  function setKFCursor() {
+    kfCanvas.classList.toggle("is-dragging", !!kfDrag);
+    kfCanvas.classList.toggle("is-over-dot", !kfDrag && kfHoverDot);
+  }
+
+  kfCanvas.addEventListener("pointerdown", (e) => {
+    const plot = getKFPlot();
+    const { x, y } = kfPointerPos(e, plot);
+    if (!kfHitDot(x, y, plot)) return;
+    e.preventDefault();
+    kfCanvas.setPointerCapture(e.pointerId);
+    kfDrag = { id: e.pointerId };
+    setKFCursor();
+  });
+
+  kfCanvas.addEventListener("pointermove", (e) => {
+    if (kfDrag && e.pointerId === kfDrag.id) {
+      applyKFFromPointer(e);
+      return;
+    }
+    const plot = getKFPlot();
+    const { x, y } = kfPointerPos(e, plot);
+    kfHoverDot = kfHitDot(x, y, plot);
+    setKFCursor();
+  });
+
+  function endKFDrag(e) {
+    if (!kfDrag || e.pointerId !== kfDrag.id) return;
+    kfDrag = null;
+    const plot = getKFPlot();
+    const { x, y } = kfPointerPos(e, plot);
+    kfHoverDot = kfHitDot(x, y, plot);
+    setKFCursor();
+  }
+
+  kfCanvas.addEventListener("pointerup", endKFDrag);
+  kfCanvas.addEventListener("pointercancel", endKFDrag);
+  kfCanvas.addEventListener("pointerleave", () => {
+    if (kfDrag) return;
+    kfHoverDot = false;
+    setKFCursor();
+  });
+
+  function drawKFGraph(p) {
+    const dpr = window.devicePixelRatio || 1;
+    const plot = getKFPlot();
+    const w = plot.w;
+    const h = plot.h;
+    if (w < 8 || h < 8) return;
+    const bw = Math.max(1, Math.round(w * dpr));
+    const bh = Math.max(1, Math.round(h * dpr));
+    if (kfCanvas.width !== bw || kfCanvas.height !== bh) {
+      kfCanvas.width = bw;
+      kfCanvas.height = bh;
+    }
+    kfCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const { pad, plotW, fMax, kMax, xOf, yOf } = plot;
+    const x0 = xOf(0);
+    const y0 = yOf(0);
+    const xRight = pad.l + plotW;
+    const yTop = pad.t;
+    const fTicks = [0, 400, 800, 1200, 1600, 1800];
+    const kTicks = [1, 2, 3, 4, 5];
+
+    kfCtx.clearRect(0, 0, w, h);
+    kfCtx.fillStyle = "#121212";
+    kfCtx.fillRect(0, 0, w, h);
+
+    kfCtx.strokeStyle = "#2c2c2c";
+    kfCtx.lineWidth = 1;
+    fTicks.forEach((fTHz) => {
+      if (fTHz <= 0) return;
+      kfCtx.beginPath();
+      kfCtx.moveTo(xOf(fTHz), yTop);
+      kfCtx.lineTo(xOf(fTHz), y0);
+      kfCtx.stroke();
+    });
+    kTicks.forEach((K) => {
+      if (K >= kMax) return;
+      kfCtx.beginPath();
+      kfCtx.moveTo(pad.l, yOf(K));
+      kfCtx.lineTo(xRight, yOf(K));
+      kfCtx.stroke();
+    });
+
+    const f0THz = p.f0 / 1e12;
+    const Kline = kmaxAt(fMax * 1e12, p.mat.phi);
+
+    kfCtx.beginPath();
+    kfCtx.strokeStyle = "#5aa8e8";
+    kfCtx.lineWidth = 2.2;
+    kfCtx.lineJoin = "round";
+    kfCtx.lineCap = "round";
+    kfCtx.moveTo(xOf(0), yOf(0));
+    if (f0THz > 0 && f0THz < fMax) {
+      kfCtx.lineTo(xOf(f0THz), yOf(0));
+      kfCtx.lineTo(xOf(fMax), yOf(Kline));
+    } else if (f0THz >= fMax) {
+      kfCtx.lineTo(xOf(fMax), yOf(0));
+    } else {
+      kfCtx.lineTo(xOf(fMax), yOf(Kline));
+    }
+    kfCtx.stroke();
+
+    kfCtx.strokeStyle = "#d8d8d8";
+    kfCtx.fillStyle = "#d8d8d8";
+    kfCtx.lineWidth = 1.6;
+    kfCtx.beginPath();
+    kfCtx.moveTo(pad.l, y0);
+    kfCtx.lineTo(xRight, y0);
+    kfCtx.moveTo(x0, y0);
+    kfCtx.lineTo(x0, yTop);
+    kfCtx.stroke();
+    drawArrowHead(kfCtx, xRight, y0, "right", 9);
+    drawArrowHead(kfCtx, x0, yTop, "up", 9);
+
+    kfCtx.strokeStyle = "#d8d8d8";
+    kfCtx.lineWidth = 1.2;
+    kTicks.forEach((K) => {
+      if (K >= kMax) return;
+      const y = yOf(K);
+      kfCtx.beginPath();
+      kfCtx.moveTo(x0 - 4, y);
+      kfCtx.lineTo(x0 + 4, y);
+      kfCtx.stroke();
+    });
+    fTicks.forEach((fTHz) => {
+      if (fTHz <= 0) return;
+      const x = xOf(fTHz);
+      kfCtx.beginPath();
+      kfCtx.moveTo(x, y0 - 4);
+      kfCtx.lineTo(x, y0 + 4);
+      kfCtx.stroke();
+    });
+
+    kfCtx.fillStyle = "#d0d0d0";
+    kfCtx.font = "12px Segoe UI";
+    kfCtx.textBaseline = "middle";
+    kfCtx.textAlign = "right";
+    kTicks.forEach((K) => {
+      if (K >= kMax) return;
+      kfCtx.fillText(String(K), pad.l - 6, yOf(K));
+    });
+    kfCtx.textBaseline = "top";
+    kfCtx.textAlign = "center";
+    fTicks.forEach((fTHz) => {
+      if (fTHz <= 0) return;
+      const x = xOf(fTHz);
+      if (x > xRight - 16) {
+        kfCtx.textAlign = "right";
+        kfCtx.fillText(String(fTHz), x - 6, y0 + 7);
+      } else {
+        kfCtx.textAlign = "center";
+        kfCtx.fillText(String(fTHz), x, y0 + 7);
+      }
+    });
+
+    kfCtx.fillStyle = "#f0f0f0";
+    kfCtx.font = "bold 14px Segoe UI";
+    kfCtx.textAlign = "left";
+    kfCtx.textBaseline = "middle";
+    kfCtx.fillText("K", x0 + 10, yTop + 2);
+    const kLabelW = kfCtx.measureText("K").width;
+    kfCtx.font = "bold 9px Segoe UI";
+    kfCtx.fillText("max", x0 + 10 + kLabelW, yTop + 6);
+    const maxW = kfCtx.measureText("max").width;
+
+    kfCtx.font = "10px Segoe UI";
+    kfCtx.fillStyle = "#9a9a9a";
+    kfCtx.textAlign = "left";
+    kfCtx.fillText("eV", x0 + 10 + kLabelW + maxW + 4, yTop + 2);
+
+    kfCtx.font = "bold 14px Segoe UI";
+    kfCtx.fillStyle = "#f0f0f0";
+    kfCtx.textAlign = "center";
+    kfCtx.textBaseline = "bottom";
+    const fLabelX = xRight - 5;
+    const fLabelY = y0 - 12;
+    kfCtx.fillText("f", fLabelX, fLabelY);
+    const fLabelW = kfCtx.measureText("f").width;
+    kfCtx.font = "10px Segoe UI";
+    kfCtx.fillStyle = "#9a9a9a";
+    kfCtx.textAlign = "right";
+    kfCtx.fillText("THz", fLabelX - fLabelW / 2 - 6, fLabelY);
+
+    if (f0THz > 8 && f0THz < fMax - 8) {
+      const fx = xOf(f0THz);
+      kfCtx.strokeStyle = "#e0a040";
+      kfCtx.setLineDash([3, 3]);
+      kfCtx.lineWidth = 1.6;
+      kfCtx.beginPath();
+      kfCtx.moveTo(fx, yTop);
+      kfCtx.lineTo(fx, y0);
+      kfCtx.stroke();
+      kfCtx.setLineDash([]);
+      kfCtx.beginPath();
+      kfCtx.arc(fx, y0, 4.5, 0, Math.PI * 2);
+      kfCtx.fillStyle = "#e0a040";
+      kfCtx.fill();
+      kfCtx.font = "12px Segoe UI";
+      const f0Label = "f₀";
+      const roomRight = xRight - fx;
+      const putRight = roomRight >= 22;
+      kfCtx.textAlign = putRight ? "left" : "right";
+      kfCtx.textBaseline = "bottom";
+      const lx = putRight ? fx + 6 : fx - 6;
+      kfCtx.lineWidth = 3;
+      kfCtx.strokeStyle = "rgba(18,18,18,0.85)";
+      kfCtx.strokeText(f0Label, lx, yTop + 15);
+      kfCtx.fillStyle = "#e0a040";
+      kfCtx.fillText(f0Label, lx, yTop + 15);
+    }
+
+    const fTHz = p.f / 1e12;
+    const Know = kmaxAt(p.f, p.mat.phi);
+    const px = xOf(clamp(fTHz, 0, fMax));
+    const py = yOf(Know);
+    const active = !!(kfDrag || kfHoverDot);
+    if (active) {
+      kfCtx.beginPath();
+      kfCtx.arc(px, py, 12, 0, Math.PI * 2);
+      kfCtx.fillStyle = "rgba(192, 57, 43, 0.28)";
+      kfCtx.fill();
+    }
+    kfCtx.beginPath();
+    kfCtx.arc(px, py, active ? 7 : 5.5, 0, Math.PI * 2);
+    kfCtx.fillStyle = "#c0392b";
+    kfCtx.fill();
+    kfCtx.strokeStyle = "#fff";
+    kfCtx.lineWidth = 1.6;
+    kfCtx.stroke();
+  }
+
+  // —— Drawing ——
+  function drawCapsule(x, y, w, h) {
+    const r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(x + r, y + h);
+    ctx.arc(x + r, y + r, r, Math.PI / 2, 3 * Math.PI / 2);
+    ctx.closePath();
+  }
+
+  function beamProfile(t) {
+    const edge = 0.38;
+    if (t < edge) return smooth01(t / edge);
+    if (t > 1 - edge) return smooth01((1 - t) / edge);
+    return 1;
+  }
+
+  const radLayer = document.createElement("canvas");
+  const radCtx = radLayer.getContext("2d");
+
+  function drawRadiation(p, viewScale) {
+    if (!p.lightOn) return;
+    const rgb = p.rgb;
+    // Fascio omogeneo, angolo piatto, origine fuori dal canvas → faccia interna piastra sx
+    const xHit = emitter.x + emitter.w;
+    const yTop = emitter.y;
+    const yBot = emitter.y + emitter.h;
+    const angle = (26 * Math.PI) / 180;
+    const dirX = -Math.cos(angle);
+    const dirY = Math.sin(angle);
+    const travel = 900;
+
+    const x0a = xHit - dirX * travel;
+    const y0a = yTop - dirY * travel;
+    const x0b = xHit - dirX * travel;
+    const y0b = yBot - dirY * travel;
+
+    // Normale unitaria dal bordo superiore verso quello inferiore (⊥ al fascio)
+    const nx = dirY;
+    const ny = -dirX;
+    const dist = (yBot - yTop) * ny;
+
+    const ss = Math.max(1, viewScale || 1);
+    const lw = Math.max(1, Math.round(SCENE_W * ss));
+    const lh = Math.max(1, Math.round(SCENE_H * ss));
+    if (radLayer.width !== lw || radLayer.height !== lh) {
+      radLayer.width = lw;
+      radLayer.height = lh;
+    }
+    radCtx.setTransform(ss, 0, 0, ss, 0, 0);
+    radCtx.globalCompositeOperation = "source-over";
+    radCtx.clearRect(0, 0, SCENE_W, SCENE_H);
+
+    radCtx.beginPath();
+    radCtx.moveTo(x0a, y0a);
+    radCtx.lineTo(xHit, yTop);
+    radCtx.lineTo(xHit, yBot);
+    radCtx.lineTo(x0b, y0b);
+    radCtx.closePath();
+    radCtx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    radCtx.fill();
+
+    // Maschera di alfa liscia (evita bande da pochi stop e il fringe del gradiente colorato)
+    const grad = radCtx.createLinearGradient(xHit, yTop, xHit + nx * dist, yTop + ny * dist);
+    const n = 96;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      grad.addColorStop(t, `rgba(255,255,255,${beamProfile(t)})`);
+    }
+    radCtx.globalCompositeOperation = "destination-in";
+    radCtx.fillStyle = grad;
+    radCtx.fill();
+    radCtx.globalCompositeOperation = "source-over";
+
+    // Alfa del fascio ∝ intensità (0–100%)
+    ctx.save();
+    ctx.globalAlpha = p.erMw / ER_MAX_MWCM2;
+    ctx.drawImage(radLayer, 0, 0, SCENE_W, SCENE_H);
+    ctx.restore();
+  }
+
+  function drawTube() {
+    roundRectPath(tube.x, tube.y, tube.w, tube.h, 28);
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fill();
+    ctx.strokeStyle = "#b0b0b0";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    for (const pl of [emitter, collector]) {
+      ctx.fillStyle = "#2a2a2a";
+      ctx.fillRect(pl.x, pl.y, pl.w, pl.h);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(pl.x, pl.y, pl.w, pl.h);
+    }
+  }
+
+  function drawWires() {
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#c8c8c8";
+    ctx.lineWidth = 3;
+
+    for (let i = 0; i < wire.length - 1; i++) {
+      if (SKIP_STROKE.has(i)) continue;
+      ctx.beginPath();
+      ctx.moveTo(wire[i].x, wire[i].y);
+      ctx.lineTo(wire[i + 1].x, wire[i + 1].y);
+      ctx.stroke();
+    }
+
+    // Collegamenti all'amperometro
+    ctx.beginPath();
+    ctx.moveTo(wire[3].x, wire[3].y);
+    ctx.lineTo(ammeter.cx + ammeter.r - 1, ammeter.cy);
+    ctx.moveTo(wire[4].x, wire[4].y);
+    ctx.lineTo(ammeter.cx - ammeter.r + 1, ammeter.cy);
+    ctx.stroke();
+
+    // Terminali superiori della batteria (come in figura)
+    ctx.beginPath();
+    ctx.moveTo(batL, botY);
+    ctx.lineTo(batL, battery.y);
+    ctx.moveTo(batR, botY);
+    ctx.lineTo(batR, battery.y);
+    ctx.stroke();
+  }
+
+  function roundRectPath(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawBattery(p) {
+    roundRectPath(battery.x, battery.y, battery.w, battery.h, 6);
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fill();
+    ctx.strokeStyle = "#e4e4e4";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = "#ececec";
+    ctx.fillRect(batL - 3, battery.y - 6, 6, 8);
+    ctx.fillRect(batR - 3, battery.y - 6, 6, 8);
+
+    // Default (V >= 0): + a destra, − a sinistra
+    const plusOnRight = p.V >= 0;
+    ctx.font = "bold 22px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = plusOnRight ? "rgb(70, 200, 255)" : "rgb(255, 72, 72)";
+    ctx.fillText(plusOnRight ? "−" : "+", batL, battery.y + battery.h / 2 + 2);
+    ctx.fillStyle = plusOnRight ? "rgb(255, 72, 72)" : "rgb(70, 200, 255)";
+    ctx.fillText(plusOnRight ? "+" : "−", batR, battery.y + battery.h / 2 + 2);
+  }
+
+  function drawAmmeter(p) {
+    const { cx, cy, r } = ammeter;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fill();
+    ctx.strokeStyle = "#e4e4e4";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    for (let i = -5; i <= 5; i++) {
+      const ang = -Math.PI / 2 + (i / 5) * 0.95;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ang) * (r - 9), cy + Math.sin(ang) * (r - 9));
+      ctx.lineTo(cx + Math.cos(ang) * (r - 3), cy + Math.sin(ang) * (r - 3));
+      ctx.strokeStyle = "#d8d8d8";
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
+
+    const Irel = Math.min(1, p.I / (ivYMax_mA(p.f) * 1e-3));
+    const ang = -Math.PI / 2 + Irel * 0.95;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(ang) * (r - 14), cy + Math.sin(ang) * (r - 14));
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ececec";
+    ctx.fill();
+
+    ctx.fillStyle = "#ececec";
+    ctx.font = "bold 16px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("A", cx, cy + r * 0.42);
+  }
+
+  function drawReadoutBox(x, y, w, h) {
+    roundRectPath(x, y, w, h, 4);
+    ctx.fillStyle = "#000000";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  }
+
+  function drawReadout(cx, bottomY, text) {
+    ctx.save();
+    ctx.font = "bold 15px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const padX = 12;
+    const h = 28;
+    const w = Math.max(72, ctx.measureText(text).width + padX * 2);
+    const x = cx - w / 2;
+    const y = bottomY - h;
+    drawReadoutBox(x, y, w, h);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(text, cx, y + h / 2 + 0.5);
+    ctx.restore();
+  }
+
+  function drawVoltageReadout(p) {
+    const num = `${p.V >= 0 ? "+" : ""}${p.V.toFixed(1)}`;
+    const unit = " V";
+    ctx.save();
+    ctx.font = "bold 15px Segoe UI";
+    ctx.textBaseline = "middle";
+    const padX = 12;
+    const h = 28;
+    const wNum = ctx.measureText(num).width;
+    const wUnit = ctx.measureText(unit).width;
+    const w = Math.max(72, wNum + wUnit + padX * 2);
+    const cx = battery.x + battery.w / 2;
+    const y = battery.y - 18 - h;
+    drawReadoutBox(cx - w / 2, y, w, h);
+    const midY = y + h / 2 + 0.5;
+    const startX = cx - (wNum + wUnit) / 2;
+    ctx.textAlign = "left";
+    ctx.fillStyle = voltageNumberColor(p.V);
+    ctx.fillText(num, startX, midY);
+    ctx.fillText(unit, startX + wNum, midY);
+    ctx.restore();
+  }
+
+  function drawReadouts(p) {
+    drawVoltageReadout(p);
+    drawReadout(ammeter.cx, ammeter.cy - ammeter.r - 10, `${(p.I * 1e3).toFixed(2)} mA`);
+  }
+
+  function drawElectrons() {
+    ctx.save();
+    ctx.font = "bold 11px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const el of electrons) {
+      ctx.beginPath();
+      ctx.arc(el.x, el.y, el.r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(80, 170, 255, 0.75)";
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.fillText("−", el.x, el.y + 0.5);
+    }
+    ctx.restore();
+  }
+
+  function drawFlashes() {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const f of flashes) {
+      const t = Math.min(1, f.age / f.life);
+      const a = (1 - t) * (1 - t);
+      const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+      g.addColorStop(0, `rgba(255,255,255,${a})`);
+      g.addColorStop(0.45, `rgba(255,255,255,${a * 0.85})`);
+      g.addColorStop(1, `rgba(255,255,255,0)`);
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawCharges() {
+    ctx.save();
+    for (const ch of charges) {
+      const pos = pointOnWire(ch.s);
+      if (pos.seg === 3 || pos.seg === 5) continue;
+      const fade = Math.min(0.12, ch.life * 0.35);
+      let a = 1;
+      if (ch.age < fade) a = ch.age / fade;
+      else if (ch.age > ch.life - fade) a = Math.max(0, (ch.life - ch.age) / fade);
+      ctx.globalAlpha = a * 0.75;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, ch.r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgb(180, 240, 255)";
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawPlateSigns() {
+    ctx.save();
+    ctx.font = "bold 18px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const s of plateSigns) {
+      const fade = Math.min(0.12, s.life * 0.35);
+      let a = 1;
+      if (s.age < fade) a = s.age / fade;
+      else if (s.age > s.life - fade) a = Math.max(0, (s.life - s.age) / fade);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = s.sign === "+"
+        ? "rgb(255, 72, 72)"
+        : "rgb(70, 200, 255)";
+      ctx.fillText(s.sign, s.x, s.y);
+    }
+    ctx.restore();
+  }
+
+  function step(dt, p) {
+    const gapStart = emitter.x + emitter.w;
+    const gapEnd = collector.x;
+    const gap = gapEnd - gapStart;
+
+    if (p.lightOn) {
+      const interval = p.visMs;
+      if (!isFinite(interval)) {
+        accSpawn = 0;
+        prevSpawnInterval = NaN;
+      } else {
+        // Conserva la frazione di attesa se cambia visMs (f, E_R o S),
+        // altrimenti un resto da un intervallo breve diventa un burst.
+        if (isFinite(prevSpawnInterval) && prevSpawnInterval > 0 && prevSpawnInterval !== interval) {
+          accSpawn *= interval / prevSpawnInterval;
+        }
+        prevSpawnInterval = interval;
+        accSpawn += dt;
+
+        const blocked = p.above
+          ? electrons.length >= MAX_E
+          : flashes.length >= 28;
+        if (blocked) {
+          accSpawn = Math.min(accSpawn, interval);
+        } else {
+          let spawned = 0;
+          const maxPerFrame = 2;
+          while (accSpawn >= interval && spawned < maxPerFrame) {
+            accSpawn -= interval;
+            if (p.above) spawnElectron(p);
+            else spawnAbsorptionFlash(p);
+            spawned++;
+          }
+          accSpawn = Math.min(accSpawn, interval);
+        }
+      }
+    } else {
+      accSpawn = 0;
+      prevSpawnInterval = NaN;
+    }
+
+    // a = (α² V) / (2d): stessa scala visiva di v = α√KE, ma vx resta continua se V cambia.
+    const timeStep = dt / DT_UNIT_MS;
+    const eSpeed = eSpeedFromS(getSlowS());
+    if (prevESpeed > 0 && eSpeed !== prevESpeed) {
+      const k = eSpeed / prevESpeed;
+      for (const el of electrons) el.vx *= k;
+    }
+    prevESpeed = eSpeed;
+    const accel = gap > 0 ? (eSpeed * eSpeed * p.V) / (2 * gap) : 0;
+
+    for (let i = electrons.length - 1; i >= 0; i--) {
+      const el = electrons[i];
+      el.vx += accel * timeStep;
+      el.x += el.vx * timeStep;
+
+      if (el.x >= gapEnd - el.r) {
+        spawnFlash(gapEnd, el.y, el.r);
+        electrons.splice(i, 1);
+        continue;
+      }
+
+      if (el.x <= gapStart + 1) {
+        spawnFlash(gapStart, el.y, el.r);
+        electrons.splice(i, 1);
+      }
+    }
+
+    const Irel = Math.min(1, p.I / (ivYMax_mA(p.f) * 1e-3));
+    const dtSlow = dt * S_DEFAULT / getSlowS();
+
+    accWire += dtSlow;
+    while (accWire >= WIRE_POP_MS && charges.length < MAX_C) {
+      accWire -= WIRE_POP_MS;
+      spawnCharge(false);
+    }
+    accWire = Math.min(accWire, WIRE_POP_MS);
+
+    const vDrift = Irel * WIRE_SPEED;
+    const loop = wireMeta.total;
+    for (let i = charges.length - 1; i >= 0; i--) {
+      const ch = charges[i];
+      ch.age += dtSlow / 1000;
+      ch.s += vDrift * (dtSlow / DT_UNIT_MS);
+      ch.s -= Math.floor(ch.s / loop) * loop;
+      if (ch.s < 0) ch.s += loop;
+      if (ch.age >= ch.life) charges.splice(i, 1);
+    }
+
+    // Segni ± sulle armature (lato filo), densità ∝ |V|, fermi
+    const q = Math.min(1, Math.abs(p.V) / V_MAX);
+    const plusOnRight = p.V >= 0;
+    const signEmitter = plusOnRight ? "−" : "+";
+    const signCollector = plusOnRight ? "+" : "−";
+    if (q > 0.02) {
+      accSigns += dtSlow;
+      const interval = Math.max(18, 52 / Math.max(0.08, q));
+      while (accSigns >= interval && plateSigns.length < MAX_SIGNS) {
+        accSigns -= interval;
+        spawnPlateSign("emitter", signEmitter);
+        if (plateSigns.length < MAX_SIGNS) {
+          spawnPlateSign("collector", signCollector);
+        }
+      }
+    } else {
+      accSigns = 0;
+    }
+
+    for (let i = plateSigns.length - 1; i >= 0; i--) {
+      const s = plateSigns[i];
+      s.age += dtSlow / 1000;
+      const expected = s.side === "emitter" ? signEmitter : signCollector;
+      const wrongPolarity = q > 0.02 && s.sign !== expected;
+      if (s.age >= s.life || wrongPolarity) {
+        plateSigns.splice(i, 1);
+      }
+    }
+
+    for (let i = flashes.length - 1; i >= 0; i--) {
+      flashes[i].age += dt / 1000;
+      if (flashes[i].age >= flashes[i].life) {
+        flashes.splice(i, 1);
+      }
+    }
+  }
+
+  let lastT = performance.now();
+  let paused = false;
+  const pauseBtn = document.getElementById("pauseBtn");
+  pauseBtn.addEventListener("click", () => {
+    paused = !paused;
+    pauseBtn.classList.toggle("is-paused", paused);
+    pauseBtn.setAttribute("aria-label", paused ? "Riprendi" : "Pausa");
+    pauseBtn.setAttribute("title", paused ? "Riprendi" : "Pausa");
+    if (!paused) lastT = performance.now();
+  });
+
+  function frame(t) {
+    const dt = Math.min(40, t - lastT);
+    lastT = t;
+    const p = physics();
+    updateUI(p);
+    drawIVGraph(p);
+    drawKFGraph(p);
+    if (!paused) step(dt, p);
+
+    const view = fitMainCanvas();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = ensureSceneBg();
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(view.scale, 0, 0, view.scale, view.ox, view.oy);
+
+    drawRadiation(p, view.scale);
+    drawWires();
+    drawTube();
+    drawElectrons();
+    drawFlashes();
+    drawPlateSigns();
+    drawBattery(p);
+    drawAmmeter(p);
+    drawReadouts(p);
+    drawCharges();
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+})();
+  </script>
+</body>
+</html>

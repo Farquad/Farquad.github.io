@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Equilibrio e Momento Torcente</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+
+        /* Toolbar / Weights */
+        #toolbar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px dashed #bdc3c7;
+        }
+        .toolbar-text {
+            font-weight: 600;
+            color: #34495e;
+            margin-right: 10px;
+        }
+        .weight-source {
+            width: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.1s;
+        }
+        .weight-source:active {
+            cursor: grabbing;
+            transform: scale(0.95);
+        }
+        /* Matching height and style for both available weights and attached ones */
+        .weight-source[data-mass="1"] { height: 35px; background: #3498db; }
+        .weight-source[data-mass="2"] { height: 45px; background: #2ecc71; }
+        .weight-source[data-mass="3"] { height: 55px; background: #f1c40f; color: #333; }
+        .weight-source[data-mass="4"] { height: 65px; background: #e67e22; }
+        .weight-source[data-mass="5"] { height: 75px; background: #e74c3c; }
+
+        /* Simulation Area */
+        #simulation {
+            position: relative;
+            width: 100%;
+            height: 380px; 
+            margin: 0 auto;
+            background: #ffffff; 
+            border: 1px solid #dcdde1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        /* The Base / Pivot */
+        #pivot {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 35px solid transparent;
+            border-right: 35px solid transparent;
+            border-bottom: 250px solid #7f8c8d; 
+            transform: translateX(-50%);
+            z-index: 5;
+        }
+
+        /* The Rod */
+        #rod-container {
+            position: absolute;
+            top: 60px; 
+            left: 50%;
+            width: 800px;
+            height: 20px;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+        #rod {
+            width: 100%;
+            height: 100%;
+            background: #d35400; 
+            border-radius: 10px;
+            position: relative;
+            transform-origin: center center;
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Center of Mass Arrow */
+        #com-arrow {
+            position: absolute;
+            top: -45px;
+            left: 50%; /* center is 50% */
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 25px solid #8e44ad; /* Purple arrow */
+            transform: translateX(-50%);
+            transition: left 0.3s ease, opacity 0.3s ease;
+            z-index: 25;
+            opacity: 0; /* Hidden by default */
+            pointer-events: none;
+        }
+        #com-arrow::after {
+            content: "CM";
+            position: absolute;
+            top: -45px; /* Spostato più in alto rispetto al triangolo */
+            left: 50%;
+            transform: translateX(-50%);
+            color: #8e44ad;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        #com-arrow.visible {
+            opacity: 1;
+        }
+
+        /* Holes */
+        .hole-wrapper {
+            position: absolute;
+            top: 50%;
+            width: 50px; 
+            height: 60px;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            cursor: pointer;
+        }
+        .hole {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 14px;
+            height: 14px;
+            background: #ffffff; 
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: border-color 0.2s, background-color 0.2s;
+            border: 2px solid transparent;
+            pointer-events: none; 
+        }
+        .hole-wrapper.drag-over .hole {
+            border-color: #e74c3c;
+            background: #ecf0f1; 
+            transform: translate(-50%, -50%) scale(1.3);
+        }
+        .hole-label {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        /* Weights placed on rod */
+        .weight-hanger {
+            position: absolute;
+            top: 30px; 
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 45px;
+            pointer-events: none; 
+        }
+        .weight {
+            width: 45px; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 6px;
+            margin-top: 4px; 
+            cursor: grab;
+            pointer-events: auto;
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
+            transform-origin: top center;
+        }
+        .weight:hover {
+            opacity: 0.9;
+            filter: brightness(1.1);
+        }
+        .weight:active {
+            cursor: grabbing;
+        }
+        /* small string connecting weight */
+        .weight::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 4px;
+            background: #333;
+        }
+        
+        /* Dashboard & Stats */
+        #dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 25px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .stats-panel {
+            flex: 1;
+            min-width: 300px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+        }
+        .stat-row > span:first-child {
+            width: 240px;
+            font-weight: 600;
+        }
+        .stat-row:last-child {
+            border-bottom: none;
+            margin-top: 12px;
+            font-size: 1.2em;
+        }
+        .value-ccw { color: #2980b9; font-weight: bold; }
+        .value-cw { color: #c0392b; font-weight: bold; }
+        .value-net { color: #8e44ad; font-weight: bold; }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-top: 15px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+        }
+        #play-btn { background: #2ecc71; }
+        #play-btn:hover:not(:disabled) { background: #27ae60; }
+        #reset-btn { background: #f1c40f; color: #333; }
+        #reset-btn:hover:not(:disabled) { background: #f39c12; }
+        #clear-btn { background: #e74c3c; }
+        #clear-btn:hover:not(:disabled) { background: #c0392b; }
+        button:disabled {
+            background: #bdc3c7 !important;
+            color: #7f8c8d !important;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* ground line */
+        .ground {
+            position: absolute;
+            bottom: 58px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: #bdc3c7;
+            z-index: 1;
+        }
+
+        /* Canvas Torque Displays */
+        .canvas-torque {
+            position: absolute;
+            bottom: 20px;
+            font-size: 1.4em;
+            font-weight: bold;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #dcdde1;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 20;
+        }
+        
+        .com-checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: auto; /* Push to the left */
+            font-weight: bold;
+            color: #8e44ad;
+            cursor: pointer;
+        }
+        .com-checkbox-container input {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            accent-color: #8e44ad;
+        }
+        .canvas-torque.left {
+            left: 15%;
+            color: #2980b9;
+        }
+        .canvas-torque.right {
+            right: 15%;
+            color: #c0392b;
+        }
+        .canvas-torque.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(10px);
+        }
+</style>
+</head>
+<body>
+    <div class="container">
+        
+        <div id="toolbar">
+            <label class="com-checkbox-container">
+                <input type="checkbox" id="show-com-cb">
+                Localizza Centro di Massa
+            </label>
+            <div class="toolbar-text">Pesi disponibili:</div>
+            <div class="weight-source" draggable="true" data-mass="1">1kg</div>
+            <div class="weight-source" draggable="true" data-mass="2">2kg</div>
+            <div class="weight-source" draggable="true" data-mass="3">3kg</div>
+            <div class="weight-source" draggable="true" data-mass="4">4kg</div>
+            <div class="weight-source" draggable="true" data-mass="5">5kg</div>
+        </div>
+
+        <div id="simulation">
+            <div class="ground"></div>
+            <div id="pivot"></div>
+            <div id="rod-container">
+                <div id="rod">
+                    <div id="com-arrow"></div>
+                    <!-- Holes generated by JS -->
+                </div>
+            </div>
+            <div id="torque-canvas-left" class="canvas-torque left hidden">M<sub>1</sub> = 0 kg·m</div>
+            <div id="torque-canvas-right" class="canvas-torque right hidden">M<sub>2</sub> = 0 kg·m</div>
+        </div>
+
+        <div id="dashboard">
+            <div class="stats-panel">
+                <div class="stat-row">
+                    <span>Momento Risultante:</span>
+                    <span id="torque-net" class="value-net">0 kg·m (Equilibrio)</span>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="play-btn">▶ Play</button>
+                <button id="reset-btn" disabled>⟲ Reset</button>
+                <button id="clear-btn">🗑 Svuota</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const state = {
+                isRunning: false,
+                weights: []
+            };
+
+            const HOLE_POSITIONS = [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5];
+            const ROD_WIDTH = 800;
+            const CENTER = ROD_WIDTH / 2;
+            const SPACING = 70; // 70px spacing between holes
+
+            const rod = document.getElementById('rod');
+            const torqueCanvasLeft = document.getElementById('torque-canvas-left');
+            const torqueCanvasRight = document.getElementById('torque-canvas-right');
+            const torqueNetEl = document.getElementById('torque-net');
+            const comArrow = document.getElementById('com-arrow');
+            const showComCb = document.getElementById('show-com-cb');
+            
+            const playBtn = document.getElementById('play-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            
+            // Assuming rod mass is 10kg evenly distributed at center (x=0) for COM calculation
+            // If the rod is considered massless, COM calculation changes. Let's assume massless rod
+            // as per standard simple balance lever unless there are no weights.
+            const ROD_MASS = 10; // kg, located at pos=0
+
+            // Generate holes
+            HOLE_POSITIONS.forEach(pos => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'hole-wrapper';
+                const leftPos = CENTER + pos * SPACING;
+                wrapper.style.left = `${leftPos}px`;
+                
+                const hole = document.createElement('div');
+                hole.className = 'hole';
+                wrapper.appendChild(hole);
+                
+                const label = document.createElement('div');
+                label.className = 'hole-label';
+                label.textContent = Math.abs(pos) + 'm';
+                wrapper.appendChild(label);
+
+                const hanger = document.createElement('div');
+                hanger.className = 'weight-hanger';
+                wrapper.appendChild(hanger);
+
+                rod.appendChild(wrapper);
+
+                // Drag and drop events on the wider wrapper
+                wrapper.addEventListener('dragover', (e) => {
+                    // Removed the !state.isRunning check to allow drag over while running
+                    e.preventDefault();
+                    wrapper.classList.add('drag-over');
+                });
+
+                wrapper.addEventListener('dragleave', (e) => {
+                    wrapper.classList.remove('drag-over');
+                });
+
+                wrapper.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    wrapper.classList.remove('drag-over');
+                    
+                    try {
+                        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                        if (data.type === 'existing') {
+                            removeWeight(data.id);
+                            addWeight(pos, parseInt(data.mass), hanger);
+                        } else if (data.type === 'new') {
+                            addWeight(pos, parseInt(data.mass), hanger);
+                        }
+                    } catch (err) {
+                        console.error("Invalid drop data", err);
+                    }
+                });
+            });
+
+            // Setup draggable sources
+            document.querySelectorAll('.weight-source').forEach(ws => {
+                ws.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'new', mass: ws.dataset.mass }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                });
+            });
+
+            function addWeight(pos, mass, hanger) {
+                const weightEl = document.createElement('div');
+                weightEl.className = 'weight';
+                weightEl.textContent = `${mass}kg`;
+                
+                const weightId = 'w_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+                weightEl.dataset.id = weightId;
+                weightEl.setAttribute('draggable', 'true');
+                
+                if(mass === 1) { weightEl.style.background = '#3498db'; weightEl.style.height = '35px'; }
+                if(mass === 2) { weightEl.style.background = '#2ecc71'; weightEl.style.height = '45px'; }
+                if(mass === 3) { weightEl.style.background = '#f1c40f'; weightEl.style.height = '55px'; weightEl.style.color = '#333'; }
+                if(mass === 4) { weightEl.style.background = '#e67e22'; weightEl.style.height = '65px'; }
+                if(mass === 5) { weightEl.style.background = '#e74c3c'; weightEl.style.height = '75px'; }
+
+                weightEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeWeight(weightId);
+                });
+
+                weightEl.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'existing', mass, id: weightId }));
+                    setTimeout(() => weightEl.style.opacity = '0.5', 0);
+                });
+
+                weightEl.addEventListener('dragend', (e) => {
+                    weightEl.style.opacity = '1';
+                    if (e.dataTransfer.dropEffect === 'none') {
+                        // dropped outside valid zone -> remove it
+                        removeWeight(weightId);
+                    }
+                });
+
+                hanger.appendChild(weightEl);
+                state.weights.push({ id: weightId, pos, mass, element: weightEl });
+                updateTorques();
+                
+                if (state.isRunning) {
+                    applySimulationState();
+                }
+            }
+            
+            function removeWeight(id) {
+                const idx = state.weights.findIndex(w => w.id === id);
+                if (idx !== -1) {
+                    state.weights[idx].element.remove();
+                    state.weights.splice(idx, 1);
+                    updateTorques();
+                    
+                    if (state.isRunning) {
+                        applySimulationState();
+                    }
+                }
+            }
+
+            function updateTorques() {
+                let cw = 0; // Magnitude
+                let ccw = 0; // Magnitude
+                let totalMass = ROD_MASS;
+                let sumMomentForCom = 0; // x * mass
+                
+                state.weights.forEach(w => {
+                    if (w.pos > 0) {
+                        cw += w.mass * w.pos;
+                    } else {
+                        ccw += w.mass * Math.abs(w.pos);
+                    }
+                    totalMass += w.mass;
+                    sumMomentForCom += w.pos * w.mass;
+                });
+                
+                // Update Center of Mass
+                const comPosition = sumMomentForCom / totalMass; // in meters (-5 to 5)
+                // Convert position to percentage across the rod (pos=0 is 50%, pos=-5 is 50% - (5*spacing), etc)
+                // However, since rod width is 800, center is 400. Pos is in meters, spacing is 70px.
+                // Left = 50% + (pos * 70)px. We can just use calc.
+                // Wait, it's easier to set pixel value directly
+                const pixelCenter = CENTER;
+                const pixelOffset = comPosition * SPACING;
+                comArrow.style.left = `${pixelCenter + pixelOffset}px`;
+
+                // Clockwise is negative torque, Counter-clockwise is positive torque
+                const net = ccw - cw;
+                
+                torqueCanvasLeft.innerHTML = `M<sub>1</sub> = ${ccw > 0 ? '+' : ''}${ccw} kg·m`;
+                torqueCanvasRight.innerHTML = `M<sub>2</sub> = ${cw === 0 ? '0' : '-' + cw} kg·m`;
+                
+                let netText = `${net > 0 ? '+' : ''}${net} kg·m`;
+                if (net < 0) netText += ' (Orario)';
+                else if (net > 0) netText += ' (Antiorario)';
+                else netText += ' (Equilibrio)';
+                
+                torqueNetEl.textContent = netText;
+                
+                return { cw, ccw, net };
+            }
+            
+            showComCb.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    comArrow.classList.add('visible');
+                } else {
+                    comArrow.classList.remove('visible');
+                }
+            });
+
+            function applySimulationState() {
+                if (!state.isRunning) return;
+
+                // Stop any current animation to recalculate the state cleanly
+                rod.getAnimations().forEach(anim => anim.cancel());
+                document.querySelectorAll('.weight').forEach(w => {
+                    w.getAnimations().forEach(anim => anim.cancel());
+                });
+
+                const torques = updateTorques();
+                
+                if (torques.net === 0) {
+                    rod.style.transform = `rotate(0deg)`;
+                    document.querySelectorAll('.weight').forEach(w => {
+                        w.style.transform = `rotate(0deg)`;
+                    });
+
+                    const durationMs = 4000;
+                    const framesCount = 100;
+                    const wobbleKeyframes = [];
+                    const counterWobbleKeyframes = [];
+                    
+                    const A = 8; // Amplitude (degrees)
+                    const gamma = 3.5; // Damping factor
+                    const omega = 4.5 * Math.PI; // Angular frequency
+                    
+                    for (let i = 0; i <= framesCount; i++) {
+                        const t = i / framesCount; // Normalized time (0 to 1)
+                        const angle = A * Math.exp(-gamma * t) * Math.sin(omega * t);
+                        wobbleKeyframes.push({ transform: `rotate(${angle}deg)` });
+                        counterWobbleKeyframes.push({ transform: `rotate(${-angle}deg)` });
+                    }
+                    
+                    // Force the final keyframe to be exactly 0
+                    wobbleKeyframes.push({ transform: `rotate(0deg)` });
+                    counterWobbleKeyframes.push({ transform: `rotate(0deg)` });
+
+                    const animOptions = { duration: durationMs, easing: 'linear', fill: 'forwards' };
+                    
+                    rod.animate(wobbleKeyframes, animOptions);
+                    document.querySelectorAll('.weight').forEach(w => {
+                        w.animate(counterWobbleKeyframes, animOptions);
+                    });
+                    
+                } else {
+                    // Rotazione proporzionale al momento torcente netto (es: 3 gradi per ogni kg·m)
+                    // limitata tra -35 e +35 gradi
+                    const maxRotation = 35;
+                    let rotation = -torques.net * 3;
+                    
+                    if (rotation > maxRotation) rotation = maxRotation;
+                    if (rotation < -maxRotation) rotation = -maxRotation;
+                    
+                    rod.style.transform = `rotate(${rotation}deg)`;
+                    
+                    document.querySelectorAll('.weight').forEach(w => {
+                        w.style.transform = `rotate(${-rotation}deg)`;
+                    });
+                }
+            }
+
+            playBtn.addEventListener('click', () => {
+                if (state.isRunning) return;
+                state.isRunning = true;
+                
+                playBtn.disabled = true;
+                resetBtn.disabled = false;
+                
+                torqueCanvasLeft.classList.remove('hidden');
+                torqueCanvasRight.classList.remove('hidden');
+                
+                applySimulationState();
+            });
+
+            resetBtn.addEventListener('click', () => {
+                state.isRunning = false;
+                
+                playBtn.disabled = false;
+                resetBtn.disabled = true;
+                
+                torqueCanvasLeft.classList.add('hidden');
+                torqueCanvasRight.classList.add('hidden');
+                
+                rod.getAnimations().forEach(anim => anim.cancel());
+                document.querySelectorAll('.weight').forEach(w => {
+                    w.getAnimations().forEach(anim => anim.cancel());
+                });
+
+                rod.style.transform = `rotate(0deg)`;
+                document.querySelectorAll('.weight').forEach(w => {
+                    w.style.transform = `rotate(0deg)`;
+                });
+            });
+
+            clearBtn.addEventListener('click', () => {
+                const weightsCopy = [...state.weights];
+                weightsCopy.forEach(w => removeWeight(w.id));
+            });
+
+            updateTorques();
+        });
+    </script>
+</body>
+</html>

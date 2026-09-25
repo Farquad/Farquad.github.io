@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <title>Visualizzatore Momenti 3D</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: sans-serif; overflow: hidden; background-color: #222; }
+        #canvas-container { flex: 1; position: relative; }
+        #overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        #control-panel { 
+            width: 420px; 
+            background: #ffffff; 
+            padding: 20px; 
+            box-sizing: border-box; 
+            overflow-y: auto; 
+            border-left: 1px solid #ccc; 
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        h2 { margin-top: 0; font-size: 1.5rem; color: #333; margin-bottom: 10px; }
+        .control-group { border: 1px solid #e0e0e0; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #fafafa; }
+        .control-group h3 { margin-top: 0; margin-bottom: 15px; font-size: 1.1rem; color: #444; }
+        
+        .input-row { display: flex; align-items: center; margin-bottom: 10px; justify-content: space-between; }
+        .input-row label { font-weight: bold; color: #555; width: 120px; font-size: 0.9rem; }
+        .input-row select, .input-row input[type="number"] { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        .input-row select { flex: 1; }
+        .input-row input[type="range"] { flex: 1; margin: 0 10px; cursor: pointer; }
+        .input-row input[type="number"] { width: 60px; text-align: right; font-family: monospace; }
+        
+        .info-box { margin-top: 15px; padding: 15px; background: #e8f4f8; border: 1px solid #bce8f1; border-radius: 8px; color: #31708f; }
+        .info-box h4 { margin: 0 0 10px 0; font-size: 1.1rem; }
+        .formula-display { font-family: 'Times New Roman', Times, serif; font-size: 1.05rem; font-style: italic; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #bce8f1; margin-bottom: 10px; text-align: center; line-height: 1.4; }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 1.0rem; }
+        .result-val { font-family: monospace; font-weight: bold; background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid #bce8f1; }
+
+        .legend { margin-top: 15px; font-size: 0.9rem; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .color-box { width: 16px; height: 16px; border-radius: 3px; margin-right: 8px; }
+
+        .dim-control { display: none; }
+        .dim-control.active { display: flex; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="overlay-canvas"></canvas>
+    </div>
+    <div id="control-panel">
+        <h2>Momento d'Inerzia 3D</h2>
+        
+        <div class="control-group">
+            <h3>Parametri Solido</h3>
+            <div class="input-row">
+                <label for="shape-select">Forma:</label>
+                <select id="shape-select">
+                    <option value="sphere">Sfera</option>
+                    <option value="cube">Cubo</option>
+                    <option value="parallelepiped">Parallelepipedo</option>
+                    <option value="cylinder">Cilindro</option>
+                    <option value="hollow_cylinder">Cilindro Cavo</option>
+                    <option value="torus">Toro</option>
+                    <option value="composite">Oggetto Composito</option>
+                </select>
+            </div>
+            
+            <div class="input-row">
+                <label for="mass">Massa (m):</label>
+                <input type="range" id="mass" min="1" max="20" step="0.5" value="5">
+                <input type="number" id="num-mass" min="1" max="20" step="0.5" value="5">
+            </div>
+
+            <div id="dimensions-container">
+                <div class="input-row dim-control dim-sphere active" data-param="r">
+                    <label>Raggio (R):</label>
+                    <input type="range" min="0.5" max="4" step="0.1" value="2">
+                    <input type="number" min="0.5" max="4" step="0.1" value="2">
+                </div>
+                <div class="input-row dim-control dim-cube" data-param="a">
+                    <label>Lato (a):</label>
+                    <input type="range" min="1" max="6" step="0.1" value="3">
+                    <input type="number" min="1" max="6" step="0.1" value="3">
+                </div>
+                <div class="input-row dim-control dim-parallelepiped" data-param="a">
+                    <label>Lato X (a):</label>
+                    <input type="range" min="1" max="6" step="0.1" value="4">
+                    <input type="number" min="1" max="6" step="0.1" value="4">
+                </div>
+                <div class="input-row dim-control dim-parallelepiped" data-param="b">
+                    <label>Lato Y (b):</label>
+                    <input type="range" min="1" max="6" step="0.1" value="2">
+                    <input type="number" min="1" max="6" step="0.1" value="2">
+                </div>
+                <div class="input-row dim-control dim-parallelepiped" data-param="c">
+                    <label>Lato Z (c):</label>
+                    <input type="range" min="1" max="6" step="0.1" value="3">
+                    <input type="number" min="1" max="6" step="0.1" value="3">
+                </div>
+                <div class="input-row dim-control dim-cylinder dim-hollow_cylinder" data-param="r1">
+                    <label class="lbl-r1">Raggio (R):</label>
+                    <input type="range" min="0.5" max="4" step="0.1" value="1.5">
+                    <input type="number" min="0.5" max="4" step="0.1" value="1.5">
+                </div>
+                <div class="input-row dim-control dim-hollow_cylinder" data-param="r2">
+                    <label>Raggio Int (r):</label>
+                    <input type="range" min="0.1" max="3.9" step="0.1" value="1.0">
+                    <input type="number" min="0.1" max="3.9" step="0.1" value="1.0">
+                </div>
+                <div class="input-row dim-control dim-cylinder dim-hollow_cylinder" data-param="h">
+                    <label>Altezza (h):</label>
+                    <input type="range" min="1" max="8" step="0.1" value="4">
+                    <input type="number" min="1" max="8" step="0.1" value="4">
+                </div>
+                <div class="input-row dim-control dim-torus" data-param="r">
+                    <label>Raggio Mag. (R):</label>
+                    <input type="range" min="1" max="5" step="0.1" value="3">
+                    <input type="number" min="1" max="5" step="0.1" value="3">
+                </div>
+                <div class="input-row dim-control dim-torus" data-param="rt">
+                    <label>Raggio Min. (r):</label>
+                    <input type="range" min="0.1" max="2" step="0.1" value="0.8">
+                    <input type="number" min="0.1" max="2" step="0.1" value="0.8">
+                </div>
+                <div class="input-row dim-control dim-composite" data-param="d">
+                    <label>Distanza (d):</label>
+                    <input type="range" min="1" max="6" step="0.1" value="3">
+                    <input type="number" min="1" max="6" step="0.1" value="3">
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Animazione</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; justify-content: center;">
+                <button id="btn-play" style="flex: 1; padding: 10px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 1rem;">Play</button>
+                <button id="btn-reset" style="flex: 1; padding: 10px; cursor: pointer; background: #f44336; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 1rem;">Reset</button>
+            </div>
+            
+            <h3>Asse di Rotazione</h3>
+            <div style="font-size:0.85rem; color:#666; margin-bottom:10px;">
+                Trascina la punta del vettore <b>ω</b> (verde) nel 3D per modificare interattivamente l'asse e la velocità!
+            </div>
+            <div class="input-row">
+                <label>Punto (P):</label>
+                <div style="display:flex; gap:2px; flex:1;">
+                    <input type="number" id="p-x" value="0" step="0.5" style="width:100%">
+                    <input type="number" id="p-y" value="0" step="0.5" style="width:100%">
+                    <input type="number" id="p-z" value="0" step="0.5" style="width:100%">
+                </div>
+            </div>
+            <div class="input-row">
+                <label>Direzione (D):</label>
+                <div style="display:flex; gap:2px; flex:1;">
+                    <input type="number" id="d-x" value="0" step="0.1" style="width:100%">
+                    <input type="number" id="d-y" value="1" step="0.1" style="width:100%">
+                    <input type="number" id="d-z" value="0" step="0.1" style="width:100%">
+                </div>
+            </div>
+            
+            <div class="input-row" style="margin-top: 15px;">
+                <label for="omega">Vel. Angolare (ω):</label>
+                <input type="range" id="omega" min="0" max="10" step="0.1" value="2">
+                <input type="number" id="num-omega" min="0" max="10" step="0.1" value="2" style="width:50px">
+            </div>
+            
+            <div class="input-row">
+                <label>Scala vett. L:</label>
+                <input type="range" id="scale-l" min="0.01" max="0.5" step="0.01" value="0.1">
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h4>Dati Fisici</h4>
+            <div class="formula-display" id="formula"></div>
+            
+            <div class="result-row">
+                <span>Distanza CM-Asse (d):</span>
+                <span id="res-d" class="result-val">0.00 m</span>
+            </div>
+            <div class="result-row">
+                <span>Momento Inerzia (I_asse):</span>
+                <span id="res-i" class="result-val">0.00 kg·m²</span>
+            </div>
+            <div class="result-row">
+                <span>Momento Angolare (|L|):</span>
+                <span id="res-l" class="result-val">0.00 kg·m²/s</span>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="color-box" style="background: #ffff00;"></div>
+                    <span>Asse di Rotazione</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: #00cc00;"></div>
+                    <span>Velocità Angolare (ω) vettoriale</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: #3333ff;"></div>
+                    <span>Momento Angolare (L) vettoriale</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import maps polyfill -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222);
+
+        new RGBELoader()
+            .setPath('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/equirectangular/')
+            .load('venice_sunset_1k.hdr', function (texture) {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 0.8;
+                scene.background = texture;
+                scene.backgroundBlurriness = 0.5;
+                scene.environment = texture;
+            });
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(12, 10, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
+        gridHelper.position.y = -0.01;
+        scene.add(gridHelper);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // --- Vectors rendering ---
+        function create3DArrow(colorHex, thickness = 0.06, headLength = 0.6, headRadius = 0.18) {
+            const group = new THREE.Group();
+            const material = new THREE.MeshBasicMaterial({ color: colorHex, toneMapped: false, depthTest: false });
+            
+            const cylGeom = new THREE.CylinderGeometry(thickness, thickness, 1, 16);
+            cylGeom.translate(0, 0.5, 0);
+            const cylinder = new THREE.Mesh(cylGeom, material);
+            cylinder.renderOrder = 999;
+            group.add(cylinder);
+            
+            const coneGeom = new THREE.ConeGeometry(headRadius, headLength, 16);
+            coneGeom.translate(0, headLength / 2, 0);
+            const cone = new THREE.Mesh(coneGeom, material);
+            cone.renderOrder = 999;
+            group.add(cone);
+            
+            return { group, cylinder, cone, headLength, material };
+        }
+
+        function updateArrow(arrowObj, vEnd) {
+            if (vEnd.lengthSq() < 0.0001) {
+                arrowObj.group.visible = false;
+                return;
+            }
+            arrowObj.group.visible = true;
+            
+            const length = vEnd.length();
+            const dir = vEnd.clone().normalize();
+            
+            const headLen = Math.min(arrowObj.headLength, length);
+            const shaftLen = Math.max(0.01, length - headLen);
+            
+            arrowObj.cylinder.scale.set(1, shaftLen, 1);
+            arrowObj.cone.position.set(0, shaftLen, 0);
+            arrowObj.cone.scale.set(1, headLen / arrowObj.headLength, 1);
+            
+            const axis = new THREE.Vector3(0, 1, 0);
+            arrowObj.group.quaternion.setFromUnitVectors(axis, dir);
+        }
+
+        // Cartesian axes
+        const arrowX = create3DArrow(0xaaaaaa, 0.03, 0.4, 0.1);
+        const arrowY = create3DArrow(0xaaaaaa, 0.03, 0.4, 0.1);
+        const arrowZ = create3DArrow(0xaaaaaa, 0.03, 0.4, 0.1);
+        updateArrow(arrowX, new THREE.Vector3(10, 0, 0));
+        updateArrow(arrowY, new THREE.Vector3(0, 10, 0));
+        updateArrow(arrowZ, new THREE.Vector3(0, 0, 10));
+        scene.add(arrowX.group);
+        scene.add(arrowY.group);
+        scene.add(arrowZ.group);
+
+        const arrowOmega = create3DArrow(0x00cc00, 0.08, 0.8, 0.25);
+        const arrowL = create3DArrow(0x3333ff, 0.1, 1.0, 0.3);
+        scene.add(arrowOmega.group);
+        scene.add(arrowL.group);
+
+        const axisGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-20,0), new THREE.Vector3(0,20,0)]);
+        const axisMat = new THREE.LineDashedMaterial({ color: 0xffff00, dashSize: 0.5, gapSize: 0.5 });
+        const axisLine = new THREE.Line(axisGeom, axisMat);
+        axisLine.computeLineDistances();
+        scene.add(axisLine);
+
+        // --- Objects Setup ---
+        const objectMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x00aaff,
+            metalness: 0.1,
+            roughness: 0.5,
+            transparent: false,
+            opacity: 1.0,
+            side: THREE.DoubleSide
+        });
+
+        const pivot = new THREE.Group();
+        scene.add(pivot);
+
+        const objectGroup = new THREE.Group();
+        pivot.add(objectGroup);
+        
+        let currentMesh = null;
+        let compositeMeshes = [];
+
+        // --- State ---
+        const state = {
+            shape: 'sphere',
+            mass: 5,
+            P0: new THREE.Vector3(0,0,0),
+            D: new THREE.Vector3(0,1,0),
+            u: new THREE.Vector3(0,1,0),
+            omega: 2,
+            isPlaying: false,
+            angle: 0,
+            params: { r: 2, a: 3, b: 2, c: 3, r1: 1.5, r2: 1.0, h: 4, rt: 0.8, d: 3 },
+            Ixx: 0, Iyy: 0, Izz: 0,
+            visualScaleOmega: 1.0,
+            visualScaleL: 0.1,
+            L_total: new THREE.Vector3()
+        };
+
+        // --- Physics Compute ---
+        function computeBaseInertia() {
+            const m = state.mass;
+            const p = state.params;
+            let Ixx = 0, Iyy = 0, Izz = 0;
+            let fX = "", fY = "", fZ = "";
+
+            switch(state.shape) {
+                case 'sphere':
+                    Ixx = Iyy = Izz = (2/5) * m * p.r * p.r;
+                    fX = fY = fZ = "I = \\frac{2}{5} m R^2";
+                    break;
+                case 'cube':
+                    Ixx = Iyy = Izz = (1/6) * m * p.a * p.a;
+                    fX = fY = fZ = "I = \\frac{1}{6} m a^2";
+                    break;
+                case 'parallelepiped':
+                    Ixx = (1/12) * m * (p.b*p.b + p.c*p.c); fX = "I_x = \\frac{1}{12} m (b^2 + c^2)";
+                    Iyy = (1/12) * m * (p.a*p.a + p.c*p.c); fY = "I_y = \\frac{1}{12} m (a^2 + c^2)";
+                    Izz = (1/12) * m * (p.a*p.a + p.b*p.b); fZ = "I_z = \\frac{1}{12} m (a^2 + b^2)";
+                    break;
+                case 'cylinder':
+                    Iyy = 0.5 * m * p.r1 * p.r1; fY = "I_y = \\frac{1}{2} m R^2";
+                    Ixx = Izz = (1/12) * m * (3*p.r1*p.r1 + p.h*p.h); fX = fZ = "I_{x,z} = \\frac{1}{12} m (3R^2 + h^2)";
+                    break;
+                case 'hollow_cylinder':
+                    Iyy = 0.5 * m * (p.r1*p.r1 + p.r2*p.r2); fY = "I_y = \\frac{1}{2} m (R_{est}^2 + R_{int}^2)";
+                    Ixx = Izz = (1/12) * m * (3*(p.r1*p.r1 + p.r2*p.r2) + p.h*p.h); fX = fZ = "I_{x,z} = \\frac{1}{12} m [3(R_{est}^2 + R_{int}^2) + h^2]";
+                    break;
+                case 'torus':
+                    Iyy = m * (p.r*p.r + 0.75*p.rt*p.rt); fY = "I_y = m (R^2 + \\frac{3}{4} r^2)";
+                    Ixx = Izz = m * (0.5*p.r*p.r + 0.625*p.rt*p.rt); fX = fZ = "I_{x,z} = m (\\frac{1}{2} R^2 + \\frac{5}{8} r^2)";
+                    break;
+                case 'composite':
+                    const r_sph = 0.5;
+                    const I_sph_cm = (2/5) * (m/2) * r_sph * r_sph;
+                    Ixx = 2 * I_sph_cm; 
+                    fX = "I_x = 2 \\cdot \\frac{2}{5} \\frac{m}{2} r_{sf}^2";
+                    Iyy = 2 * (I_sph_cm + (m/2) * p.d * p.d);
+                    fY = "I_y = I_x + m d^2";
+                    Izz = Iyy;
+                    fZ = "I_z = I_y";
+                    break;
+            }
+
+            state.Ixx = Ixx;
+            state.Iyy = Iyy;
+            state.Izz = Izz;
+            
+            let formulaHTML = "";
+            if (Ixx === Iyy && Iyy === Izz) {
+                formulaHTML = `I_{cm} = ${fX}`;
+            } else {
+                formulaHTML = `${fX}<br>${fY}<br>${fZ}`;
+            }
+            formulaHTML = formulaHTML.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '<sup>$1</sup>&frasl;<sub>$2</sub>')
+                                     .replace(/\^2/g, '²')
+                                     .replace(/_([a-zA-Z,]+)/g, '<sub>$1</sub>')
+                                     .replace(/\\approx/g, '≈')
+                                     .replace(/\\cdot/g, '·');
+            
+            document.getElementById('formula').innerHTML = formulaHTML;
+        }
+
+        function getInertiaTensor() {
+            const R_mat = new THREE.Matrix3().setFromMatrix4(objectGroup.matrixWorld);
+            const Ic = new THREE.Matrix3().set(
+                state.Ixx, 0, 0,
+                0, state.Iyy, 0,
+                0, 0, state.Izz
+            );
+            const Ic_world = R_mat.clone().multiply(Ic).multiply(R_mat.clone().transpose());
+            
+            const r_cm = new THREE.Vector3();
+            objectGroup.getWorldPosition(r_cm);
+            const r_rel = r_cm.clone().sub(state.P0);
+            const r2 = r_rel.lengthSq();
+            const x = r_rel.x, y = r_rel.y, z = r_rel.z;
+            const m = state.mass;
+
+            const I_steiner = new THREE.Matrix3().set(
+                m * (r2 - x*x), -m * x*y,      -m * x*z,
+                -m * y*x,       m * (r2 - y*y), -m * y*z,
+                -m * z*x,       -m * z*y,       m * (r2 - z*z)
+            );
+
+            const I_tot = new THREE.Matrix3();
+            for(let i=0; i<9; i++) I_tot.elements[i] = Ic_world.elements[i] + I_steiner.elements[i];
+            
+            return I_tot;
+        }
+
+        // --- Interaction Logic (Dragging vectors) ---
+        const interaction = {
+            hovered: null, // 'omega'
+            dragging: null,
+            dragPlane: new THREE.Plane()
+        };
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        renderer.domElement.addEventListener('pointermove', (e) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            if (interaction.dragging) {
+                raycaster.setFromCamera(mouse, camera);
+                const intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(interaction.dragPlane, intersectPoint);
+                if (intersectPoint) {
+                    const newVec = intersectPoint.sub(state.P0);
+                    
+                    if (interaction.dragging === 'omega') {
+                        const newOmegaVec = newVec.divideScalar(state.visualScaleOmega);
+                        state.omega = newOmegaVec.length();
+                        if (state.omega > 0.001) {
+                            state.u.copy(newOmegaVec).normalize();
+                            state.D.copy(state.u);
+                        } else {
+                            state.omega = 0;
+                        }
+                    }
+                    
+                    document.getElementById('omega').value = state.omega;
+                    document.getElementById('num-omega').value = state.omega.toFixed(2);
+                    document.getElementById('d-x').value = state.D.x.toFixed(2);
+                    document.getElementById('d-y').value = state.D.y.toFixed(2);
+                    document.getElementById('d-z').value = state.D.z.toFixed(2);
+                }
+                return;
+            }
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersectsOmega = raycaster.intersectObject(arrowOmega.cone);
+
+            if (intersectsOmega.length > 0) {
+                interaction.hovered = 'omega';
+                renderer.domElement.style.cursor = 'grab';
+            } else {
+                interaction.hovered = null;
+                renderer.domElement.style.cursor = 'default';
+            }
+        });
+
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            if (interaction.hovered) {
+                interaction.dragging = interaction.hovered;
+                renderer.domElement.style.cursor = 'grabbing';
+                controls.enabled = false;
+                
+                const tipPos = state.P0.clone().add(state.u.clone().multiplyScalar(state.omega * state.visualScaleOmega));
+                const normal = camera.position.clone().sub(tipPos).normalize();
+                interaction.dragPlane.setFromNormalAndCoplanarPoint(normal, tipPos);
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (interaction.dragging) {
+                interaction.dragging = null;
+                renderer.domElement.style.cursor = interaction.hovered ? 'grab' : 'default';
+                controls.enabled = true;
+            }
+        });
+
+        // --- UI Logic ---
+        function syncInputs(range, num, callback) {
+            range.addEventListener('input', (e) => { num.value = e.target.value; callback(parseFloat(e.target.value)); });
+            num.addEventListener('input', (e) => { range.value = e.target.value; callback(parseFloat(e.target.value)); });
+        }
+
+        syncInputs(document.getElementById('mass'), document.getElementById('num-mass'), (v) => { state.mass = v; computeBaseInertia(); });
+        syncInputs(document.getElementById('omega'), document.getElementById('num-omega'), (v) => { state.omega = v; });
+        document.getElementById('scale-l').addEventListener('input', (e) => { state.visualScaleL = parseFloat(e.target.value); });
+
+        const btnPlay = document.getElementById('btn-play');
+        const btnReset = document.getElementById('btn-reset');
+
+        btnPlay.addEventListener('click', () => {
+            state.isPlaying = !state.isPlaying;
+            if (state.isPlaying) {
+                btnPlay.textContent = "Pausa";
+                btnPlay.style.background = "#ff9800";
+            } else {
+                btnPlay.textContent = "Play";
+                btnPlay.style.background = "#4CAF50";
+            }
+        });
+
+        btnReset.addEventListener('click', () => {
+            state.angle = 0;
+            pivot.quaternion.identity();
+        });
+
+        const pInputs = ['x','y','z'].map(ax => document.getElementById(`p-${ax}`));
+        const dInputs = ['x','y','z'].map(ax => document.getElementById(`d-${ax}`));
+
+        function updateAxisFromUI() {
+            state.P0.set(
+                parseFloat(pInputs[0].value) || 0,
+                parseFloat(pInputs[1].value) || 0,
+                parseFloat(pInputs[2].value) || 0
+            );
+            state.D.set(
+                parseFloat(dInputs[0].value) || 0,
+                parseFloat(dInputs[1].value) || 0,
+                parseFloat(dInputs[2].value) || 0
+            );
+            if (state.D.lengthSq() < 0.0001) {
+                state.u.set(0,1,0);
+            } else {
+                state.u.copy(state.D).normalize();
+            }
+        }
+
+        pInputs.forEach(el => el.addEventListener('input', updateAxisFromUI));
+        dInputs.forEach(el => el.addEventListener('input', updateAxisFromUI));
+
+        document.querySelectorAll('.dim-control').forEach(row => {
+            const param = row.dataset.param;
+            const range = row.querySelector('input[type="range"]');
+            const num = row.querySelector('input[type="number"]');
+            if (range && num) {
+                syncInputs(range, num, (v) => {
+                    state.params[param] = v;
+                    rebuildShape();
+                });
+            }
+        });
+
+        document.getElementById('shape-select').addEventListener('change', (e) => {
+            state.shape = e.target.value;
+            pivot.quaternion.identity();
+            
+            document.querySelectorAll('.dim-control').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll(`.dim-${state.shape}`).forEach(el => el.classList.add('active'));
+            
+            if (state.shape === 'cylinder') {
+                document.querySelector('.dim-cylinder.dim-hollow_cylinder label.lbl-r1').textContent = 'Raggio (R):';
+            } else if (state.shape === 'hollow_cylinder') {
+                document.querySelector('.dim-cylinder.dim-hollow_cylinder label.lbl-r1').textContent = 'Raggio Est (R):';
+            }
+
+            rebuildShape();
+        });
+
+        function rebuildShape() {
+            if (currentMesh) {
+                objectGroup.remove(currentMesh);
+                currentMesh.geometry.dispose();
+            }
+            compositeMeshes.forEach(m => {
+                objectGroup.remove(m);
+                m.geometry.dispose();
+            });
+            compositeMeshes = [];
+
+            const p = state.params;
+            let geom;
+
+            switch(state.shape) {
+                case 'sphere':
+                    geom = new THREE.SphereGeometry(p.r, 32, 16);
+                    currentMesh = new THREE.Mesh(geom, objectMaterial);
+                    objectGroup.add(currentMesh);
+                    break;
+                case 'cube':
+                    geom = new THREE.BoxGeometry(p.a, p.a, p.a);
+                    currentMesh = new THREE.Mesh(geom, objectMaterial);
+                    objectGroup.add(currentMesh);
+                    break;
+                case 'parallelepiped':
+                    geom = new THREE.BoxGeometry(p.a, p.b, p.c);
+                    currentMesh = new THREE.Mesh(geom, objectMaterial);
+                    objectGroup.add(currentMesh);
+                    break;
+                case 'cylinder':
+                    geom = new THREE.CylinderGeometry(p.r1, p.r1, p.h, 32);
+                    currentMesh = new THREE.Mesh(geom, objectMaterial);
+                    objectGroup.add(currentMesh);
+                    break;
+                case 'hollow_cylinder':
+                    const shape = new THREE.Shape();
+                    shape.absarc(0, 0, p.r1, 0, Math.PI * 2, false);
+                    const hole = new THREE.Path();
+                    hole.absarc(0, 0, p.r2, 0, Math.PI * 2, true);
+                    shape.holes.push(hole);
+                    
+                    const extrudeSettings = { depth: p.h, bevelEnabled: false, curveSegments: 32 };
+                    geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                    geom.translate(0, 0, -p.h/2);
+                    geom.rotateX(Math.PI/2);
+                    currentMesh = new THREE.Mesh(geom, objectMaterial);
+                    objectGroup.add(currentMesh);
+                    break;
+                case 'torus':
+                    geom = new THREE.TorusGeometry(p.r, p.rt, 16, 64);
+                    geom.rotateX(Math.PI/2);
+                    currentMesh = new THREE.Mesh(geom, objectMaterial);
+                    objectGroup.add(currentMesh);
+                    break;
+                case 'composite':
+                    const sGeom = new THREE.SphereGeometry(0.5, 16, 16);
+                    const mat1 = new THREE.MeshPhysicalMaterial({color: 0xff3333, metalness:0.2, roughness:0.2});
+                    const m1 = new THREE.Mesh(sGeom, mat1);
+                    m1.position.set(p.d, 0, 0);
+                    const m2 = new THREE.Mesh(sGeom, mat1);
+                    m2.position.set(-p.d, 0, 0);
+                    
+                    const cGeom = new THREE.CylinderGeometry(0.1, 0.1, p.d*2, 8);
+                    cGeom.rotateZ(Math.PI/2);
+                    const rod = new THREE.Mesh(cGeom, new THREE.MeshStandardMaterial({color: 0x888888}));
+                    
+                    objectGroup.add(m1);
+                    objectGroup.add(m2);
+                    objectGroup.add(rod);
+                    compositeMeshes = [m1, m2, rod];
+                    break;
+            }
+            computeBaseInertia();
+        }
+
+        // --- Overlay Render ---
+        const overlayCanvas = document.getElementById('overlay-canvas');
+        const ctx = overlayCanvas.getContext('2d');
+
+        function renderOverlay() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const dpr = window.devicePixelRatio || 1;
+            
+            if (overlayCanvas.width !== Math.floor(width * dpr) || overlayCanvas.height !== Math.floor(height * dpr)) {
+                overlayCanvas.width = Math.floor(width * dpr);
+                overlayCanvas.height = Math.floor(height * dpr);
+                ctx.scale(dpr, dpr);
+            }
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            const near = camera.near;
+
+            function drawLabel(vEnd3D, color, labelText) {
+                if (!vEnd3D) return;
+                
+                const p = vEnd3D.clone().applyMatrix4(camera.matrixWorldInverse);
+                if (p.z > -near) return;
+                
+                p.applyMatrix4(camera.projectionMatrix);
+                const x = (p.x * 0.5 + 0.5) * width;
+                const y = (-(p.y) * 0.5 + 0.5) * height;
+                
+                ctx.font = "bold 16px sans-serif";
+                ctx.fillStyle = color;
+                ctx.shadowColor = 'rgba(255,255,255,0.8)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(labelText, x + 10, y + 10);
+                ctx.shadowBlur = 0;
+            }
+
+            drawLabel(new THREE.Vector3(10.5, 0, 0), '#aaaaaa', 'X');
+            drawLabel(new THREE.Vector3(0, 10.5, 0), '#aaaaaa', 'Y');
+            drawLabel(new THREE.Vector3(0, 0, 10.5), '#aaaaaa', 'Z');
+
+            if (state.omega > 0.001) {
+                const oEnd = state.P0.clone().add(state.u.clone().multiplyScalar(state.omega * state.visualScaleOmega));
+                drawLabel(oEnd, '#00cc00', 'ω');
+            }
+            
+            if (state.L_total && state.L_total.lengthSq() > 0.001) {
+                const lEnd = state.P0.clone().add(state.L_total.clone().multiplyScalar(state.visualScaleL));
+                drawLabel(lEnd, '#3333ff', 'L');
+            }
+        }
+
+        // --- Animation ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.1);
+            
+            if (state.isPlaying) {
+                state.angle += state.omega * dt;
+                const deltaQ = new THREE.Quaternion().setFromAxisAngle(state.u, state.omega * dt);
+                pivot.quaternion.premultiply(deltaQ);
+                pivot.quaternion.normalize();
+            }
+            
+            pivot.position.copy(state.P0);
+            objectGroup.position.copy(state.P0).multiplyScalar(-1);
+
+            const I_tot = getInertiaTensor();
+            const omega_vec = state.u.clone().multiplyScalar(state.omega);
+            state.L_total = omega_vec.clone().applyMatrix3(I_tot);
+
+            const I_axis = state.u.clone().applyMatrix3(I_tot).dot(state.u);
+            const d = state.P0.clone().cross(state.u).length();
+
+            document.getElementById('res-d').textContent = d.toFixed(2) + " m";
+            document.getElementById('res-i').textContent = I_axis.toFixed(2) + " kg·m²";
+            document.getElementById('res-l').textContent = state.L_total.length().toFixed(2) + " kg·m²/s";
+
+            arrowOmega.group.position.copy(state.P0);
+            updateArrow(arrowOmega, omega_vec.clone().multiplyScalar(state.visualScaleOmega));
+
+            arrowL.group.position.copy(state.P0);
+            updateArrow(arrowL, state.L_total.clone().multiplyScalar(state.visualScaleL));
+
+            axisLine.position.copy(state.P0);
+            if (state.u.lengthSq() > 0.0001) {
+                axisLine.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), state.u);
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+            renderOverlay();
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        rebuildShape();
+        animate();
+    </script>
+</body>
+</html>

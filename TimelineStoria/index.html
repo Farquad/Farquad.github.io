@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="../theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">
+    <title>Timeline Storica</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="ui-container">
+        <div class="legend">
+            <span class="legend-item" data-category="politica"><span class="color-box politica"></span>Politica</span>
+            <span class="legend-item" data-category="scienza"><span class="color-box scienza"></span>Scienza</span>
+            <span class="legend-item" data-category="cultura"><span class="color-box cultura"></span>Cultura</span>
+            <span class="legend-item" data-category="tecnologia"><span class="color-box tecnologia"></span>Tecnologia</span>
+        </div>
+        <div class="controls">
+            <div id="search-container" style="display: flex; gap: 5px; align-items: center;">
+                <button id="search-toggle">🔍</button>
+                <div id="search-box" style="display: none; align-items: center; gap: 5px;">
+                    <input type="text" id="search-input" placeholder="Es. 1000 a.C. o 1945" style="font-size: 16px; padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.5); color: white; width: 140px; outline: none;">
+                    <button id="search-submit">Vai</button>
+                </div>
+            </div>
+            <button id="zoom-in">+</button>
+            <button id="zoom-out">-</button>
+            <button id="reset">Reset</button>
+            <button id="toggle-view">Vista Verticale</button>
+        </div>
+    </div>
+    <canvas id="timelineCanvas"></canvas>
+    
+    <div id="toast-message" class="toast hidden"></div>
+
+    <script src="data.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
