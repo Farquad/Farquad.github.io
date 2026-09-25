@@ -1,0 +1,523 @@
+c<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]><html class="ie ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
+<head>
+    <script src="theme.js"></script>
+
+  
+    
+    
+    <script type="text/x-mathjax-config">   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}}); </script> 
+    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"> </script>
+    
+    <!-- equation numbering on -->
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
+
+ <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+ <script type="text/javascript" src="animatescroll.js"></script>
+    
+<script>
+  
+    
+  //var small=matchMedia('only screen and (max-width: 767px)').matches;
+  
+   
+function checkSmallness(){
+  //small=matchMedia('only screen and (max-width: 767px)').matches;
+  small= ($(window).width() <767);
+}
+
+checkSmallness();
+
+  window.onresize = function(event) {
+    checkSmallness();
+    if(small){
+      $(".navcolumn").css({"position":"relative","top":"0px"});
+      //window.location.reload()
+    };
+    handleScroll();
+  };
+  
+  
+  
+  
+  
+  $(function(){    // this is the shorthand for document.ready
+  
+  checkSmallness();
+  if (small){
+    $(".navcolumn").css({"position":"relative","top":"0"});
+  } 
+  
+  $(document).scroll(function(){    // this is the scroll event for the document
+  	handleScroll();
+  });
+
+});
+
+
+
+function handleScroll(){
+	
+  checkSmallness();
+  if (!small) {
+    scrolltop = $(document).scrollTop(); // by this we get the value of the scrolltop ie how much scroll has been don by user
+    if(parseInt(scrolltop) > 160)    // check if the scroll value is equal to the top of navigation
+      { 
+        $(".navcolumn").css({"position":"fixed","top":"0"});   // is yes then make the position fixed to top 0
+      }
+    else
+    {
+      $(".navcolumn").css({"position":"absolute","top":"160px"}); // if no then make the position to absolute and set it to 80
+    }
+  }
+};
+	
+</script>
+
+<script>
+$(function(){
+  
+  $('#topnav ul li a').on('click', function(e){
+    e.preventDefault();
+    var scrolldiv = $(this).attr('href');
+    
+    $(scrolldiv).animatescroll({padding:50});
+  });
+  
+});
+
+	
+</script>
+
+
+
+
+  <!-- Basic Page Needs
+  ================================================== -->
+	<meta charset="utf-8">
+	<title>Composizione di funzioni</title>
+	<meta name="description" content="">
+	<meta name="author" content="Marco Discendenti">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+
+<!--monitoraggio con Google Analytics-->
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-44935460-1', 'neocities.org');
+  ga('send', 'pageview');
+
+</script>
+
+<style>
+
+img{
+  min-width:16em;
+}
+
+.min300{
+  min-width:300px;
+}
+
+img.full{
+  width:100%;
+}
+
+.smallimg{
+  width:50% !important;
+}
+
+#topnav a{
+  text-decoration: none;
+}
+#topnav a:hover{
+  text-decoration: underline;
+}
+
+#topnav {
+  font-size:90%;
+  /*font-style:bold;*/
+  font:Georgia;  
+}
+
+</style>
+
+
+</head>
+<body>
+
+
+
+	<!-- Primary Page Layout
+	================================================== -->
+
+	<!-- Delete everything in this .container and get started on your own site! -->
+
+	<div class="container row">
+		<div class="sixteen columns">
+			<h1 class="remove-bottom" style="margin-top: 40px">Funzioni Goniometriche e loro proprietà</h1>
+			<h5></h5>
+      </br>
+      <p style="text-align:right;">$\rightarrow$ <a href="/">Home</a></p>
+  		
+			<hr />
+      
+		</div>
+    
+    <div class="navcolumn" id="topnav">
+    <ul>
+    <li><a href="#circonferenzagoniometrica">Circonferenza Goniometrica</a></li>
+    <li><a href="#angoliparticolari">Angoli particolari</a></li>
+    <li><a href="#link">Siti interattivi</a></li>
+    <li><a href="#triangoli">Triangoli rettangoli</a></li>
+    <li><a href="#formulesomma">Formule per la somma</a></li>
+    <li><a href="#paridispari">Parità e disparità</a></li>
+    <li><a href="#formuledifferenza">Formule per la differenza</a></li>
+    <li><a href="#formuleduplicazione">Formule di duplicazione</a></li>
+    <li><a href="#formulebisezione">Formule di bisezione</a></li>
+    </ul>
+    </div>
+  
+    <div class="three columns vuoto">
+    &nbsp;
+    </div>
+    
+    
+   <!--
+		<div class="one-third column">			
+			<p class="centeredImage">
+      <img src="/gaussian_explosion_small2.jpg" width="200">
+      </p>
+      <h5>Welcome to the theacher's website</h5>
+		</div>
+    -->
+    
+		<div class="ten columns">
+			
+      <br />
+    
+      <h5 id="circonferenzagoniometrica">
+        Introduzione
+      </h5>
+      <br/>
+    
+      <p>Sappiamo che è possibile definire una funzione $f: A \to B$ considerando un
+      
+              
+        
+      </p>
+      <hr />
+      
+    
+      <h5 id="circonferenzagoniometrica">
+        Definizione
+      </h5>
+      <br/>
+    
+      <p>
+      Date due funzioni $f:A \to B$ e $g: B \to C$ definiamo la "composizione" di $f$ con $g$ nel seguente modo:
+              
+        
+      </p>
+      <hr />
+      
+      <h5 id="angoliparticolari">Seno e coseno di angoli particolari</h5>
+      <br/>
+      <p class="centeredImage">
+      <a href="http://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Unit_circle_angles_color.svg/1000px-Unit_circle_angles_color.svg.png" target="_blank">
+      <img src="http://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Unit_circle_angles_color.svg/1000px-Unit_circle_angles_color.svg.png" width="75%" title='Click per ingrandire'>
+      </a>
+      </p>
+      
+      <hr />
+      
+			<h5 id="link">Link</h5>
+      <br/>
+			<ul class="square">
+        <li><a href="http://www.geogebratube.org/student/m8028" target="_blank">Generazione interattiva della sinusoide.</a></li>
+        <li><a href="http://www.mentormob.com/learn/i/unit-t-concept-3/sine-cosine-and-tangent-functions-geogebra-dynamic-worksheet" target="_blank">Grafici traslati e dilatati.</a></li>
+      </ul>  
+      
+      <hr />
+      
+      <h5 id="triangoli">Relazioni tra seno, coseno e cateti di un triangolo rettangolo</h5>
+      <br/>
+      <p>Sulla circonferenza goniometrica si può individuare il seguente triangolo rettangolo di ipotenusa pari ad $1$:</p>
+      <p class="centeredImage">
+      <a href="http://mathworld.wolfram.com/images/eps-gif/Trigonometry_1001.gif" target="_blank">
+      <img src="http://mathworld.wolfram.com/images/eps-gif/Trigonometry_1001.gif" width="70%" title='Click per ingrandire'>
+      </a>
+      </p>
+      <p>questo trangolo sarà simile ad un triangolo rettangolo con lo stesso angolo al vertice (l'altro dovrà coincidere perchè la somma deve dare sempre un angolo piatto) ma con un'ipotenusa differente, come questo:</p>
+      <p class="centeredImage">
+      <a href="http://www.mathalino.com/sites/default/files/images/right-triangle-abc-theta.jpg" target="_blank">
+      <img src="http://www.mathalino.com/sites/default/files/images/right-triangle-abc-theta.jpg" width="30%" title='Click per ingrandire'>
+      </a>
+      </p>
+      <p>
+      Dalle proprietà dei triangoli simili possiamo dedurre che valgono le seguenti relazioni (con riferimento ai due triangoli rappresentati qui sopra):
+      </p>
+      <p>
+        $$\frac c 1 = \frac a {\sin \theta } = \frac b {\cos \theta }$$
+      </p>
+      e quindi:
+      <p>
+      \[\begin{aligned}
+        a=c\cdot \sin\theta,
+      \end{aligned} \]
+        
+      </p>
+      <p>
+      \[\begin{aligned}
+        b=c\cdot \cos\theta.
+        \end{aligned} \]
+      </p>
+      
+      <hr />
+      
+     
+      <h5 id="formulesomma">Formule per la somma di angoli</h5>
+      <br/>
+      \begin{equation}\label{senosomma}
+      \sin(\alpha+\beta)=\sin(\alpha)\cos(\beta)+\cos(\alpha)\sin(\beta)
+      \end{equation}
+      
+      <p>
+      \begin{equation}\label{cosenosomma}
+      \cos(\alpha+\beta)=\cos(\alpha)\cos(\beta)-\sin(\alpha)\sin(\beta)
+      \end{equation}
+      </p>
+      <p>Dimostrazione:</p>
+      <p class="centeredImage">
+      <a href="http://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/AngleAdditionDiagramSine.svg/500px-AngleAdditionDiagramSine.svg.png" target="_blank">
+      <img src="http://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/AngleAdditionDiagramSine.svg/500px-AngleAdditionDiagramSine.svg.png" width="50%" title='Click per ingrandire'>
+      </a>
+      </p>
+      <p>
+        Per ricavare alcune delle lunghezze indicate nella figura è necessario usare le formule viste sopra per il generico triangolo rettangolo: $a=c\cdot \sin(\theta)$ e $b=c\cdot \cos(\theta)$, dove consideriamo $\theta=\alpha$, in un caso $c=\sin(\beta)$ e in un altro $c=\cos(\beta)$.
+      </p>
+      <p>Possiamo usare le formule precedenti per ricavare la tangente di una somma di due angoli:</p>
+      
+      <p>
+        \begin{equation}\label{tangentesomma}
+        \begin{aligned}
+&amp; \tan(\alpha+\beta)  = \frac{\sin(\alpha+\beta)}{\cos(\alpha+\beta)}\\
+ &amp; = \frac {\sin(\alpha)\cos(\beta)+\cos(\alpha)\sin(\beta)}{\cos(\alpha)\cos(\beta)-\sin(\alpha)\sin(\beta)}  \\
+ &amp; = \frac {\frac{\sin(\alpha)\cos(\beta)}{\cos(\alpha)\cos(\beta)}+\frac{\cos(\alpha)\sin(\beta)}{\cos(\alpha)\cos(\beta)}}{\frac{\cos(\alpha)\cos(\beta)}{\cos(\alpha)\cos(\beta)}-\frac{\sin(\alpha)\sin(\beta)}{\cos(\alpha)\cos(\beta)}}  \\
+ &amp; = \frac {\frac{\sin(\alpha)}{\cos(\alpha)}+\frac{\sin(\beta)}{\cos(\beta)}}{1-\frac{\sin(\alpha)}{\cos(\alpha)}\frac{\sin(\beta)}{\cos(\beta)}}  \\
+ &amp; = \frac {\tan(\alpha)+\tan(\beta)}{1-\tan(\alpha)\tan(\beta)}
+\end{aligned} 
+\end{equation}
+      </p>
+      
+      <hr />
+      
+      
+      <h5 id="paridispari">Parità e disparità</h5>
+      <br/>
+      <p>Per tutti gli angoli valgono le seguenti uguaglianze verificabili facilmente per via geometrica sulla circonferenza:</p>
+      <p>\begin{equation}\label{senodispari}
+      \sin(-\alpha)=-\sin(\alpha)
+      \end{equation}
+      </p>
+      <p>
+      \begin{equation}\label{cosenopari}
+      \cos(-\alpha)=\cos(\alpha)
+      \end{equation}  
+      </p>
+      
+      <p>
+      \begin{equation}\label{tangentedispari}
+      \begin{aligned}
+        \tan(-\alpha) &amp; =\frac{\sin (-\alpha)}{\cos(- \alpha)}\\ &amp;=\frac{-\sin \alpha}{\cos \alpha}=-\tan \alpha
+      \end{aligned}
+      \end{equation}  
+      </p>
+      <hr />
+      
+     
+      
+      <h5 id="formuledifferenza">Differenza di angoli</h5>
+      <br/>
+      <p>
+        Dalle formule della somma (\ref{senosomma}) e (\ref{cosenosomma}) si possono ricavare le formule per la differenza semplicemente sommando gli angoli $\alpha$ e $-\beta$ e utilizzando le formule di parità/disparità (\ref{senodispari}) e (\ref{cosenopari}). Si ottiene:
+      </p>
+      
+      <p>
+        \[\begin{aligned}
+\sin(\alpha-\beta) &amp; = \sin(\alpha+(-\beta))\\
+ &amp; = \sin(\alpha)\cos(-\beta)+\cos(\alpha)\sin(-\beta)  \\
+ &amp; = \sin(\alpha)\cos(\beta)-\cos(\alpha)\sin(\beta)
+\end{aligned} \]
+      </p>
+      
+      
+      <p>
+        \[\begin{aligned}
+\cos(\alpha-\beta) &amp; = \cos(\alpha+(-\beta))\\
+ &amp; = \cos(\alpha)\cos(-\beta)-\sin(\alpha)\sin(-\beta)  \\
+ &amp; = \cos(\alpha)\cos(\beta)+\sin(\alpha)\sin(\beta)
+\end{aligned} \]
+      </p>
+      
+      <p>Per la tangente della differenza usiamo insieme la formula della somma (\ref{tangentesomma}) e la formula della disparità (\ref{tangentedispari}) e otteniamo:</p>      
+        \begin{equation*}
+        \begin{aligned}
+\tan(\alpha-\beta) &amp; = \tan(\alpha+(-\beta))\\
+ &amp; = \frac {\tan(\alpha)+\tan(-\beta)}{1-\tan(\alpha)\tan(-\beta)}  \\
+ &amp; = \frac {\tan(\alpha)-\tan(\beta)}{1+\tan(\alpha)\tan(\beta)}
+\end{aligned} 
+\end{equation*}
+      </p>
+      
+       
+  <hr />
+      <h5 id="formuleduplicazione">Formule di duplicazione</h5>
+      <br/>
+  <p>
+        Le formule di bisezione permettono di esprimere seno, coseno e tangente del doppio di un angolo ($2 \alpha$) sfruttando informazioni relative all'angolo di partenza ($\alpha$).
+      </p>
+      <p>
+        Per ricavare le formule di duplicazione è sufficiente considerare le formule per la somma di angoli ($\ref{senosomma}$) e ($\ref{cosenosomma}$) per sommare due volte lo stesso angolo:
+        \begin{equation}\label{duplicazioneseno}
+        \sin(2\alpha)=\sin(\alpha+\alpha)=2\sin\alpha\cos \alpha
+        \end{equation}
+        \begin{equation}\label{duplicazioncoeseno}
+        \cos(2\alpha)=\cos(\alpha+\alpha)=\cos^2 \alpha-\sin^2\alpha.
+        \end{equation}
+
+        
+      </p>
+  
+      
+      
+            
+  <hr />
+  
+      <h5 id="formulebisezione">Formule di bisezione</h5>
+      <br/>
+      <p>
+        Le formule di bisezione permettono di esprimere seno, coseno e tangente della metà di un angolo ($\frac \alpha 2$) sfruttando informazioni relative all'angolo intero ($\alpha$).
+      </p>
+      <p>
+        Per ricavare le formule di bisezione partiamo dalla formula di duplicazione del coseno: 
+        $
+        \cos(2\beta)=\cos^2(\beta)-\sin^2(\beta)
+        $
+        e poniamo $\beta=\frac \alpha 2$ (e quindi $2\beta=\alpha$). Otteniamo
+        $$
+        \cos(\alpha)=\cos^2\left(\frac \alpha 2\right)-\sin^2\left(\frac \alpha 2\right).
+        $$
+        Da questa formula e dalla relazione fondamentale ($\ref{fondamentale}$) si ricavano le formule
+        \begin{equation}\label{bisezionecoseno}
+        \cos^2\left(\frac\alpha 2\right)=\frac{1+\cos \alpha}{2}
+        \end{equation}
+        \begin{equation}\label{bisezioneseno}
+        \sin^2\left(\frac \alpha 2\right)=\frac{1-\cos \alpha}{2}
+        \end{equation}
+      </p>
+      </br>
+      <p>
+      Per la tangente partiamo dalla relazione
+      $$
+      \tan\left(\frac \alpha 2\right)=\frac{\sin\left(\frac \alpha 2\right)}{ \cos\left(\frac \alpha 2\right)}
+      $$
+      e moltiplichiamo numeratore e denominatore per $\sin\left(\frac \alpha 2\right)$. Otteniamo:
+      $$
+      \tan\left(\frac \alpha 2\right)=\frac{\sin^2\left(\frac \alpha 2\right)}{ \sin\left(\frac \alpha 2\right) \cos\left(\frac \alpha 2\right)}
+      $$
+      poi osserviamo che possiamo applicare (\ref{bisezioneseno}) al numeratore, mentre per il denominatore sfruttiamo la formula:
+      $$
+      \sin(\alpha)=2\sin\left(\frac \alpha 2\right) \cos\left(\frac \alpha 2\right)
+      $$
+      ottenuta applicando la formula di duplicazione (\ref{duplicazioneseno}) all'angolo $\beta=\alpha/2$. Sostituendo le espressioni delle formule citate a numeratore e denominatore di $\tan(\alpha/2)$ (e semplificando i $2$ che compaiono a numeratore e denominatore) si ottiene:
+      $$
+      \tan\left(\frac \alpha 2\right)=\frac{1-\cos(\alpha)}{ \sin(\alpha)}
+      $$
+  Notiamo che sempre a partire da $\tan\left(\frac \alpha 2\right)=\frac{\sin\left(\alpha /2\right)}{ \cos\left(\alpha/ 2\right)}$ potevamo moltiplicare numeratore e denominatore per $\cos\left(\alpha /2\right)$ e ragionare come sopra sfruttando (\ref{bisezionecoseno}) anzichè (\ref{bisezioneseno}). Alla fine si arriva ad una formula simile a quella ricavata sopra:
+      \begin{equation}\label{bisezionetangente}
+      \tan\left(\frac \alpha 2\right)=\frac{ \sin(\alpha)}{1+\cos(\alpha)}
+      \end{equation}
+      </p>
+      <!--
+        <li><a href="limiti.html">Limiti</a></li>
+				<li><strong>A Responsive Grid Down To Mobile</strong>: Elegant scaling from a browser to tablets to mobile.</li>
+				<li><strong>Fast to Start</strong>: It's a tool for rapid development with best practices</li>
+				<li><strong>Style Agnostic</strong>: It provides the most basic, beautiful styles, but is meant to be overwritten.</li>
+      -->
+			
+		</div>
+    
+   
+    
+    
+    <!--
+		<div class="one-third column">
+			<h3>Computational art</h3>
+      
+
+      <p class="centeredImage">
+      <img src="/gaussian_explosion_small2.jpg" width="200">
+      </p>
+      <ul class="square">
+      <li><a href="processing.html">Processing</a></li>
+      <li><a href="randomfilter.html">Random Filter</a></li>
+		  </ul>
+		</div>
+    -->
+    
+    
+    
+    
+    
+	</div><!-- container -->
+
+<footer>
+   <div class="container">
+  <hr />
+    <p>Riferimenti per le immagini:</p>
+    <ul class="square">
+        <li><a href="http://en.wikipedia.org/wiki/List_of_trigonometric_identities" target="_blank">Wikipedia in inglese</a></li>
+        <li><a href="http://www.mathalino.com/reviewer/plane-trigonometry/functions-of-a-right-triangle" target="_blank">MATHalino</a></li>
+        <li><a href="http://199.219.158.222/home/pub/56/" target="_blank">The Sage Notebook</a></li>
+        <li><a href="http://mathworld.wolfram.com/Trigonometry.html" target="_blank">Wolfram Mathwold</a></li>
+      
+      </ul>
+    
+  </div>
+</footer>
+
+<!-- End Document
+================================================== -->
+</body>
+</html>

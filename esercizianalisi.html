@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]><html class="ie ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
+<head>
+    <script src="theme.js"></script>
+
+  
+    
+    
+    <script type="text/x-mathjax-config">   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}}); </script> 
+    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"> </script>
+    
+    <!-- equation numbering on -->
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
+    
+
+
+
+
+
+  <!-- Basic Page Needs
+  ================================================== -->
+  <meta charset="utf-8">
+  <title>Esercizi di analisi</title>
+  <meta name="description" content="">
+	<meta name="author" content="Marco Discendenti">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+
+<!--monitoraggio con Google Analytics-->
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-44935460-1', 'neocities.org');
+  ga('send', 'pageview');
+
+</script>
+
+<style>
+.min300{
+  min-width:300px;
+}
+
+img{
+  width:100%;
+}
+
+.smallimg{
+  width:50% !important;
+}
+
+ol.letters { list-style-type: lower-alpha }
+
+</style>
+
+
+</head>
+<body>
+
+
+
+	<!-- Primary Page Layout
+	================================================== -->
+
+	<!-- Delete everything in this .container and get started on your own site! -->
+
+	<div class="container row">
+		<div class="sixteen columns">
+			<h1 class="remove-bottom" style="margin-top: 40px">Esercizi di Analisi</h1>
+      
+      
+			<h5></h5>
+			<hr />
+      <p style="text-align:right;">$\rightarrow$ <a href="/">Home</a></p>
+		</div>
+    
+   <!--
+		<div class="one-third column">			
+			<p class="centeredImage">
+      <img src="/gaussian_explosion_small2.jpg" width="200">
+      </p>
+      <h5>Welcome to the theacher's website</h5>
+		</div>
+    -->
+    
+    <div class="eight columns">
+    
+<!--
+      <h5>
+        Esercizi
+      </h5>
+      <br/>
+      -->
+      
+      <h3>Definizione di limite per successioni</h3>
+      
+      </br>
+      
+        <ol>
+          <li>
+            Data la successione
+            $$
+            a_n=\frac{2n^2+3}{n^2+1}
+            $$
+            con $n\geq 0$:
+            <ol class="letters">
+              <li>per quali $n$ si ha che $\text{dist}(a_n,2)<2$?</li>
+              <li>per quali $n$ si ha che $\text{dist}(a_n,2)<\frac 1 {101}$?</li>
+              <li>fissato un generico $\varepsilon>0$ per quali $n$ si ha che $\text{dist}(a_n,2)<\varepsilon$?</li>
+              <li>qual è il limite di $a_n$?</li>
+            </ol>
+          </li>
+          </br>
+          <li>
+            Data la successione
+            $$
+            a_n=\frac{3n^2-2n}{2n^2+3}
+            $$
+            con $n\geq 0$:
+            <ol class="letters">
+              <li>per quali $n$ si ha che $\text{dist}(a_n,\frac 3 2)<1$?</li>
+              <li>per quali $n$ si ha che $\text{dist}(a_n,\frac 3 2)<\frac 1 {8}$?</li>
+              <li>fissato un generico $\varepsilon>0$ per quali $n$ si ha che $\text{dist}(a_n,\frac 3 2)<\varepsilon$?</li>
+              <li>qual è il limite di $a_n$?</li>
+            </ol>
+          </li>
+          </br>
+          <li>
+            Costruisci due successioni che abbiano come limite $7$ che siano una crescente e una decrescente.
+          </li>
+          </br>
+          <li>
+            Data la successione
+            $$
+            a_n=\frac{n^3-2n}{n^2}
+            $$
+            con $n\geq 1$:
+            <ol class="letters">
+              <li>per quali $n$ si ha che $a_n>2$?</li>
+              <li>per quali $n$ si ha che $a_n\geq 40$?</li>
+              <li>fissato un generico $M>0$ per quali $n$ si ha che $a_n>M$?</li>
+              <li>qual è il limite di $a_n$?</li>
+            </ol>
+          </li>
+          </br>
+          <li>
+            Un certo deposito bancario garantisce un guadagno del 4% annuo, ovvero: se all'inizio dell'anno hai nel deposito $x$ euro alla fine dell'anno a questa somma si aggiunge il 4% di $x$ (per un ammontare totale di $x\cdot\frac {104} {100}$ euro nel deposito). Se iniziamo con un deposito di $100$ euro (senza aggiungere mai altro denaro di tasca nostra)  quanti anni ci vorranno per avere nel deposito più di $200$ euro? Quanto ci vorrà per avere più di $M$ euro? Se chiamiamo $a_n$ l'ammontare del deposito all'inizio dell'anno $n$ che si può dire del limite di $a_n$?
+          </li>
+          <li>
+            Data la successione
+            $$
+            a_n=\frac{2^n}{2^n+1}
+            $$
+            con $n\geq 0$:
+            <ol class="letters">
+              <li>per quali $n$ si ha che $\text{dist}(a_n,1)<\frac 1 {3}$?</li>
+              <li>per quali $n$ si ha che $\text{dist}(a_n,1)<\frac 1 {1025}$?</li>
+              <li>fissato un generico $\varepsilon>0$ per quali $n$ si ha che $\text{dist}(a_n,1)<\varepsilon$?</li>
+              <li>qual è il limite di $a_n$?</li>
+            </ol>
+          </li>
+          </br>
+          <li>
+            Data la successione
+            $$
+            a_n=\log_2(n^2+2n)
+            $$
+            con $n\geq 1$:
+            <ol class="letters">
+              <li>per quali $n$ si ha che $a_n\geq3$?</li>
+              <li>per quali $n$ si ha che $a_n\geq 7$?</li>
+              <li>fissato un generico $M>0$ per quali $n$ si ha che $a_n>M$?</li>
+              <li>qual è il limite di $a_n$?</li>
+            </ol>
+          </li>
+          </br>
+          <li>
+            Data la successione
+            $$
+            a_n=\log_2\left(\frac{n+1}{n^2}\right)
+            $$
+            con $n\geq 1$:
+            <ol class="letters">
+              <li>per quali $n$ si ha che $a_n\leq -3$?</li>
+              <li>per quali $n$ si ha che $a_n< -7$?</li>
+              <li>fissato un generico $M>0$ per quali $n$ si ha che $a_n<-M$?</li>
+              <li>qual è il limite di $a_n$?</li>
+            </ol>
+          </li>
+          </br>
+          <li>
+            Data la successione
+            $$
+            a_n=\log_2\left(\frac{2n+1}{n}\right)
+            $$
+            con $n\geq 1$:
+            <ol class="letters">
+              <li>per quali $n$ si ha che $\text{dist}(a_n,1)<\frac 1 {3}$?</li>
+              <li>per quali $n$ si ha che $\text{dist}(a_n,1)<\frac 1 {100}$?</li>
+              <li>fissato un generico $\varepsilon>0$ per quali $n$ si ha che $\text{dist}(a_n,1)<\varepsilon$?</li>
+              <li>qual è il limite di $a_n$?</li>
+            </ol>
+          </li>
+        </ol>
+        
+      
+      </br>
+      <h5>
+        Soluzioni
+      </h5>
+      <br/>
+      <p>
+        1a: tutti gli $n$, 1b: $n>10$, 1c: $n>\sqrt{\frac 1 \varepsilon -1}$, 1d: $2$
+      </p>
+      <p>
+        2a: $n>1$, 2b: $n>9$, 2c: $n>\frac{1 + \sqrt{1+9\varepsilon-6\varepsilon^2}}{2\varepsilon}$ per $\varepsilon<\frac 1 {12}(\sqrt{105}+9)$, tutti gli $n$ per $\varepsilon\geq \frac 1 {12}(\sqrt{105}+9)$
+</p>
+<p>
+        4a: $n\geq 3$, 4b: $n\geq 41$, 4c: $n>\frac 1 2 (M+\sqrt{M^2+8})$, 4d: $+\infty$
+      </p>
+<p>
+  5: $18$ anni; $n$ anni con $n>\frac{\ln M - \ln 100}{\ln {104}-\ln {100}}$
+</p>
+
+<p>
+        6a: $n> 1$, 6b: $n> 10$, 6c: $n>\log_2(\frac 1 \varepsilon -1)$, 7d: $1$
+      </p>
+<p>
+        7a: $n>1$, 7b: $n> 10$, 7c: $n>-1+\sqrt{2^M+1}$, 7d: $+\infty$
+      </p>
+<p>
+        8a: $n>8$, 8b: $n\geq 129$, 8c: $n>\frac{1+\sqrt{1+2^{2-M}}}{2^{1-M}}$, 8d: $-\infty$
+      </p>
+      <p>
+        9a: $n>2$, 9b: $n\geq 72$, 9c: $n>\frac{2^\varepsilon-1}{2}$, 9d: $1$
+      </p>
+
+<hr/>
+<h3>Definizione di limite per funzioni ed operazioni con i limiti</h3>
+<br/>
+ <ol>
+          <li>
+          Usa la definizione di limite per dimostrare che
+          <ol class="letters">
+            <li>
+         $\displaystyle
+          \lim_{x\to 1^+}\frac{2x^2-x-1}{x-1}=3
+          $
+            
+          </li>
+          <li>
+          $\displaystyle
+          \lim_{x\to +\infty}\frac{1}{\sqrt{x^4+1}}=0
+          $
+            
+            
+          </li>
+          <li>
+          $\displaystyle
+          \lim_{x\to 0^-}\frac{1}{e^{2x}-1}=-\infty
+          $
+            
+            
+          </li>
+          </ol>
+          trovando una formula per $\delta_\varepsilon$ nel primo, per $k_\varepsilon$ nel secondo e per $\delta_M$ nel terzo.
+          </li>
+          
+          <li>
+            Usa i teoremi relativi alle operazioni con i limiti (più eventualmente raccoglimenti, semplificazioni e prodotti notevoli) per determinare il limite delle seguenti successioni per $n\to \infty$:
+            <ol class="letters">
+            <li>
+              $\displaystyle
+            \frac 1 n - \frac 2 {n^2} + \frac {n^3}{n^4}
+            $
+            </li>
+            <br/>
+              <li>
+              $\displaystyle
+            n^3-n^2
+            $
+            </li>
+            <br/>
+              <li>
+            $\displaystyle
+            \frac{n^3-2n^2+n-1}{n^2}
+            $
+            </li>
+            <br/>
+              <li>
+            $\displaystyle
+            \frac{2n^2+3n+3}{n^2-n+1}
+            $
+            </li>
+               <li>
+               $\displaystyle
+            \sqrt{n+1}-\sqrt{n}
+            $
+            </li>
+            </ol>
+          </li>
+          </br>
+          <li>
+            Individua tre coppie di successioni $a_n$ e $b_n$ tali che $a_n\to 0$ e $b_n\to 0$ per $n\to \infty$ facendo in modo tale che si abbia
+            $$
+            \lim_{n \to \infty} \frac {a_n} {b_n}=L
+            $$
+            con $L=7$ per la prima coppia, $L=+\infty$ per la seconda e $L=0$ per la terza.
+          </li>
+  </ol>
+</br>
+      <h5>
+        Soluzioni
+      </h5>
+      <br/>
+      <p>
+        1a: ad esempio $\delta_\varepsilon=\frac \varepsilon 2$, 1b: ad esempio $k_\varepsilon=\sqrt[4]{\frac 1 {\varepsilon^2}-1}$, 1c: $\delta_M=-\frac 1 2 \log\left( \frac 1 M +1\right)$
+      </p>
+      <p>
+        2a: $0$, 2b: $+\infty$, 2c: $+\infty$, 2d: $2$, 2e: $0$
+      </p>
+
+
+<hr/>
+<h3>Esercizi per lunedì 14 aprile</h3>
+<br/>
+ <ol>
+          <li>
+            <p>Usa i teoremi relativi alle operazioni con i limiti (più eventualmente raccoglimenti, semplificazioni e prodotti notevoli) per determinare il limite delle seguenti successioni e funzioni:</p>
+            <ol class="letters">
+            
+              <li>
+              $\displaystyle
+            \lim_{x \to +\infty} \frac{3x^5-2x^4+3x^2-2x}{4x^6-5x^4+6x^2}
+            $
+            </li>
+            <br/>
+            <li>
+              $\displaystyle
+            \lim_{x \to 0^+} \frac{4x-3}{x}
+            $ 
+            </li>
+            <br/>
+            <li>
+              $\displaystyle
+            \lim_{x \to 0^-} \frac{4x-3}{x}
+            $ 
+            </li>
+            <br/>
+              <li>
+            $\displaystyle
+            \lim_{x \to 0^+} \frac{3x^5-2x^4+3x^2-2x}{4x^6-5x^4+6x^2}
+            $
+            </li>  
+            <br/>
+               <li>
+              $\displaystyle
+            \lim_{x \to -\infty} \frac{3-4x}{2x+3}
+            $ 
+            </li>
+            <br/>
+              <li>
+              $\displaystyle
+            \lim_{x \to -\infty} \frac{4x^6-5x^4+6x^2}{3x^5-2x^4+3x^2-2x}
+            $
+            </li>
+            <br/>
+              <li>
+              $\displaystyle
+            \lim_{n \to \infty} \quad n-\sqrt{n^2+1}
+            $
+            </li>
+            </ol>
+          </li>
+          </br>
+         <li>
+           Data la funzione $f(x)=\frac x {x+2}$ determinare $\delta_\varepsilon$ affinché per ogni $x>1$ che verifica $\text{dist}(x,1)<\delta_\varepsilon$ si abbia $\left| f(x)-\frac 1 3 \right|<\varepsilon$ con $\varepsilon = \frac 1 {10}$, $\varepsilon = \frac 1 {1000}$ ed $\varepsilon$ generico. Che cosa puoi dire a proposito del limite $\lim_{x\to 1} f(x)$?
+         </li>
+         </br>
+         <li>
+           Data la funzione definita per casi:
+           $$
+           f(x) = \begin{cases} 2x+1 &\mbox{se } x \geq 2 \\ 
+2-x & \mbox{se } x < 2. \end{cases} 
+           $$
+           rappresenta il suo grafico e dimostra che $\lim_{x \to 2^+}f(x)=5$ mentre $\lim_{x \to 2^-}f(x)=0$. Che cosa si può dire su $\lim_{x \to 2} f(x)$?
+         </li>
+</ol>
+
+
+</br>
+      <h5>
+        Soluzioni
+      </h5>
+      <p>(Per la verifica dei limiti può essere di aiuto anche <a href="https://www.wolframalpha.com/input/?i=Limit%5B+%28x%2B1%29%2F%28x-1%29++%2Cx-%3E%2Binfty%5D" target="blank"> Wolfram Alpha</a>)</p>
+      <p>
+       1a: $0$; 1b: $-\infty$; 1c: $+\infty$; 1d: $-\infty$; 1e: $-2$; 1f: $+\infty$; 1g: $0$.
+      </p>
+      <p>
+        2: $\delta_{1/10}=\frac{9}{17}$, $\delta_{1/1000}=\frac{9}{1997}$, $\delta_{\varepsilon}=\frac{\varepsilon}{3\varepsilon-2}$
+      </p>
+    
+    
+   
+   
+
+<hr/>
+<h3>Altri esercizi</h3>
+<br/>
+ <ol>
+ <li>
+   <p>Individua asintoti orizzontali e verticali delle seguenti iperboli traslate:</p>
+   <ol class="letters">
+    <li>
+      $\displaystyle
+            \frac{x-1}{2-x}
+            $
+    </li>
+    <br/>
+    <li>
+      $\displaystyle
+            \frac{4x+1}{1-x}
+            $
+    </li>
+    </ol>
+            
+ </li>
+ 
+ <li>
+ <p>Usa i teoremi relativi alle operazioni con i limiti (più eventualmente raccoglimenti, semplificazioni e prodotti notevoli) per determinare il limite delle seguenti successioni e funzioni:</p>
+            <ol class="letters">
+            
+              <li>
+              $\displaystyle
+            \lim_{x \to 1^+} \frac{x^2-1}{x^2-2x+1}
+            $
+            </li>
+            <br/>
+            <li>
+              $\displaystyle
+            \lim_{x \to 1^-} \frac{x^2-1}{x^2-2x+1}
+            $
+            </li>
+            <br/>
+            <li>
+              $\displaystyle
+            \lim_{x \to -1} \frac{x^4+x^3-3 x^2-5 x-2}{(x+1)^3}
+            $
+            </li>
+            <br/>
+            <li>
+              $\displaystyle
+            \lim_{n \to \infty} \frac{\sqrt{n^4+n^3}-\sqrt{n^4+n}}{n}
+            $
+            </li>
+            </ol>
+ </li>
+ 
+ </ol>
+
+</br>
+      <h5>
+        Soluzioni
+      </h5>
+      <p>(Per la verifica dei limiti può essere di aiuto anche <a href="https://www.wolframalpha.com/input/?i=Limit%5B+%28x%2B1%29%2F%28x-1%29++%2Cx-%3E%2Binfty%5D" target="blank"> Wolfram Alpha</a>)</p>
+      <p>
+       1a: $x=2$, $y=-1$, <a href="https://www.wolframalpha.com/input/?i=y%3D%28x-1%29%2F%282-x%29">qui il grafico</a>; 1b: $x=1$, $y=-4$.
+      </p>
+      <p>
+        2a: $+\infty$; 2b: $-\infty$; 2c: $-1$, 2d: $\frac 1 2$
+      </p>
+
+
+
+ <hr/>
+<h3>Esercizi per le vacanze</h3>
+<br/>
+
+<style>
+.cornice 
+{
+  background: yellow;
+  padding: 5px;
+border-style:solid;
+border-width:1px;
+color: black;
+}
+</style>
+
+<div>
+ <p class="cornice"> Dal libro di testo: esercizi pag. 309 (quelli ancora non fatti), pag. 310 fino al n. 55, pag. 311 n. 1, 2 e 3.</p>
+</div>
+<br/>
+ <ol>
+ <li>
+ <p>Usa i teoremi relativi alle operazioni con i limiti (più eventualmente raccoglimenti, semplificazioni e prodotti notevoli) per determinare il limite delle seguenti successioni e funzioni:</p>
+            <ol class="letters">
+            <li>
+              $\displaystyle \lim_{x\to 1^-}\quad \frac{-x}{1-x}$
+            </li>
+            <br/>
+              <li>
+              $\displaystyle
+            \lim_{x \to 2^-} \frac{x^2-4}{x^2-3x+2}
+            $
+            </li>
+            <br/>
+            
+            <li>
+             $\displaystyle \lim_{x\to 3^+}\quad \frac{x^2-4x+3}{x^2-6x+9}$
+            </li>
+            <br/>
+            
+            <li>
+             $\displaystyle \lim_{n\to \infty}\quad \frac{\sqrt{n^5+n^3-1}}{n^2+1}$
+            </li>
+            <br/>
+            
+            <li>
+             $\displaystyle \lim_{n\to \infty}\quad {\sqrt[3]{n+1}-\sqrt[3]{n}}$
+            </li>
+            
+            
+            </ol>
+ </li>
+ 
+ </ol>
+ 
+ <hr/>
+<h3>Esercizi per lunedì 5 maggio</h3>
+<br/>
+<div>
+ <p class="cornice"> Dal libro di testo: esercizi pag. 363 da 1 a 7, pag. 368 n. 93, 100, 106, 110, 111.</p>
+</div>
+<br/>
+ <ol>
+          <li>
+            <p>Usa la lista delle funzioni continue e i teoremi relativi alla continuità di somme, prodotti e composizoni per determinare l'insieme dei valori di $x$ su cui è continua ciascuna delle seguenti funzioni:</p>
+            <ol class="letters">
+            
+              <li>
+              $\displaystyle f(x)=
+            \frac{3x^5-2x^4+3x^2-2}{x^3-x}
+            $
+            </li>
+            <br/>
+            <li>
+              $\displaystyle f(x)=
+            \ln (\sin x)
+            $
+            </li>
+            <br/>
+            <li>
+              $\displaystyle f(x)=
+            \sqrt{e^{-x^2}}
+            $
+            </li>
+            <br/>
+            <li>
+              $\displaystyle f(x)=
+            (16-2^x)^{-\frac 1 3}
+            $
+            </li>
+            <br/>
+            <li>
+              $\displaystyle f(x)=
+            \ln(\ln(x))
+            $
+            </li>
+            <br/>
+            <li>
+              $\displaystyle f(x)=
+            \sin\left(\frac{1}{x}\right)
+            $
+            </li>
+            <br/>
+
+</ol> 
+ 
+ 
+ </br>
+      <h5>
+        Soluzioni
+      </h5>
+      <p>1. I punti di discontinuità si possono vedere attraverso il grafico della funzione. Per vedere il grafico 
+      <ul class="square">
+        <li>
+          clicka sulla funzione col tasto destro
+        </li>
+        <li>
+          nel menu clicka su "Show Math As" $\rightarrow$ "TeX Commands"
+        </li>
+        <li>
+          comparirà una finestra con dentro un codice (che rappresenta la scrittura matematica della funzione), seleziona il codice (tutto) e copialo nella clipboard (premendo "Ctrl-C" oppure click destro $\rightarrow$ "Copia"),
+        </li>
+        <li>
+          vai alla pagina di <a href="https://www.wolframalpha.com/">wolfram alpha (clicka qui)</a> e "Iincolla" nel riquadro bianco il codice che hai appena copiato, quindi premi invio
+        </li>
+        <li>
+          aspetta fino a quando compariranno il grafico della funzione ed il suo dominio (in inglese "domanin") in notazione insiemistica.
+        </li>
+        <li>
+          se nel grafico compaiono due curve con dicitura "real part" e "imaginary part" cambia il tipo di grafico da "complex valued plot" a "real valued plot" (c'è una casella con queste diciture a destra del grafico).
+        </li>
+      </ul>
+        
+      </p>
+ 
+ 
+   </div>
+    <hr/>
+	</div><!-- container -->
+
+<footer>
+<!--
+   <div class="container">
+    <p>Riferimenti per le immagini:</p>
+    <ul class="square">
+        <li><a href="http://thinkzone.wlonk.com/Numbers/NumberSets.htm" target="_blank">Keith's think zone</a></li>        
+      </ul>
+  </div>
+  -->
+<style>
+.author-contact{text-align:center;font-size:12px;color:rgb(160,160,160);cursor:pointer;margin:18px 0 8px;font-family:Helvetica,Verdana,Tahoma;user-select:none;}
+.author-contact a{color:rgb(120,120,120);text-decoration:none;}
+.author-contact a:hover{text-decoration:underline;}
+</style>
+<p id="author-footer" class="author-contact" onclick="toggleAuthorInfo()" data-expanded="false">Contatta l'autore</p>
+<script>
+function toggleAuthorInfo() {
+  var footer = document.getElementById("author-footer");
+  if (footer.getAttribute("data-expanded") === "true") {
+    footer.textContent = "Contatta l'autore";
+    footer.setAttribute("data-expanded", "false");
+  } else {
+    var revEmail = "moc.liamg@ecsidocram";
+    var email = revEmail.split("").reverse().join("");
+    footer.innerHTML = '<a href="mailto:' + email + '">' + email + '</a>';
+    footer.setAttribute("data-expanded", "true");
+  }
+}
+</script>
+</footer>
+
+<!-- End Document
+================================================== -->
+</body>
+</html>

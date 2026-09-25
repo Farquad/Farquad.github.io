@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="theme.js"></script>
+</head>
+
+
+  <!-- Basic Page Needs
+  ================================================== -->
+  <meta charset="utf-8">
+  <title>Limiti</title>
+  <meta name="description" content="">
+	<meta name="author" content="Marco Discendenti">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+
+</head>
+  <body>
+  
+    <div class="container">
+    
+    
+    
+		<div class="sixteen columns">
+			
+      <h1 class="remove-bottom" style="margin-top: 40px">Computational art</h1>
+      </br>
+      <p style="text-align:right;"><a href="/">Home</a></p>
+			
+			<hr />
+		</div>
+
+  	<div class="sixteen columns">
+    
+        <script src="http://cloud.github.com/downloads/processing-js/processing-js/processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+PImage img;
+float[][] matrix = { { 0.11, 0.11, 0.11 },
+                     { 0.11,  0.11, 0.11 },
+                     { 0.11, 0.11, 0.11 } }; 
+
+float[][] matrix2 = { { 0.11, 0.11, 0.11 },
+                     { 0.11,  0.11, 0.11 },
+                     { 0.11, 0.11, 0.11 } };
+float[][] matrix3 = { { 0.11, 0.11, 0.11 },
+                     { 0.11,  0.11, 0.11 },
+                     { 0.11, 0.11, 0.11 } };                 
+
+float mean(float x, float y, float z){
+  return((x+y+z)/3);
+}
+
+void setup() {
+  size(400, 400);
+  img = loadImage("http://www.webanswers.com/post-images/E/E6/17251CAE-B9AF-C0C4-47CD137FEFD70551.jpg");
+}
+
+int imgxy(int x, int y){
+  return(constrain(x + y*img.width,0,img.pixels.length));
+}
+
+int xy(int x, int y){
+  return(constrain(x + y*width,0,pixels.length));
+}
+
+void draw() {
+  loadPixels();
+ //float r[100000];
+  // Since we are going to access the image's pixels too  
+  img.loadPixels(); 
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      
+      // The functions red(), green(), and blue() pull out the 3 color components from a pixel.
+      
+      
+      
+      
+      if(dist(x,y,mouseX,mouseY)<80){
+        pixels[xy(x,y)] =  convolution(x,y);
+      }else{
+        color c=img.pixels[imgxy(x,y)];
+        float g=green(img.pixels[imgxy(x,y)]);
+        float r=red(img.pixels[imgxy(x,y)]);
+        float b=blue(img.pixels[imgxy(x,y)]);
+        float m=mean(r,g,b);
+        m=brightness(img.pixels[imgxy(x,y)]);
+        colorMode(RGB, 255);
+        pixels[xy(x,y)] =  color(r,g,b);
+      }        
+    }
+  }
+  updatePixels();
+}
+
+color convolution(int x, int y){
+ float peso;
+ float somma1=0;
+ float somma2=0;
+ float somma3=0;
+ float tot=0;
+ float contapixel=0;
+ float media_originale=0;
+ float s=0.01;
+ float rand=random(-s,s);
+ float max=3;
+ int u=round(random(0,2));
+ int v=round(random(0,2));
+ //rand=0;
+ int u1=round(random(0,2));
+ int v1=round(random(0,2));
+ if(matrix[u][v]<max && matrix[u][v]>-max){ 
+   matrix[u1][v1]+=rand;
+   matrix[2-u1][2-v1]+=rand;
+   //matrix[round(random(0,2))][round(random(0,2))]-=rand;
+   //matrix[1][1]-=rand;
+   matrix[u][v]-=rand;
+   matrix[2-u][2-v]-=rand;
+   //print("A[0,0]="+matrix[u][v]);
+ }else{
+   rand=abs(rand);
+   if(matrix[u][v]>=max){
+     matrix[u][v]-=rand;
+     matrix[u1][v1]+=rand;
+     matrix[2-u][2-v]-=rand;
+     matrix[2-u1][2-v1]+=rand;
+   }
+   if(matrix[u][v]<=-max){
+     matrix[u][v]+=rand;
+     matrix[u1][v1]-=rand;
+     matrix[2-u][2-v]+=rand;
+     matrix[2-u1][2-v1]-=rand;
+   }
+ }
+      for (int k=0;k<=2;k++){
+        for (int h=0;h<=2;h++){
+          if(dist(0,0,h,k)<=30){
+            //peso=-1;
+            //somma1+=matrix[h][k]*brightness(img.pixels[imgxy(x+k-1,y+h-1)]);
+            //somma2+=matrix[h][k]*hue(img.pixels[imgxy(x+k-1,y+h-1)]);
+            //somma3+=matrix[h][k]*saturation(img.pixels[imgxy(x+k-1,y+h-1)]);
+            somma1+=matrix[h][k]*blue(img.pixels[imgxy(x+k-1,y+h-1)]);
+            somma2+=matrix[h][k]*red(img.pixels[imgxy(x+k-1,y+h-1)]);
+            somma3+=matrix[h][k]*green(img.pixels[imgxy(x+k-1,y+h-1)]);
+            //mean(red(img.pixels[imgxy(x+k,y+h)]),blue(img.pixels[imgxy(x+k,y+h)]),green(img.pixels[imgxy(x+k,y+h)]));
+            //media_originale+=mean(red(img.pixels[imgxy(x+k,y+h)]),blue(img.pixels[imgxy(x+k,y+h)]),green(img.pixels[imgxy(x+k,y+h)]));
+          }
+        }
+      }
+      somma1 = constrain(somma1+10,0,255);
+      somma2 = constrain(somma2,0,255);
+      somma3 = constrain(somma3,0,255);
+      //print("pixels="+contapixel);
+      //float media=somma;
+      //media=2*mean(red(img.pixels[imgxy(x,y)]),blue(img.pixels[imgxy(x,y)]),green(img.pixels[imgxy(x,y)]))-media;
+      //float r = constrain(media,0,255);
+      //float g = green(img.pixels[imgxy(x,y)]);
+      //float b = blue(img.pixels[imgxy(x,y)]);
+      
+      // Image Processing would go here
+      // If we were to change the RGB values, we would do it here, before setting the pixel in the display window.
+      
+      // Set the display pixel to the image pixel
+      //float m=mean(r,g,b);
+      //m=constrain(r+(50-dist(x,y,mouseX,mouseY))*2,0,255);
+      //m=r;
+      //colorMode(HSB, 255);
+      return(color(somma2,somma3,somma1));
+}
+
+</script>
+<canvas id="mycanvas"></canvas>
+
+
+</div>
+</div>
+        
+    </body>
+
+  
+</html>

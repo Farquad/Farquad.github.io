@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]><html class="ie ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
+<head>
+    <script src="theme.js"></script>
+
+  
+    
+    
+    <script type="text/x-mathjax-config">   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}}); </script> 
+    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"> </script>
+    
+    <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+
+<script>
+  
+    
+  var small=matchMedia('only screen and (max-width: 767px)').matches;
+    
+  window.onresize = function(event) {
+    small=matchMedia('only screen and (max-width: 767px)').matches;
+    if(small){
+      $(".navcolumn").css({"position":"relative","top":"0px"});
+      //window.location.reload()
+    }
+  }
+  
+  
+  
+  
+  
+	$(function(){    // this is the shorthand for document.ready
+  
+  
+  $(document).scroll(function(){    // this is the scroll event for the document
+  if (!small) {
+    scrolltop = $(document).scrollTop(); // by this we get the value of the scrolltop ie how much scroll has been don by user
+    if(parseInt(scrolltop) > 160)    // check if the scroll value is equal to the top of navigation
+      { 
+        $(".navcolumn").css({"position":"fixed","top":"0"});   // is yes then make the position fixed to top 0
+      }
+    else
+    {
+      $(".navcolumn").css({"position":"absolute","top":"160px"}); // if no then make the position to absolute and set it to 80
+    }
+  }
+  })
+
+});
+
+
+	
+</script>
+    
+    
+<style>
+.three.columns{
+  text-align:center;
+  
+}  
+
+p.sans{font-family:"Courier";}
+
+</style>
+
+
+
+
+  <!-- Basic Page Needs
+  ================================================== -->
+  <meta charset="utf-8">
+	<title>Limiti</title>
+	<meta name="description" content="">
+	<meta name="author" content="Marco Discendenti">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+
+</head>
+  <body>
+  
+    <div class="container">
+    
+    
+    
+		<div class="sixteen columns">
+			
+      <h1 class="remove-bottom" style="margin-top: 40px">Limiti</h1>
+      </br>
+      <p style="text-align:right;">$\rightarrow$ <a href="/">Home</a></p>
+			
+			<hr />
+		</div>
+  
+    <div class="navcolumn">
+    <p><a href="#notazioni">Notazioni e definizioni preliminari</a></p>
+    <p><a href="#notazioni">Definizioni di limite</a></p>
+    </div>
+  
+    <div class="three columns">
+    &nbsp;
+    </div>
+    
+    <div class="thirteen columns">
+    
+    <div class="columns">
+    
+    
+<a name="notazioni"> </a>    
+<h3>Notazioni e definizioni preliminari</h3>
+
+<p>Ricordiamo il significato di alcune notazioni. Dati due numeri reali $a$ e $b$ (con $a$ minore) definiamo:</p>
+<ul class="circle">
+<li>$(a,b):=\{x \in \mathbb{R} \,:\,a< x< b \}$ "intervalo aperto"</li>
+
+<li>$[a,b]:=\{x \in  \mathbb{R} \,:\,a\leq x \leq b \}$ "intervalo chiuso"</li>
+
+<li>$[a,b):=\{x \in  \mathbb{R} \,:\,a\leq x < b \}$ "intervalo aperto a destra"</li>
+
+<li>$(a,b]:=\{x \in \mathbb{R}  \,:\,a< x \leq b \}$ "intervalo aperto a sinistra"</li>
+
+</ul>
+
+<p>
+<strong>Definizione:</strong> Dato un punto $x_0 \in \mathbb R$ chiamiamo <em>intorno sferico di $x_0$ di raggio $r$</em> l'insieme 
+$$
+(x_0-r,x_0+r).
+$$
+
+Chiamiamo <em>intorno di $x_0$</em> un qualunque insieme $I$ di numeri reali che contiene al suo interno un <em>intorno sferico di</em> $x_0$.
+
+Chiamiamo <em>intorno sferico bucato di $x_0$ di raggio $r$</em> l'insieme 
+$$
+(x_0-r,x_0)\cup(x_0,x_0+r).
+$$
+
+Chiamiamo <em>intorno bucato di $x_0$</em> un insieme della forma
+$$
+I-\{x_0 \}
+$$
+ottenuto privando un intorno $I$ di $x_0$ del punto $x_0$ stesso.
+
+</p>
+
+</br>
+
+<p>
+<strong>Osservazione:</strong>
+L'intorno sferico $(x_0-r,x_0+r)$ si può anche scrivere come
+$$
+\{x\,: \, |x-x_0| < r\}
+$$
+mentre l'intorno sferico bucato si può scrivere come
+$$
+\{x \, : \, 0 < |x-x_0| < r \}.
+$$
+$\square$
+</p>
+
+<p class="sans">
+<strong>Osservazione:</strong>
+Sulla base della definizione appena data possiamo dire che un insieme $I$ è un <em>intorno</em> di $x_0$ se e solo se esiste un numero $\delta$ tale che l'insieme $(x_0-\delta,x_0+\delta)$ è interamente contenuto nell'insieme $I$.
+
+Analogamente possiamo dire che un insieme $I$ è un <em>intorno bucato</em> di $x_0$ se e solo se esiste un numero $\delta$ tale che l'insieme $(x_0-\delta,x_0)\cup(x_0,x_0+\delta)$ è interamente contenuto nell'insieme $I$.$\square$
+</p>
+
+<p>
+Facciamo alcuni esempi:
+</p>
+<ul class="circle">
+<li> L'insieme $(0,2)$ è un <em>intorno sferico</em> di $1$ (qual è il <em>raggio</em> di tale intorno?) </li>
+<li> Gli insiemi $(0,3)$ e $[0,2]$ non sono <em>intorni sferici</em> di $1$ (perchè?) </li>
+<li> L'insieme $I=[-3,-4]\cup[0,3]$ è un <em>intorno</em> del punto $1$ (quale <em>intorno sferico</em> di $1$ è contenuto in $I$?) </li>
+<li> Gli insiemi $\{1 \}$ e $[1,2)$ non sono <em>intorni</em> di $1$ (perchè?) </li>
+<li> L'insieme $\mathbb R$ è un <em>intorno</em> di qualsiasi punto $x\in \mathbb R$. </li>
+<li> L'insieme $(0,1)\cup(1,3]$ è un <em>intorno bucato</em> di $1$. </li>
+<li> L'insieme $(1,3]$ non è un <em>intorno bucato</em> di $1$ (perchè?) </li>
+</ul>
+
+<p>Introduciamo altre notazioni:</p>
+<ul class="circle">
+<li>$(a,+\infty):=\{x \in\mathbb R\,:\,x > a \},$</li>
+<li>$(-\infty,b):=\{x \in\mathbb R\,:\,x < b \},$</li>
+<li>$[a,+\infty):=\{x \in\mathbb R\,:\,x\geq a \},$</li>
+<li>$(-\infty,b]:=\{x \in\mathbb R\,:\,x\leq b \}.$</li>
+
+
+
+</br>
+
+    
+    <hr />
+    
+    
+    </div>
+    
+</div>
+    
+    
+    
+    </div>
+    <footer>
+      <p>
+        Copyright 2013
+      </p>
+    </footer>
+  </body>
+</html>

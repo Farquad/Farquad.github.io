@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]><html class="ie ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
+<head>
+    <script src="theme.js"></script>
+
+  
+    <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+    
+    <script type="text/x-mathjax-config">   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}}); </script> 
+    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"> </script>
+    <script type="text/javascript" src="animatescroll.js"></script>
+    <!-- equation numbering on -->
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
+    
+
+<script>
+  
+    
+function checkSmallness(){
+  //small=matchMedia('only screen and (max-width: 767px)').matches;
+  small= ($(window).width() <767);
+}
+
+checkSmallness();
+
+  window.onresize = function(event) {
+    checkSmallness();
+    if(small){
+      $(".navcolumn").css({"position":"relative","top":"0px"});
+      //window.location.reload()
+    };
+    handleScroll();
+  };
+  
+  
+  
+  
+  
+  $(function(){    // this is the shorthand for document.ready
+  
+  checkSmallness();
+  if (small){
+    $(".navcolumn").css({"position":"relative","top":"0"});
+  } 
+  
+  $(document).scroll(function(){    // this is the scroll event for the document
+  	handleScroll();
+  });
+
+});
+
+
+$.fn.scrollBottom = function() { 
+  return $(document).height() - this.scrollTop() - this.height(); 
+};
+
+
+function handleScroll(){
+	checkSmallness();
+  
+  if (!small) {
+    scrolltop = $(document).scrollTop(); // by this we get the value of the scrolltop ie how much scroll has been don by user
+    maxscroll= $(document).height()-700;
+    //$("#debug").html(parseInt($(".navcolumn").offset().top));
+    if(parseInt(scrolltop) < 160)    // check if the scroll value is equal to the top of navigation
+      { 
+      $(".navcolumn").css({"position":"absolute","top":"160px"}); // if no then make the position to absolute and set it to 80
+      }
+    if((parseInt(scrolltop) > 160)&&(parseInt(scrolltop) < maxscroll))    // check if the scroll value is equal to the top of navigation
+      {
+       $(".navcolumn").css({"position":"fixed","top":"0"});   // is yes then make the position fixed to top 0 
+        } 
+    if(parseInt(scrolltop) > maxscroll){    
+          $(".navcolumn").css({"position":"absolute","top": maxscroll+"px"});
+        }    
+  }
+};
+	
+</script>
+
+<script>
+$(function(){
+  
+  $('#topnav ul li a').on('click', function(e){
+    e.preventDefault();
+    var scrolldiv = $(this).attr('href');
+    
+    $(scrolldiv).animatescroll({padding:50});
+  });
+  
+});
+
+
+</script>
+
+
+
+  <!-- Basic Page Needs
+  ================================================== -->
+  <meta charset="utf-8">
+	<title>Relazioni e Funzioni</title>
+	<meta name="description" content="">
+	<meta name="author" content="Marco Discendenti">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+
+<!--monitoraggio con Google Analytics-->
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-44935460-1', 'neocities.org');
+  ga('send', 'pageview');
+
+</script>
+<style>
+
+
+
+img{
+  min-width:16em;
+}
+
+.min300{
+  min-width:300px;
+}
+
+img.full{
+  width:100%;
+}
+
+.smallimg{
+  width:50% !important;
+}
+
+
+#topnav a{
+  text-decoration: none;
+}
+#topnav a:hover{
+  text-decoration: underline;
+}
+
+#topnav {
+  font-size:90%;
+  /*font-style:bold;*/
+  font:Georgia; 
+  color:rgb(230,30,30);
+}
+
+
+</style>
+
+
+</head>
+
+
+<body>
+
+
+
+	<!-- Primary Page Layout
+	================================================== -->
+
+	<!-- Delete everything in this .container and get started on your own site! -->
+
+	<div class="container row">
+		<div class="sixteen columns">
+			<h1 class="remove-bottom" style="margin-top: 40px">Relazioni e Funzioni</h1>
+			<h5></h5>
+      </br>
+      <p style="text-align:right;">$\rightarrow$ <a href="/">Home</a></p>
+  		
+			<hr />
+      
+		</div>
+    
+    <div class="navcolumn" id="topnav">
+    <ul>
+    <li><a href="#par1">Prodotto cartesiano</a></li>
+    <li><a href="#par2">Relazioni binarie</a></li>
+    <li><a href="#par3">Funzioni</a></li>
+    <li><a href="#par4">Funzioni iniettive, suriettive, biiettive</a></li>
+    <li><a href="#par5">Composizione di funzioni</a></li>
+    <li><a href="#par6">Funzione inversa</a></li>
+    </ul>
+    </div>
+  
+    <div class="three columns vuoto">
+    &nbsp;
+    </div>
+    
+    
+   <!--
+		<div class="one-third column">			
+			<p class="centeredImage">
+      <img src="/gaussian_explosion_small2.jpg" width="200">
+      </p>
+      <h5>Welcome to the theacher's website</h5>
+		</div>
+    -->
+    
+		<div class="ten columns">
+			
+			
+			
+			
+      <br />
+    
+      <h5 id="par1">
+        Prodotto cartesiano
+      </h5>
+      <br/>
+      
+      
+      <p>Dati due insiemi $A$ e $B$ si chiama <em>prodotto cartesiano</em> di $A$ per $B$ un nuovo insieme i cui elementi sono tutte le possibili coppie ordinate che hanno al primo posto un elemento di $A$ e al secondo posto un elemento di $B$. Tale insieme si indica con $A \times B$.</p>
+      <p>
+        In simboli:
+        $$
+        A\times B= \{(a,b): a\in A, b \in B\}
+        $$
+      </p>
+      
+      <p>
+        Esempi: 
+        <ol>
+        <li>se $A=\{1,2,3\}$ e $B=\{a,b,c\}$ allora $A \times B = \{(1,a),(1,b),(1,c),(2,a),(2,b),(2,c),(3,a),(3,b),(3,c)\}$ e si può costruire e rappresentare graficamente in questo modo:</li>
+        <p class="centeredImage">
+      <img src="prodottocartesiano.jpg" alt="" width="70%">
+      </p>
+        <li>se $A=B=\mathbb R$ allora $A\times B$ è il piano cartesiano: l'insieme di tutti i punti del piano rappresentati dalle coppie delle loro coordinate</li>
+        </ol>
+      </p>
+      
+      <p>Nota che per insiemi finiti il numero di elementi del prodotto cartesiano è precisamente il prodotto dei numeri degli elementi degli insiemi di partenza.</p>
+			
+      <br />
+    
+      <h5 id="par2">
+        Relazioni binarie
+      </h5>
+      <br/>
+    
+      <p> Una <em>relazione</em> tra due oggetti $a$ e $b$ è un qualche tipo di rapporto che sussiste tra $a$ e $b$. Usiamo il termine “relazione <em>binaria</em>” per indicare il fatto che la relazione lega una coppia di soggetti (e non un numero più grande). Alcuni esempi familiari di relazioni binarie tra due persone possono essere quella di parentela o quella di amicizia. Consideriamo un insieme di persone (ad esempio gli studenti di una classe o di una scuola), e formiamo l'insieme di tutte le coppie possibili di persone prese da questo insieme (ad esempio (Mario, Carla), (Mario, Luigi), (Luigi Carla), (Mario, Mario) ...). Alcune di queste coppie saranno coppie di amici e quindi soddisfano la relazione di amicizia "x è amico di y", altre no. Nel complesso la relazione individuerà un sottoinsieme dell’insieme di tutte le coppie (il sottoinsieme delle coppie legate da amicizia). In matematica l’insieme di queste coppie viene identificato con la relazione stessa, cioè si definisce la relazione come l’insieme di coppie che essa produce. Questa scelta di identificare la relazione con l'insieme non è in effetti ragionevole se parliamo di insiemi e relazioni che hanno a che fare con la nostra esperienza concreta (riesci a vedere il perchè?) ma è una buona scelta se parliamo di relazioni ed enti matematici.
+      
+      Dunque chiameremo <em>relazione</em> binaria tra gli insiemi $A$ e $B$ un qualunque sottoinsieme del prodotto cartesiano $A \times B$ cioè un qualunque insieme di coppie $(a,b)$ (indipendentemente dal fatto di saper individuare o no un principio generale che accomuni tali coppie).
+      
+      </p>
+      
+      <p>
+        Esempi: 
+        <ol>
+        <li>Sono <em>relazioni binarie</em> sia l’insieme vuoto (che non contiene nessuna coppia) che l’intero prodotto cartesiano (cioè l’insieme di tutte le possibili coppie)</li>
+        <li>La relazione di uguaglianza $y=x$ è individuata dall’insieme delle coppie che la soddisfano ($(1,1), (2,2), ...$) che sul piano cartesiano individua la bisettrice degli assi che attraversa primo e terzo quadrante</li>
+        <li>La relazione di “diversità” $y\neq x$ è individuata dall'insieme delle coppie che la soddisfano cioè tutto il piano cartesiano con l'ecczione della bisettrice di primo e terzo quadrante</li>
+        <li>l’equazione di una retta $y=mx+q$ definisce un insieme di coppie (coordinate cartesiane) e quindi è una relazione: la relazione che a parole si esprime “$x$ e $y$ sono coordinate di un punto della retta”</li>
+        <li>l’equazione $x^2+y^2 < 1$ definisce un insieme di coppie e quindi è una relazione: la relazione che a parole si esprime “$x$ e $y$ sono coordinate di un punto interno alla circonferenza goniometrica”</li>
+        </ol>
+      </p>
+      
+  
+      
+    
+      <h5 id="par3">
+        Funzioni
+      </h5>
+      <br/>
+    
+      <p>
+      Consideriamo la relazione tra l’altezza (in metri) di una persona e la sua età (in anni). Ci aspettiamo che l'altezza abbia una qualche forma di “dipendenza” dall’età, nel senso che se consideriamo una qualsiasi età ad essa si può associare un’unica altezza (l’altezza che la persona aveva a quell'età). Scriviamo $h(x)$ per indicare quell'unico valore che individua l’altezza all'età $x$: diremo ad esempio che $h(0)=0.5$ e $h(18)=1.7$. Non si può dire invece che ad ogni altezza si possa univocamente associare un'età: l'altezza può rimanere stabile per molti anni, l'altezza $y=1.7$ può corrispondere sia all'età $x=18$ che all'età $x=19$. Possiamo dire che l'altezza "varia in funzione" dell'età. Non possiamo invece dire che l'età "varia in funzione" dell'altezza (perchè appunto non possiamo associare ad una altezza un'unica età).</p>
+      <p>
+      In generale chiamiamo <em>funzione</em> una relazione - cioè un'insieme di coppie ordinate $(x,y)$ - in cui il secondo termine $y$ delle coppie "varia in funzione" del primo termine $x$. In altri termini al variare del primo ($x$) si può sempre univocamente identificare il secondo (c’è una e una sola possibile scelta per la $y$ una volta dato il valore di $x$). Quando una relazione $f$ è una funzione indichiamo con la scrittura $f(x)$ quell'unico $y$ che è in relazione con $x$. Scriveremo
+      $$
+      f: A \to B
+      $$
+      per indicare il fatto che la funzione associa ad $x \in A$ un unico valore $y \in B$. Chiameremo il primo insieme $A$ <em>dominio</em> della funzione e il secondo insieme $B$ <em>insieme di arrivo</em>.
+    
+  
+      
+      <p>
+        Esempi: 
+        <ol>
+        <li>Il seguente diagramma rappresenta una funzione dall' insieme $X$ all'insieme $Y$:</li>
+        <p class="centeredImage">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Injection_keine_Injektion_2a.svg/480px-Injection_keine_Injektion_2a.svg.png" alt="" width="30%">
+        </p>
+        mentre questo secondo diagramma rappresenta una relazione che <em>non</em> è una funzione (perché?):
+        <p class="centeredImage">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Injection_keine_Injektion_1.svg/480px-Injection_keine_Injektion_1.svg.png" alt="" width="30%">
+        </p>
+        
+        
+        <li>La relazione “uguaglianza” citata prima che vale tra $x$ e $y$ quando $y=x$ è una funzione, ad ogni $x$ associa univocamente $f(x)=x$. Prende il nome di <strong>funzione identità</strong>, si indica anche con $\text{Id}(x)$</li>
+        
+        <li>La relazione “diverso da” $y\neq x$ sopra citata non è una funzione: per ogni elemento $x$ non si può individuare un unico elemento che è in relazione di diversità con $x$, ce le sono infiniti</li>
+        <li>l'equazione di una retta $y=mx+q$ (forma esplicita) definisce una funzione: ad ogni $x$ associa univocamente $f(x)=mx+q$</li>
+        <li>l'equazione $x^2+y^2=1$ definisce una relazione (vedi sopra) ma questa non è una funzione: dato un valore $x \in (-1,1)$ ci sono due valori per $y$ che soddisfano la relazione (ad esempio se $x$=0 abbiamo $y=1$ e $y=-1$), dato un valore di $x>1$ invece non esiste nessun valore di $y$ che soddisfi la relazione.
+        </li>
+        <li>
+          La relazione $y=\sqrt{1-x^2}$ definisce una funzione solo se consideriamo come dominio $A=[-1,1]$, non è invece una funzione se consideriamo come dominio $A=\mathbb R$ (perchè?)
+        </li>
+        </ol>
+      </p>
+   		
+   		<h5 id="par4">
+        Funzioni iniettive, suriettive, biiettive
+      </h5>
+      <br/>
+    
+    <p>
+      Abbiamo detto che una funzione associa (per definizione) ogni $x$ nel dominio a un unico $y$ nell'insieme di arrivo. E’ dunque garantito che ogni $x$ del dominio corrisponde ad un qualche $y$. Ci chiediamo: vale anche l'inverso? E’ vero anche che ad ogni $y$ dell'insieme di arrivo corrisponde un unico valore per $x$? Se fosse così allora anche invertendo i ruoli di $x$ e $y$ avremmo comunque una funzione. Questo in effetti può accadere come può non accadere, vediamo degli esempi:
+    </p>
+   		<ul class="square">
+   		<li>
+   		  La relazione $y=x^3$ definisce una funzione con dominio tutto l’insieme dei reali: ad ogni $x \in \mathbb R$ corrisponde un unico $y$ (dato dal cubo di $x$). D'altra parte è anche vero che ad ogni $y$ corrisponde un unico valore per $x$ dato da $\sqrt[3]{y}$ che esiste sempre perché l'indice della radice è dispari. Quindi la relazione inversa è ancora una funzione: la funzione $x=\sqrt[3]{y}$.</li>
+   		<li>
+   		  La relazione $y=x^2$ definisce una funzione con dominio tutto l’insieme dei reali: ad ogni $x \in \mathbb R$ corrisponde un unico $y$ (dato dal quadrato di $x$). D'altra parte non è vero che ad ogni $y$ corrisponde un unico valore per $x$ per due motivi:
+   		
+   		<ol>
+   		  <li>agli $y$ negativi non corrisponde nessuna $x$ (nessuna $x$ elevata al quadrato può dare un valore negativo)</li>
+   		  <li>agli $y$ positivi e diversi da $0$ corrispondono due valori di $x$, cioè $x=\pm \sqrt{y}$</li>
+   		</ol>
+   		Solo ad $x=0$ corrisponde un unico valore di $x$ ($x=0$). Dunque la relazione inversa di $y=x^2$ non è una funzione.</li>
+   		<iframe scrolling="no" src="https://tube.geogebra.org/material/iframe/id/1735305/width/1600/height/662/border/888888/rc/false/ai/false/sdz/true/smb/false/stb/false/stbh/true/ld/false/sri/true/at/auto" width="560px" height="200px" style="border:0px;"> </iframe>
+   		
+   		</ul>
+   		<p>
+   		Notiamo che ci sono due condizioni che sono verificate nel primo esempio e non lo sono nel secondo:
+   		<ol>
+   		  <li>ogni valore $y$ nell’insieme di arrivo corrisponde ad almeno un valore di $x$ del dominio ($f(x)=y$ per almeno un $x$)</li>
+   		  <li>ogni valore $y$ nell’insieme di arrivo non corrisponde mai a più di un valore di $x$</li>
+   		</ol>
+   		</p>
+   		<p>Quando vale la prima condizione diremo che la funzione è <em>suriettiva</em>, quando vale la seconda diremo che è <em>iniettiva</em>. Se valgono entrambe abbiamo che anche la relazione inversa è una funzione e la funzione si dice <em>biiettiva</em> o invertibile.</p>
+   		
+   		<p></p>
+   		
+   		
+   		
+      <h5 id="par5">
+        Composizione di funzioni
+      </h5>
+      <br/>
+    
+      <p> 
+      Una volta definite due funzioni $f:A \to B$ e $g: B \to C$ è possibile defirne una nuova facendo agire in sequenza prima $g$ e poi $f$ sul valore apena ottenuto tramite $g$. Ad esempio se $f(x)=2x$ e $g(x)=x+1$ possiamo costruire una nuova funzione $f(g(x))$ che esegue prima $g(x)=x+1$ e poi sul risultato ottenuto applica $f(x)=2x$ raddoppiandolo. Partendo da $x=1$ avremmo al primo passo $g(x)=1+1=2$ e al secondo passo $f(g(x))=f(2)=2\cdot 2=4$. La funzione $f(g(x))$ avrà anch'essa una formula algebrica che la riassume, per trovarla possiamo procedere applicando in sequenza le definizioni di $f$ e $g$ in questo modo:
+      $$
+      f(g(x))=f(x+1)=2(x+1)
+      $$
+      
+      </p>
+      
+      <p>Notare che è importante l'ordine con cui facciamo agire $f$ e $g$: se ne invertiamo l'ordine realizzando $g(f(x))$ otteniamo una funzione completamente diverso. Con gli esempi di prima abbiamo:
+        $$
+        g(f(x))=g(2x)=(2x)+1
+        $$
+        potremmo dire che la composizione di funzioni quindi è un'operazione (tra funzioni) che non gode della proprietà commutativa.
+      </p>
+      
+      <p>Lafunzione ottenuta con la composizione $y=f(g(x))$ si indica anche con la notazione $y=f \circ g \ (x)$.</p>
+      
+      <h5 id="par6">
+        Funzione inversa
+      </h5>
+      <br/>
+    
+    <p>
+    
+    Ci sono delle coppie di funzioni che annullano l'effetto l'una dell'altra. Un esempio è dato dalla coppia di funzioni $f(x)=2x$ e $g(x)=\frac x 2$: applicando $f$ si raddoppia un numero, applicando $g$ si dimezza, quindi l'applicazione in sequenza di $f$ e $g$ (in qualunque ordine) riporta al valore iniziale. Brevemente possiamo scrivere che $f(g(x))=x$ e $g(f(x))=x$, per ogni $x$.
+    </p>
+    
+    <p>In generale se valgono le condizioni $f(g(x))=x$ e $g(f(x))=x$ per ogni $x$ diremo che $g$ è l'inversa di $f$ e viceversa. L'inversa di $f$ si indica talvolta con $f^{-1}(x)$.</p>
+    
+    
+    <p>
+          Non tutte le funzioni hanno l'inversa. Le funzioni invertibili sono tutte e sole quelle biiettive (quindi iniettive e anche suriettive). Abbiamo visto due esempi nel <a href="#par4">paragrafo sulle funzioni biiettive</a>: $f(x)=x^3$ è invertibile (l'inversa è $f^{-1}(x)=\sqrt[3]{x})$ mentre $y=x^2$ non è invertibile.
+    </p>
+
+    
+      
+      
+    </p>
+   		
+   		
+		</div>
+    
+   
+    
+    
+    <!--
+		<div class="one-third column">
+			<h3>Computational art</h3>
+      
+
+      <p class="centeredImage">
+      <img src="/gaussian_explosion_small2.jpg" width="200">
+      </p>
+      <ul class="square">
+      <li><a href="processing.html">Processing</a></li>
+      <li><a href="randomfilter.html">Random Filter</a></li>
+		  </ul>
+		</div>
+    -->
+    
+    
+    
+    
+    
+	</div><!-- container -->
+<!--
+<footer>
+   <div class="container">
+  <hr />
+    <p>Riferimenti per le immagini:</p>
+    <ul class="square">
+        <li><a href="http://en.wikipedia.org/wiki/List_of_trigonometric_identities" target="_blank">Wikipedia in inglese</a></li>
+        <li><a href="http://www.mathalino.com/reviewer/plane-trigonometry/functions-of-a-right-triangle" target="_blank">MATHalino</a></li>
+        <li><a href="http://199.219.158.222/home/pub/56/" target="_blank">The Sage Notebook</a></li>
+        <li><a href="http://mathworld.wolfram.com/Trigonometry.html" target="_blank">Wolfram Mathwold</a></li>
+      
+      </ul>
+    
+  </div>
+</footer>
+-->
+<style>
+.author-contact{text-align:center;font-size:12px;color:rgb(160,160,160);cursor:pointer;margin:18px 0 8px;font-family:Helvetica,Verdana,Tahoma;user-select:none;}
+.author-contact a{color:rgb(120,120,120);text-decoration:none;}
+.author-contact a:hover{text-decoration:underline;}
+</style>
+<p id="author-footer" class="author-contact" onclick="toggleAuthorInfo()" data-expanded="false">Contatta l'autore</p>
+<script>
+function toggleAuthorInfo() {
+  var footer = document.getElementById("author-footer");
+  if (footer.getAttribute("data-expanded") === "true") {
+    footer.textContent = "Contatta l'autore";
+    footer.setAttribute("data-expanded", "false");
+  } else {
+    var revEmail = "moc.liamg@ecsidocram";
+    var email = revEmail.split("").reverse().join("");
+    footer.innerHTML = '<a href="mailto:' + email + '">' + email + '</a>';
+    footer.setAttribute("data-expanded", "true");
+  }
+}
+</script>
+<!-- End Document
+================================================== -->
+</body>
+</html>

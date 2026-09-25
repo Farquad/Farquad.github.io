@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]><html class="ie ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
+<head>
+    <script src="theme.js"></script>
+
+  
+     <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+    
+    <script type="text/x-mathjax-config">   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}}); </script> 
+    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"> </script>
+    <script type="text/javascript" src="animatescroll.js"></script>
+    <!-- equation numbering on -->
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
+    
+<script>
+  
+    
+function checkSmallness(){
+  //small=matchMedia('only screen and (max-width: 767px)').matches;
+  small= ($(window).width() <767);
+}
+
+ checkSmallness();
+
+  window.onresize = function(event) {
+    checkSmallness();
+    if(small){
+      $(".navcolumn").css({"position":"relative","top":"0px"});
+      //window.location.reload()
+    };
+    handleScroll();
+  };
+  
+  
+  
+  
+  
+  $(function(){    // this is the shorthand for document.ready
+  
+  checkSmallness();
+  if (small){
+    $(".navcolumn").css({"position":"relative","top":"0"});
+  } 
+  
+  $(document).scroll(function(){    // this is the scroll event for the document
+  	handleScroll();
+  });
+
+});
+
+function handleScroll(){
+  checkSmallness();
+  
+  if (!small) {
+    scrolltop = $(document).scrollTop(); // by this we get the value of the scrolltop ie how much scroll has been don by user
+    maxscroll= $(document).height()-1000;
+    //$("#debug").html(parseInt($(".navcolumn").offset().top));
+    if(parseInt(scrolltop) < 160)    // check if the scroll value is equal to the top of navigation
+      { 
+      $(".navcolumn").css({"position":"absolute","top":"160px"}); // if no then make the position to absolute and set it to 80
+      }
+    if((parseInt(scrolltop) > 160)&&(parseInt(scrolltop) < maxscroll))    // check if the scroll value is equal to the top of navigation
+      {
+       $(".navcolumn").css({"position":"fixed","top":"0"});   // is yes then make the position fixed to top 0 
+        } 
+    if(parseInt(scrolltop) > maxscroll){    
+          $(".navcolumn").css({"position":"absolute","top": maxscroll+"px"});
+        }    
+  }
+};
+	
+</script>
+
+<script>
+$(function(){
+  
+  $('#topnav ul li a, .internal').on('click', function(e){
+    e.preventDefault();
+    var scrolldiv = $(this).attr('href');
+    
+    $(scrolldiv).animatescroll({padding:50});
+  });
+  
+});
+
+
+</script>
+
+
+
+
+  <!-- Basic Page Needs
+  ================================================== -->
+  <meta charset="utf-8">
+  <title>Funzioni Continue</title>
+	<meta name="description" content="">
+	<meta name="author" content="Marco Discendenti">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+
+<!--monitoraggio con Google Analytics-->
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-44935460-1', 'neocities.org');
+  ga('send', 'pageview');
+
+</script>
+
+<style>
+
+img{
+  min-width:16em;
+}
+
+.min300{
+  min-width:300px;
+}
+
+img.full{
+  width:100%;
+}
+
+.smallimg{
+  width:50% !important;
+}
+
+#topnav a{
+  text-decoration: none;
+}
+#topnav a:hover{
+  text-decoration: underline;
+}
+
+.fnote{
+  text-decoration: none;
+  font-size:50%;
+  vertical-align:super;
+}
+
+#topnav {
+  font-size:90%;
+  /*font-style:bold;*/
+  font:Georgia;  
+}
+
+</style>
+
+
+
+
+</head>
+<body>
+
+
+
+	<!-- Primary Page Layout
+	================================================== -->
+
+	<!-- Delete everything in this .container and get started on your own site! -->
+
+	<div class="container row">
+  
+  
+  
+		<div class="sixteen columns">
+    
+      
+			<h1 class="remove-bottom" style="margin-top: 40px" style="margin-left: 100px">Funzioni Continue</h1>
+			<h5></h5>
+			<hr />
+       <p style="text-align:right;">$\rightarrow$ <a href="/">Home</a></p>
+     
+      
+      
+		</div>
+    
+    <div class="navcolumn" id="topnav">
+    <ul>
+    <li><a href="#introduzione">Introduzione</a></li>
+   <li><a href="#definizionecontinuita">Definizione</a></li>
+   <li><a href="#esempi">Esempi e proprietà</a></li>
+    </ul>
+    
+    </div>
+  
+    <div class="three columns vuoto">
+    &nbsp;
+    </div>
+    <!--
+    
+<div class="three columns sidebar">
+      		<nav>
+						<h5>Indice</h5>
+            </br>
+						<ul>
+							<li><a href="#introduzione">Introduzione</a></li>
+							<li><a href="#concettodilimite">Il concetto di "limite"</a></li>							
+						</ul>
+						
+					</nav>
+					&nbsp;
+				</div>
+  
+    -->
+    
+   <!--
+		<div class="one-third column">			
+			<p class="centeredImage">
+      <img src="/gaussian_explosion_small2.jpg" width="200">
+      </p>
+      <h5>Welcome to the theacher's website</h5>
+		</div>
+    -->
+    
+    <div class="ten columns">
+  	<p class="centeredImage">
+      <img src="http://www.emathhelp.net/images/calc/2_4_continuous_function.png" width="60%">
+      </p>
+     
+    
+      <br />
+      <h5 id="introduzione">
+        Introduzione
+      </h5>
+      <br/>
+      
+      <p>
+      Un tipico orologio digitale rappresenta il tempo con due numeri interi: il numero di ore (tra 0 e 23) trascorse dopo la mezzanotte e il numero di minuti (tra 0 e 60) trascorsi dall'inizio dell'ora corrente. Immaginiamo di poter rappresentare il tempo con la retta reale dove un numero reale indica il numero - non necessariamente intero - di secondi trascorsi da un certo istante iniziale. Rappresentiamo con un grafico il comportamento nel tempo dell'indicatore dei minuti dell'orologio digitale (ad esempio se è l'una e un quarto l'orologio indica $13:15$ e il numero di minuti indicati sarà $13$). Mettiamo quindi nell'asse $x$ il tempo effettivo in secondi e nell'asse $y$ il numero di minuti che indica l'orologio digitale. Chiamiamo $f(x)$ il numero di minuti che indica l'orologio al tempo $x$ (in secondi). Otteniamo un grafico di questo tipo:
+      </p>
+      
+      <iframe scrolling="no" src="https://www.geogebratube.org/material/iframe/id/114113/width/578/height/430/border/888888/rc/false/ai/false/sdz/true/smb/false/stb/false/stbh/true/ld/false/sri/true/at/preferhtml5" width="578px" height="430px" style="border:0px;"> </iframe>
+      
+      </br>
+       <p>
+      Nota che il valore di $f(x)$ al variare di $x$ è stazionario su vari intervalli di tempo (ad esempio sull'intervallo che va da $0$ secondi a $60$ secondi, escludendo il valore $60$) e ha dei "salti" in corrispondenza degli estremi di questi intervalli di tempo: per $x< 60$ si ha $f(x)=0$ mentre per $x=60$ si ha $f(x)=1$. Se sappiamo che sono passati "circa $20$ secondi" possiamo ragionevolmente aspettarci che l'orologio segnerà $0$ minuti. Se invece sappiamo che sono passati "circa $60$ secondi" non siamo in grado di stabilire se l'orologio è su $0$ o su $1$ e questo a prescindere da quanto è grande l'incertezza del dato "circa $60$ secondi". Anche se sappiamo che sono passati $60 s$ con un'incertezza di $\pm 1/1000$ di secondo l'incertezza sui minuti segnati dall'orologio digitale rimane semmpre la stessa: una unità. Ad una incertezza sul valore di $x$ piccola quanto vogliamo corrisponde sempre una grande incertezza sul corrispondente valore $f(x)$ (più o meno $1$ minuto, nel nostro esempio) che non si riduce quando si riduce l'incertezza sul valore della $x$. Vediamo ora un esempio in cui questo non succede.
+      </p>
+      </br>
+       <p>
+       Consideriamo un orologio "analogico" a lancette e rappresentiamo con una funzione l'angolo che forma la lancetta dei minuti rispetto ad un' ipotetica retta orizzontale, al variare del tempo. Supponiamo di avere al tempo $0$ una lancetta dei minuti posizionata su $12$, cioè verticale, con angolo $\pi/2$. Il grafico dell'andamento dell'angolo (in radianti) al variare del tempo (sull'asse $x$) è il seguente:
+      </p>
+      
+      <iframe scrolling="no" src="https://www.geogebratube.org/material/iframe/id/114125/width/483/height/430/border/888888/rc/false/ai/false/sdz/true/smb/false/stb/false/stbh/true/ld/false/sri/true/at/preferhtml5" width="483px" height="430px" style="border:0px;"> </iframe>
+      </br>
+      <p>
+        Stavolta notiamo un andamento regolare e uniforme per tutti i valori $x$ del tempo. Se sappiamo che sono passati "circa $60$ secondi" possiamo dire che l'angolo sarà "circa $\frac \pi 2 + \frac{2\pi}{60}$". Dunque ad una piccola incertezza su un valore della $x$ corrisponde una piccola incertezza sul corrispondente valore $f(x)$.
+      </p>
+      
+      <p>Chiameremo "continue" le funzioni che si comportano come il secondo esempio: i valori di $f(x)$ hanno piccole variazioni in corrispondenza di piccole variazioni dei valori della $x$. Questo tipo di definizione è evidentemente vago e approssimativo e non è soddisfacente per impostare un discorso matematico rigoroso. Vediamo come può essere resa più precisa.</p>
+      
+    
+      <br />
+      <h5 id="definizionecontinuita">
+        Definizione di continuità
+      </h5>
+      <br/>
+      <p>
+        Analizziamo la definizione che abbiamo esposto poco più sopra:
+        <blockquote>
+          i valori di $f(x)$ hanno piccole variazioni in corrispondenza di piccole variazioni dei valori della $x$
+        </blockquote>
+        potremmo riformulare così:
+        <blockquote>
+        se $x$ è vicino a $x_0$ allora anche $f(x)$ è vicino a $f(x_0)$
+        </blockquote>
+        ma "vicino" è un termine ancora troppo vago e approssimativo, potremmo rendere il concetto meno vago riformulandolo così:
+        <blockquote>
+        quanto più $x$ è vicino a $x_0$ tanto più anche $f(x)$ è vicino a $f(x_0)$
+        </blockquote>
+        questa formulazione somiglia molto al concetto di limite: stiamo affermando che "se $x$ tende a $x_0$ allora $f(x)$ tende a $f(x_0)$", in simboli:
+        $$
+        \lim_{x\to x_0} f(x)=f(x_0).
+        $$
+        Il concetto di limite è stato definito rigorosamente nella sezione precedente, quindi ora possiamo utilizzarlo per una definizione rigorosa di "funzione continua":
+        <blockquote>
+        Diremo che $f(x)$ è continua nel punto $x_0$ se $\lim_{x\to x_0} f(x)=f(x_0)$.
+        </blockquote>
+        e inoltre
+        <blockquote>
+        Diremo che $f(x)$ è continua sull'insieme $D$ se è continua in ogni punto $x_0\in D$.
+        </blockquote>
+      </p>
+      
+      
+      <br />
+      <h5 id="esempi">
+        Esempi e proprietà
+      </h5>
+      <br/>
+      <p>
+        Vediamo alcuni esempi di funzioni continue e alcune loro proprietà.
+      </p>
+      <ul class="square">
+        <li>
+          La funzione $f(x)=x$ (nota anche come "funzione identità") è continua su tutto $\mathbb R$, questo deriva dal fatto (banale) che vale $\lim_{x\to x_0} x= x_0$, e dunque è soddisfatta la definizione sopra enunciata.
+        </li>
+        <li>
+          Le funzioni costanti $f(x)=k$ (con $k$ che vale qualsiasi prefissato numero reale) sono continue su $\mathbb R$, questo deriva dal fatto banale che $\lim_{x\to x_0} k= k$.
+        </li>  
+      </ul>
+    <p> 
+      Osserviamo che vale il seguente
+      </p>
+      <p>Teorema 1:</p>
+      <blockquote>
+        Se $f(x)$ e $g(x)$ sono continue in $x_0$ allora sono continue in $x_0$ anche $f(x)+g(x)$, $f(x)\cdot g(x)$, e $f(x)^k$. Se vale anche  $g(x_0)\neq 0$ è continua in $x_0$ anche la funzione $\frac{f(x)}{g(x)}$.
+      </blockquote>
+    <br/>
+<p>
+Infatti nella sezione sui limiti abbiamo visto che quando non ci troviamo di fronte a forme indeterminate il limite di una somma di due funzioni è uguale alla somma dei limiti, il limite di un prodotto è il prodotto dei limiti e il limite di un rapporto è il rapporto dei limiti. In questo caso è escluso che ci possano essere forme indeterminate perchè abbiamo $\lim_{x\to x_0} f(x)=f(x_0)$ (è la definizione di continuità) e quindi tale limite non può essere infinito. Lo stesso vale per $\lim_{x\to x_0} g(x)$, e nel caso del rapporto il teorema richiede anche che si abbia $g(x) \neq 0$, che è sufficiente ad escludere tutte le forme indeterminate. Per $f(x)^k$ è sufficiente applicare il teorema ripetutamente ai prodotti $f(x)\cdot f(x)$, $f(x)^2 \cdot f(x)$, eccetera fino a ottenere la continuità di $f(x)^k$.
+    
+     </p>  
+     <p>Grazie al suddetto teorema è possibile costruire molti altri esempi di funzioni continue:</p>
+      <ul class="square">
+        <li>
+          Le funzioni che hanno la forma $f(x)=mx+q$ (cioè quelle che rappresentano delle rette in forma esplicita) sono continue su $\mathbb R$, questo discende dai due esempi precedenti e dall'applicazione del teorema 1 al prodotto $m\cdot x$ e alla somma $mx+q$.
+        </li>
+        <li>
+          Le funzioni polinomiali $f(x)=P(x)$, dove $P(x)$ è appunto un polinomio, sono continue su tutto $\mathbb R$. Questo discende dagli esempi precedenti e dall'applicazione reiterata del teorema 1 a $x^k$ e alle somme dei termini che compongono il polinomio.
+        </li>
+        <li>
+          L'iperbole $f(x)=\frac 1 x$ è continua su tutto il suo dominio, quindi per $x \in \mathbb R$ con $x \neq 0$. Questo discende dal teorema 1 considerando il rapporto tra la funzione continua $f(x)=1$ (costante) e la funzione continua $g(x)=x$ (identità), il teorema sarà applicabile per $g(x)\neq 0$ ovvero $x\neq 0$.
+        </li>
+        <li>
+          Le funzioni razionali $f(x)=\frac {P(x)} {Q(x)}$, dove $P(x)$ e $Q(x)$ sono polinomi, sono continue su tutto il loro dominio, quindi per $x \in \mathbb R$ con $Q(x) \neq 0$. Questo discende dal teorema 1  il rapporto tra la funzione continua $f(x)=P(x)$ (polinomiale) e la funzione continua $g(x)=Q(x)$ (polinomiale), il teorema sarà applicabile per $g(x)\neq 0$ ovvero $Q(x)\neq 0$.
+        </li>
+      </ul>
+
+Vediamo altri esempi importanti di funzioni continue di cui non dimostreremo la continuità:
+<ul class="square">
+<li>
+  La funzione esponenziale $f(x)=A^x$ con $A>0$ è continua su tutto $\mathbb R$.
+</li>
+<li>
+  La funzione logaritmo $\log_b(x)$ è continua sul suo dominio $D=\{x>0\}$.
+</li>
+<li>
+  Le radici $n$-esime $f(x)=\sqrt[n]{x}$ sono continue sul loro dominio, quindi per $n$ dispari sono continue su tutto $\mathbb R$, per $n$ pari sono continue su $D=\{x\geq 0\}$.
+</li>
+</ul>
+<p>
+  Chiaramente è possibile combinare le funzioni fino ad ora elencate con somme, prodotti e rapporti generando altre funzioni che saranno a loro volta continue grazie al teorema 1. Ma si può fare molto di più razie ad un altro teorema:
+</p>
+ <p>Teorema 2:</p>
+      <blockquote>
+        Se $f(x)$ è continua in $x_0$ e $g(x)$ è continua in $f(x_0)$ allora la funzione composta $g(f(x))$ è continua in $x_0$.
+      </blockquote>
+    <br/>
+
+
+</div>
+
+
+
+
+	</div><!-- container -->
+
+<footer>
+   <div class="container">
+  <hr/>
+    <p>Riferimenti per le immagini:</p>
+    <ul class="square">
+        <li><a href="http://www.emathhelp.net/notes/calculus-1/continuity-of-the-function/definition-of-continuous-function/" target="blank">eMathHelp</a></li>
+        
+      </ul>
+    
+  </div>
+<style>
+.author-contact{text-align:center;font-size:12px;color:rgb(160,160,160);cursor:pointer;margin:18px 0 8px;font-family:Helvetica,Verdana,Tahoma;user-select:none;}
+.author-contact a{color:rgb(120,120,120);text-decoration:none;}
+.author-contact a:hover{text-decoration:underline;}
+</style>
+<p id="author-footer" class="author-contact" onclick="toggleAuthorInfo()" data-expanded="false">Contatta l'autore</p>
+<script>
+function toggleAuthorInfo() {
+  var footer = document.getElementById("author-footer");
+  if (footer.getAttribute("data-expanded") === "true") {
+    footer.textContent = "Contatta l'autore";
+    footer.setAttribute("data-expanded", "false");
+  } else {
+    var revEmail = "moc.liamg@ecsidocram";
+    var email = revEmail.split("").reverse().join("");
+    footer.innerHTML = '<a href="mailto:' + email + '">' + email + '</a>';
+    footer.setAttribute("data-expanded", "true");
+  }
+}
+</script>
+</footer>
+
+
+<!-- End Document
+================================================== -->
+</body>
+</html>

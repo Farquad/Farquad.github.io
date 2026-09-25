@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="theme.js"></script>
+</head>
+
+
+  <!-- Basic Page Needs
+  ================================================== -->
+  <meta charset="utf-8">
+  <title>Limiti</title>
+	<meta name="description" content="">
+	<meta name="author" content="Marco Discendenti">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+
+</head>
+  <body>
+  
+    <div class="container">
+    
+    
+    
+		<div class="sixteen columns">
+			
+      <h1 class="remove-bottom" style="margin-top: 40px">Computational art</h1>
+      </br>
+      <p style="text-align:right;"><a href="/">Home</a></p>
+			
+			<hr />
+		</div>
+
+  	<div class="sixteen columns">
+    
+        <script src="http://cloud.github.com/downloads/processing-js/processing-js/processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+
+float dt, vx, vy, ax, ay,x,y;
+int[] colors = new int[3];
+int op,s;
+
+void setup(){
+  size(400, 400);
+  frameRate(50);
+  x=200;
+  y=200;
+  dt=0.1;
+  vx=0;
+  vy=0;
+  ax=0;
+  ay=0;
+  op=10;
+  s=10;
+colors[0] = round(random(0,255)); 
+colors[1] = round(random(0,255)); 
+colors[2] = round(random(0,255)); 
+  background(255);
+}
+
+void draw(){
+  fill(colors[0],colors[1],colors[2],op);
+  stroke(colors[0],colors[1],colors[2],0);
+  ellipse(round(x),round(y),s,s);
+  
+  for(int i=0;i<3;i=i+1){
+    colors[i]+=round(random(-3,3));
+    colors[i]=max(colors[i],0);
+    colors[i]=min(colors[i],255);
+  }
+  
+  //op=round(200/sqrt(sq(vx)+sq(vy)));
+  
+  s=round(50*sqrt(1/sqrt(sq(vx)+sq(vy))));
+  
+  x+=(vx*dt);
+  y+=(vy*dt);
+  
+  vx+=ax*dt;
+  vy+=ay*dt;
+  
+  vx*=0.9;
+  vy*=0.9;
+  
+  ax=100*random(-1,1)+50*pow(200-x,5)/(1*pow(200,5));
+  ay=100*random(-1,1)+50*pow(200-y,5)/(1*pow(200,5));
+
+  
+}
+
+
+void mousePressed() {
+       x=mouseX;
+       y=mouseY;
+       vx=0;
+       vy=0;
+     }
+
+</script>
+<canvas id="mycanvas"></canvas>
+
+<script type="text/processing" data-processing-target="mycanvas2">
+
+float dt, vx, vy, ax, ay,x,y,col;
+int[] colors = new int[3];
+int op,s;
+
+void setup(){
+  size(400, 400);
+  frameRate(50);
+  x=random(0,width);
+  y=random(0,height);
+  dt=0.1;
+  vx=random(-10,10);
+  vy=random(-10,10);
+  ax=0;
+  ay=0;
+  op=10;
+  s=10;
+colors[0] = round(random(0,255)); 
+colors[1] = round(random(0,255)); 
+colors[2] = round(random(0,255)); 
+  background(255);
+}
+
+void draw(){
+  fill(colors[0],colors[1],colors[2],op);
+  stroke(colors[0],colors[1],colors[2],0);
+  ellipse(round(x),round(y),s,s);
+  
+  for(int i=0;i<3;i=i+1){
+    colors[i]+=round(random(-3,3));
+    colors[i]=max(colors[i],0);
+    colors[i]=min(colors[i],255);
+  }
+  
+  //op=round(200/sqrt(sq(vx)+sq(vy)));
+  
+  s=min(round(50*(1/sqrt(sq(vx)+sq(vy)))),100);
+  
+  x+=(vx*dt);
+  y+=(vy*dt);
+  
+  vx+=ax*dt;
+  vy+=ay*dt;
+  
+  vx*=0.9;
+  vy*=0.9;
+  
+  ax=100*random(-1,1)+50*pow(200-x,5)/(1*pow(200,5));
+  ay=100*random(-1,1)+50*pow(200-y,5)/(1*pow(200,5));
+  
+}
+
+
+void mousePressed() {
+       x=mouseX;
+       y=mouseY;
+       vx=0;
+       vy=0;
+     }
+
+
+</script>
+
+<canvas id="mycanvas2"></canvas>
+</div>
+</div>
+        
+    </body>
+
+  
+</html>

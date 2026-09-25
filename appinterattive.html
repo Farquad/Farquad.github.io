@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <script src="theme.js"></script>
+	<meta charset="utf-8">
+	<title>App interattive</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+	<link rel="shortcut icon" href="favicon.ico">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+	<script>
+	$(document).ready(function(){
+	    $(".showall").click(function(){
+	        $(".gridbox").show();
+	        $(".show").removeClass("clicked");
+	    });
+	    var tags = ["mat", "fis", "sto", "ia"];
+	    tags.forEach(function(tag) {
+	        $(".show." + tag).click(function() {
+	          if($(".show."+tag).hasClass("clicked")){
+	            $(".show."+tag).removeClass("clicked");
+	            $(".gridbox").show();
+	          }else{
+	            $(".show").removeClass("clicked");
+	            $(".gridbox").hide();
+	            $(".gridbox." + tag).show();
+	            $(".show."+tag).addClass("clicked");
+	          }
+	        });
+	    });
+	});
+	</script>
+	<style>
+	.caps { font-family: "LMcaps"; color:#000000; }
+	.div3 {
+	  	text-align:center;
+	    border-radius: 25px;
+	    border-style: solid;
+	    border-color: rgb(230,230,230);
+	    border-width: 1px;
+	    padding: 5px;
+	    padding-top: 15px;
+	    width: 200px;
+	    height: 150px;
+	    color: black;
+	}
+	.div3:hover {
+		background: rgb(20,20,20);
+		color:rgb(150,150,150);
+		box-shadow: 0px 0px 3px #fff;
+		z-index:10;
+	}
+	.div3:hover h3{ color:rgb(180,180,180); }
+	.boxcontainer{ text-align: center; }
+	.transitionSlow{
+		transition: all 500ms cubic-bezier(0.005, 0.425, 0.355, 0.995);
+		transition-timing-function: cubic-bezier(0.005, 0.425, 0.355, 0.995);
+	}
+	.inner{ width: 100%; margin-left: auto; margin-right: auto; height: 80px; }
+	.gridbox{ height: 200px; }
+	.horizontal li { display:inline; }
+	.tagbox {
+	  font-family: "LMcaps";
+	  text-align:center;
+	  border-radius: 15px;
+	  border-style: solid;
+	  border-color: rgb(230,230,230);
+	  border-width: 1px;
+	  margin: 5px;
+	  padding: 10px;
+	  width: auto;
+	  height: 20px;
+	  float:left;
+	}
+	.tagbox:hover {
+		background: rgb(20,20,20);
+		color:rgb(180,180,180);
+		box-shadow: 0px 0px 3px #fff;
+		z-index:10;
+	}
+	.clicked{
+	    background: rgb(20,20,20);
+		color:rgb(150,150,150);
+		box-shadow: 0px 0px 3px #fff;
+		z-index:10;
+	}
+	.clickable:hover { cursor: pointer; }
+	.author-contact {
+	  text-align: center;
+	  font-size: 12px;
+	  color: rgb(160,160,160);
+	  cursor: pointer;
+	  margin: 18px 0 8px;
+	  font-family: Helvetica, Verdana, Tahoma;
+	  user-select: none;
+	}
+	.author-contact a { color: rgb(120,120,120); text-decoration: none; }
+	.author-contact a:hover { text-decoration: underline; }
+	.centered2 { margin: 0 auto; width:60%; }
+	.site-subtitle {
+	  margin-top: 6px;
+	  margin-bottom: 0;
+	  font-size: 105%;
+	  letter-spacing: 0.04em;
+	}
+	.site-subtitle a { color: rgb(90,90,90); text-decoration: none; }
+	.site-subtitle a:hover { text-decoration: underline; }
+	</style>
+</head>
+<body>
+	<div class="container row">
+	<div class="sixteen columns boxcontainer">
+		<div class="titlecontainer">
+			<div class="title">
+			<h2 class="remove-bottom" style="margin-top: 40px; margin-bottom: 0">
+				<span class="caps"><span style="font-size: 150%;">App interattive</span></span>
+			</h2>
+			<p class="caps site-subtitle"><a href="index.html">Materiale didattico</a></p>
+			</div>
+		</div>
+	</div>
+
+    <div class="sixteen columns">
+    <hr />
+    <div class="centered2">
+<ul class="horizontal">
+<li class="clickable showall"><div class="tagbox">Tutto</div></li>
+<li class="clickable"><div class="tagbox show mat">Matematica</div></li>
+<li class="clickable"><div class="tagbox show fis">Fisica</div></li>
+<li class="clickable"><div class="tagbox show sto">Storia</div></li>
+<li class="clickable"><div class="tagbox show ia">IA</div></li>
+</ul>
+    </div>
+    <hr />
+    </div>
+
+	<div class="sixteen columns">
+
+		<div class="gridbox five columns fis">
+		<a href="SimulazioneMaxwell/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Campo di Maxwell</h3>
+			<p>Simulazione del campo elettrodinamico</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns fis">
+		<a href="SimulazioneFotoelettrico/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Effetto fotoelettrico</h3>
+			<p>Simulazione dell'effetto fotoelettrico</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns fis">
+		<a href="SimulazioneGravita/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Gravità</h3>
+			<p>Simulazione gravitazionale in due dimensioni</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns fis">
+		<a href="SimulazioneConduttori/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Conduttori</h3>
+			<p>Conduttori ed elettrostatica</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns fis">
+		<a href="SimulazionePolarizzazione/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Polarizzazione</h3>
+			<p>Polarizzazione della luce e filtri</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns fis">
+		<a href="SimulazioneFizeau/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Esperimento di Fizeau</h3>
+			<p>Simulazione della misura della velocità della luce</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns fis">
+		<a href="SimulazioneMomento/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Momento torcente</h3>
+			<p>Equilibrio e momento di una forza</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns fis">
+		<a href="visualizzatoreMomenti3D/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Momenti 3D</h3>
+			<p>Visualizzatore di momenti nello spazio</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns fis">
+		<a href="Minkowski/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Diagramma di Minkowski</h3>
+			<p>Spaziotempo e relatività ristretta</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns mat fis">
+		<a href="SimulazioneVettori/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Vettori 3D</h3>
+			<p>Operazioni con i vettori</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns mat">
+		<a href="GeometriaNonEuclidea/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Geometria non euclidea</h3>
+			<p>Disco di Poincaré e geometria iperbolica</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns sto">
+		<a href="TimelineStoria/index.html" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Timeline storica</h3>
+			<p>Linea del tempo</p>
+		</div></div></a>
+		</div>
+
+		<div class="gridbox five columns ia">
+		<a href="Neural5x5/index.HTML" target="_blank">
+		<div class="five columns div3 transitionSlow"><div class="inner">
+			<h3 class="caps">Rete neurale</h3>
+			<p>Rete 5×5 per il riconoscimento delle cifre</p>
+		</div></div></a>
+		</div>
+
+	<hr/>
+	</div>
+
+	<div>
+	<p id="author-footer" class="author-contact" onclick="toggleAuthorInfo()" data-expanded="false">Contatta l'autore</p>
+	<script>
+	function toggleAuthorInfo() {
+	  var footer = document.getElementById("author-footer");
+	  if (footer.getAttribute("data-expanded") === "true") {
+	    footer.textContent = "Contatta l'autore";
+	    footer.setAttribute("data-expanded", "false");
+	  } else {
+	    var revEmail = "moc.liamg@ecsidocram";
+	    var email = revEmail.split("").reverse().join("");
+	    footer.innerHTML = '<a href="mailto:' + email + '">' + email + '</a>';
+	    footer.setAttribute("data-expanded", "true");
+	  }
+	}
+	</script>
+	</div>
+	</div>
+
+<footer>
+	<div class="container">
+	<p class="caps"> Ultimo aggiornamento: <span id="date"></span></p>
+	<script>
+	document.getElementById("date").innerHTML = new Date().toDateString();
+	</script>
+	</div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]><html class="ie ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
+<head>
+    <script src="theme.js"></script>
+
+  
+    
+    
+    <script type="text/x-mathjax-config">   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}}); </script> 
+    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"> </script>
+    
+    <!-- equation numbering on -->
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
+    
+
+
+
+
+
+  <!-- Basic Page Needs
+  ================================================== -->
+	<meta charset="utf-8">
+	<title>Esercizi di goniometria</title>
+	<meta name="description" content="">
+	<meta name="author" content="Marco Discendenti">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+
+<!--monitoraggio con Google Analytics-->
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-44935460-1', 'neocities.org');
+  ga('send', 'pageview');
+
+</script>
+
+<style>
+.min300{
+  min-width:300px;
+}
+
+img{
+  width:100%;
+}
+
+.smallimg{
+  width:50% !important;
+}
+
+
+</style>
+
+
+</head>
+<body>
+
+
+
+	<!-- Primary Page Layout
+	================================================== -->
+
+	<!-- Delete everything in this .container and get started on your own site! -->
+
+	<div class="container row">
+		<div class="sixteen columns">
+			<h1 class="remove-bottom" style="margin-top: 40px">Note su esercizi e verifiche di Goniometria</h1>
+			<h5></h5>
+			<hr />
+		</div>
+    
+   <!--
+		<div class="one-third column">			
+			<p class="centeredImage">
+      <img src="/gaussian_explosion_small2.jpg" width="200">
+      </p>
+      <h5>Welcome to the theacher's website</h5>
+		</div>
+    -->
+    
+    <div class="eight columns">
+  	
+      <br />
+      <h5>
+        Verifiche del 28 Ottobre:
+      </h5>
+      <br/>
+        <ul class="square">
+        <li>
+        <a href="verificagoniometriaefunzionia.pdf">Fila A</a>
+        </li>
+        <li>
+          <a href="verificagoniometriaefunzioniB.pdf">Fila B</a>
+        </li>
+      </ul>
+      <p>Alcuni chiarimenti:</p>
+      <ul class="square">
+        <li>
+        La relazione tra arco di circonferenza $l$, il raggio $r$ e angolo sotteso $\alpha$
+        $$
+        l=\alpha \cdot r
+        $$
+        vale solamente per $\alpha$ espresso in radianti (infatti quella relazione viene proprio dalla definizione di angolo in radianti) e <emph>non vale</emph> per angoli espressi in gradi. Si può ricavare anche una formula simile per gli angoli in gradi, basta aggiungere un coefficiente di conversione da gradi a radianti:
+        $$
+        l=\alpha_{\text{gradi}} \cdot \frac{\pi}{180} \cdot r.
+        $$
+        </li>
+        <li>
+          Quando si usa la relazione $\cos^2 \alpha + \sin^2 \alpha =1$ per ricavare il coseno (o il seno) bisogna tenere presente il fatto che ci sono due possibili valori (uno positivo e uno negativo): $$\cos \alpha=\pm \sqrt{1-\sin^2\alpha}.$$ Di questi due valori eventualmente ne possiamo escludere uno nel caso in cui abbiamo altre informazioni sull'angolo $\alpha$ (ad esempio se sappiamo che $0<\alpha<\frac \pi 2$ escludiamo il valore negativo per il coseno e consideriamo solo quello positivo).
+        </li>
+        <li>
+          Per dimostrare che una relazione come $$\sin^3\alpha=1-\cos(4\alpha)$$ <i>non</i> è valida per ogni $\alpha$ è sufficiente trovare un singolo angolo per cui la relazione ha senso (cioè si ottengono numeri a destra e a sinistra dell'uguale) ma l'uguaglianza risulta falsa. Nell'esempio possiamo provare con $\alpha=0$ ma otteniamo un'uguaglianza $0^3=1-1$, quindi non abbiamo dimostrato nulla. Possiamo quindi provare con $\alpha=\frac \pi 2$ e otteniamo $1^3=1-\cos(2\pi)=0$ che è falsa. Quindi possiamo concludere che la relazione non è valida per ogni $\alpha$.
+        </li>
+      </ul>
+<hr />
+<br />
+      <h5>
+        Verifiche del 2 Dicembre:
+      </h5>
+      <br/>
+        <ul class="square">
+        <li>
+        <a href="verificaformulegoniometricheA.pdf">Fila A</a>
+        </li>
+        <li>
+          <a href="verificaformulegoniometricheB.pdf">Fila B</a>
+        </li>
+      </ul>
+      
+      <p>Svolgimento di alcuni esercizi:</p>
+      <ul class="square">
+        <li>
+        <p>Perimetro di un ottagono regolare inscritto ad una circonferenza di raggio 1:</p>
+        <a href="http://mathcentral.uregina.ca/QQ/database/QQ.09.06/s/courtney1.1.gif" target="_blank">
+        <img src="http://mathcentral.uregina.ca/QQ/database/QQ.09.06/s/courtney1.1.gif" width="50%" title='Click per ingrandire'>
+        </a>
+        <p>dal disegno si vede che il lato dell'ottagono inscritto è uguale al doppio del seno di un certo angolo. Per ricavare quell'angolo osserviamo che un ottagono è composto da 8 triangoli congruenti a quello rappresentato, e che quindi l'angolo al vertice centrale di ciascuno di essi deve essere l'ottava parte di un angolo giro: $\frac {2\pi}{8}=\frac {\pi}{4}$ (cioè $45^\circ$). Dunque la metà di quel triangolo (ciascuno dei triangoli rettangoli in figura) ha un angolo di $\frac \pi 8$. Il lato dell'ottagono è quindi $2\sin \frac \pi 8$. Tale valore si può ricavare con le formule di bisezione (\ref{bisezioneseno}): 
+          $$
+          \sin \frac \pi 8=+\sqrt{\frac{1-\cos\frac \pi 4}{2}}=\frac{\sqrt{2-\sqrt{2}}}{2}
+          $$
+  e quindi il perimetro dell'ottagono è $8\times2\times\frac{\sqrt{2-\sqrt{2}}}{2}=6.1229...$ (nota che è vicino al valore $2\pi=6.2831...$, e il motivo dovrebbe essere evidente...)
+        </p>
+        </li>
+        
+        <li>
+        <p>Perimetro di un ottagono regolare circoscritto ad una circonferenza di raggio 1:</p>
+        <a href="http://mathcentral.uregina.ca/QQ/database/QQ.09.11/h/eric2.1.gif" target="_blank">
+        <img src="http://mathcentral.uregina.ca/QQ/database/QQ.09.11/h/eric2.1.gif" width="50%" title='Click per ingrandire'>
+        </a>
+        <p>dal disegno si vede che il lato dell'ottagono circoscritto è uguale al doppio della tangente di un certo angolo. Per ricavare quell'angolo osserviamo (come nell'esercizio precedente) che un ottagono è composto da 8 triangoli congruenti a quello rappresentato, e che quindi l'angolo al vertice centrale di ciascuno di essi deve essere l'ottava parte di un angolo giro: $\frac {2\pi}{8}=\frac {\pi}{4}$ (cioè $45^\circ$). Dunque la metà di quel triangolo (ciascuno dei triangoli rettangoli in figura) ha un angolo di $\frac \pi 8$. Il lato dell'ottagono è quindi $2\tan \frac \pi 8$. Tale valore si può ricavare con le formule di bisezione (\ref{bisezionetangente}): 
+          $$
+          \tan \frac \pi 8=\frac{\sin \frac \pi 4}{1+\cos \frac \pi 4}=\sqrt{2}-1
+          $$
+  e quindi il perimetro dell'ottagono è $8\times2\times(\sqrt{2}-1)=6.6274...$ (anche stavolta è vicino al valore $2\pi=6.2831...$, per motivi altrettanto evidenti...)
+        </p>
+        </li>
+        
+      </ul>
+      
+      
+    </div>
+    
+    
+    
+    
+    
+	</div><!-- container -->
+
+<footer>
+   <div class="container">
+  <hr />
+    <p>Riferimenti per le immagini:</p>
+    <ul class="square">
+        <li><a href="http://en.wikipedia.org/wiki/List_of_trigonometric_identities" target="_blank">Wikipedia in inglese</a></li>
+        <li><a href="http://www.mathalino.com/reviewer/plane-trigonometry/functions-of-a-right-triangle" target="_blank">MATHalino</a></li>
+        <li><a href="http://199.219.158.222/home/pub/56/" target="_blank">The Sage Notebook</a></li>
+        <li><a href="http://mathworld.wolfram.com/Trigonometry.html" target="_blank">Wolfram Mathwold</a></li>
+      
+      </ul>
+    
+  </div>
+</footer>
+
+<!-- End Document
+================================================== -->
+</body>
+</html>

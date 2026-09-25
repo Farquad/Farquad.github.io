@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]><html class="ie ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
+<head>
+    <script src="theme.js"></script>
+
+  
+     <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+    
+    <script type="text/x-mathjax-config">   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}}); </script> 
+    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"> </script>
+    <script type="text/javascript" src="animatescroll.js"></script>
+    <!-- equation numbering on -->
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
+    
+<script>
+  
+    
+function checkSmallness(){
+  //small=matchMedia('only screen and (max-width: 767px)').matches;
+  small= ($(window).width() <767);
+}
+
+ checkSmallness();
+
+  window.onresize = function(event) {
+    checkSmallness();
+    if(small){
+      $(".navcolumn").css({"position":"relative","top":"0px"});
+      //window.location.reload()
+    };
+    handleScroll();
+  };
+  
+  
+  
+  
+  
+  $(function(){    // this is the shorthand for document.ready
+  
+  checkSmallness();
+  if (small){
+    $(".navcolumn").css({"position":"relative","top":"0"});
+  } 
+  
+  $(document).scroll(function(){    // this is the scroll event for the document
+    handleScroll();
+  });
+
+});
+
+function handleScroll(){
+  checkSmallness();
+  
+  if (!small) {
+    scrolltop = $(document).scrollTop(); // by this we get the value of the scrolltop ie how much scroll has been don by user
+    maxscroll= $(document).height()-1000;
+    //$("#debug").html(parseInt($(".navcolumn").offset().top));
+    if(parseInt(scrolltop) < 160)    // check if the scroll value is equal to the top of navigation
+      { 
+      $(".navcolumn").css({"position":"absolute","top":"160px"}); // if no then make the position to absolute and set it to 80
+      }
+    if((parseInt(scrolltop) > 160)&&(parseInt(scrolltop) < maxscroll))    // check if the scroll value is equal to the top of navigation
+      {
+       $(".navcolumn").css({"position":"fixed","top":"0"});   // is yes then make the position fixed to top 0 
+        } 
+    if(parseInt(scrolltop) > maxscroll){    
+          $(".navcolumn").css({"position":"absolute","top": maxscroll+"px"});
+        }    
+  }
+};
+  
+</script>
+
+<script>
+$(function(){
+  
+  $('#topnav ul li a, .internal').on('click', function(e){
+    e.preventDefault();
+    var scrolldiv = $(this).attr('href');
+    
+    $(scrolldiv).animatescroll({padding:50});
+  });
+  
+});
+
+
+</script>
+
+
+
+
+  <!-- Basic Page Needs
+  ================================================== -->
+  <meta charset="utf-8">
+  <title>Ordini di infinito</title>
+  <meta name="description" content="">
+	<meta name="author" content="Marco Discendenti">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+
+<!--monitoraggio con Google Analytics-->
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-44935460-1', 'neocities.org');
+  ga('send', 'pageview');
+
+</script>
+
+<style>
+
+img{
+  min-width:16em;
+}
+
+.min300{
+  min-width:300px;
+}
+
+img.full{
+  width:100%;
+}
+
+.smallimg{
+  width:50% !important;
+}
+
+#topnav a{
+  text-decoration: none;
+}
+#topnav a:hover{
+  text-decoration: underline;
+}
+
+.fnote{
+  text-decoration: none;
+  font-size:50%;
+  vertical-align:super;
+}
+
+#topnav {
+  font-size:90%;
+  /*font-style:bold;*/
+  font:Georgia;  
+}
+
+</style>
+
+
+
+
+</head>
+<body>
+
+
+
+	<!-- Primary Page Layout
+	================================================== -->
+
+	<!-- Delete everything in this .container and get started on your own site! -->
+
+	<div class="container row">
+  
+  
+  
+		<div class="sixteen columns">
+    
+      
+			<h1 class="remove-bottom" style="margin-top: 40px" style="margin-left: 100px">Ordini di infinito</h1>
+			<h5></h5>
+			<hr />
+       <p style="text-align:right;">$\rightarrow$ <a href="/">Home</a></p>
+     
+      
+      
+		</div>
+    
+    <div class="navcolumn" id="topnav">
+    <ul>
+    
+    </ul>
+    
+    </div>
+  
+    <div class="three columns vuoto">
+    &nbsp;
+    </div>
+    <!--
+    
+<div class="three columns sidebar">
+      		<nav>
+						<h5>Indice</h5>
+            </br>
+						<ul>
+							<li><a href="#introduzione">Introduzione</a></li>
+							<li><a href="#concettodilimite">Il concetto di "limite"</a></li>							
+						</ul>
+						
+					</nav>
+					&nbsp;
+				</div>
+  
+    -->
+    
+   <!--
+		<div class="one-third column">			
+			<p class="centeredImage">
+      <img src="/gaussian_explosion_small2.jpg" width="200">
+      </p>
+      <h5>Welcome to the theacher's website</h5>
+		</div>
+    -->
+    
+    <div class="ten columns">
+  	
+     
+    
+      <br />
+      <h5 id="introduzione">
+        
+      </h5>
+      <br/>
+      
+      <p>
+      Le funzioni $g(x)=x$ e $f(x)=x^2$ tendono entrambe all'infinito per $x\to+\infty$ ma con "velocità" differenti. Questo fatto si può notare quando consideriamo il limite 
+      $$
+      \lim_{x\to +\infty}\frac{f(x)}{g(x)}.
+      $$
+      che è una forma indeterminata di tipo $\frac{+\infty}{+\infty}$. Quando andiamo a scrivere per esteso le funzioni vediamo che il rapporto si semplifica:
+      $$
+      \lim_{x\to +\infty}\frac{x^2}{x}=\lim_{x\to +\infty}\frac{x}{1}=+\infty.
+      $$
+      Possiamo interpretare le cose in questi termini: anche se si confrontavano due infiniti in un rapporto (forma indeterminata) uno dei due ($x^2$) prevaleva sull'altro ($x$) e determinava l'esito del rapporto "a suo favore". Dividere per $x$ non è stato sufficiente a "neutralizzare" $x^2$, perchè $x$ converge all'infinito in modo significativamente meno veloce. Se avessimo avuto come denominatore $g(x)=x^3$ l'esito sarebbe stato diverso, il rapporto sarebbe andato a $0$: in quel caso il termine "dominante" tra $x^2$ e $x^3$ era $x^3$ e potevamo accorgerci di questo dividendo numeratore e denominatore per $x^2$.
+      </p>
+      
+      <p>
+        Estendiamo questo discorso definendo rigorosamente il concetto che abbiamo appena descritto a livello intuitivo: 
+        <blockquote>
+        Diremo che $f(x)$ è un infinito "di ordine superiore" rispetto a $g(x)$ per $x\to +\infty$ se il rapporto $\frac {f(x)}{g(x)}$ tende a $+\infty$. Se il rapporto tende a $0$ diremo che è di un ordine inferiore. Se il rapporto tende a un numero reale diverso da zero diremo che hanno lo stesso ordine.
+        </blockquote>
+      </p>
+      
+      <p>In base a questa definizione possiamo verificare facilmente che per $x\to+\infty$ la funzione $x^3$ è un infinito di ordine superiore rispetto a $x^2$ che a sua volta è di ordine superiore rispetto a $x$. In generale $x^k$ è un infinito di ordine superiore rispetto a $x^h$ se $k>h$. Si può verificare facilmente anche che per $x\to+\infty$ qualsiasi polinomio $P(x)$ è un infinito di ordine superiore rispetto a qualsiasi altro polinomio $Q(x)$ di grado più basso (è sufficiente mettere in evidenza il termine di grado più alto nel numeratore e denominatore del rapporto $\frac {P(x)}{ Q(x)}$ e poi semplificare).</p>
+ 
+ <p>
+   Fin qui abbiamo confrontato gli ordini di infinito di funzioni polinomiali, ed è stato un compito relativamente semplice. Ci sono altri tipi di funzioni che potremmo voler confrontare come logaritmi, esponenziali e funzioni ottenute con radici. Il confronto degli ordini di infinito definisce una "gerarchia" tra queste funzioni in cui chi ricopre le posizioni più alte è di ordine superiore rispetto a tutte le funzioni che ricoprono le posizioni più basse. Vediamo (omettendo alcune dimostrazioni) quale risulta essere la gerarchia tra le funzioni menzionate.
+ </p>
+
+ <ul class="square">
+   <li>Gli esponenziali $f(x)=A^x$ con $A>1$ hanno per $x \to +\infty$ ordine superiore rispetto a qualsiasi funzione polinomiale e rispetto alle funzioni logaritmiche $f(x)=\log_b(x)$. 
+   </li>
+   <li>
+   Confrontare due funzioni esponenziali è semplice: se abbiamo $f(x)=3^x$ e $g(x)=4^x$ quando calcoliamo il rapporto $\frac{f(x)}{g(x)}$ otteniamo $\left(\frac 3 4 \right) ^x$ che è a sua volta una funzione esponenziale con base $\frac 3 4 < 1$ e dunque tende a $0$, quindi la funzione dominante tra $3^x$ e $4^x$ risulta essere $4^x$, cioè quella con la base maggiore.</li>
+   <li>
+     Le funzioni polinomiali si confrontano tra loro in base al grado: tra $P(x)$ e $Q(x)$ è un infinito di ordine superiore per $x \to +\infty$ quella di grado maggiore.
+   </li>
+     <li>
+       Le funzioni polinomiali si confrontano con le radici mettendo in evidenza il termine di grado massimo  eventualmente sotto radice, anche qui ha ordine superiore chi risulta avere questo termine di grado maggiore dell'altro. Ad esempio in $f(x)=\sqrt{x^3+x}$ il termine di grado massimo è $\sqrt{x^3}=x^{\frac 3 2}$, in $g(x)=\sqrt[3]{x^4+x^3}$ il termine di grado massimo è $\sqrt[3]{x^4}=x^{\frac 4 3}$ dunque tra le due ha ordine superiore $f(x)$ (perchè $\frac 3 2>\frac 4 3$).
+     </li>
+     <li>
+       Le funzioni polinomiali e i polinomi sotto radice hanno ordine di infinito superiore a tutte le funzioni logaritmiche $g(x)=\log_b(x)$.
+     </li>
+    <li>
+      Per confrontare tra loro due funzioni logaritmiche $f(x)=\log_b(x)$ e $f(x)=\log_c(x)$ si può usare la <a href="$f(x)=\loga_b(x)$" target="blank">formula del cambiamento di base</a>, ovvero:
+      $$
+      \log_b(x)=\frac{1}{\log(b)}\log(x)
+      $$
+      e quindi
+      $$
+      \frac{f(x)}{g(x)}=\frac{\log_b(x)}{\log_c(x)}=\frac{\log(x)/\log(b)}{\log(x)/\log(c)}=\frac{\log(c)}{\log(b)}
+      $$
+      e dunque tutti i logaritmi hanno lo stesso ordine di infinito.
+    </li>   
+     
+   </ul>
+
+
+<br />
+      <h5 id="introduzione">
+        Applicazioni
+      </h5>
+      <br/>
+<p>
+  Consideriamo come esempio il limite 
+  $$
+  \lim_{x\to +\infty}\frac{x^2 3^x}{(x^3+2x)2^x}
+  $$
+  che è una forma indeterminata del tipo $\frac{\infty}{\infty}$. Per decidere a che cosa tende isoliamo le parti polinomiali ed esponenziali:
+  $$
+  \frac{x^2 3^x}{(x^3+2x)2^x}=\frac{x^2}{(x^3+2x)}\frac{3^x}{2^x}=\frac{x^2}{x^3(1+\frac 2 {x^2})}\left(\frac 3 2\right)^x
+  $$
+  semplificando abbiamo quindi
+  $$
+  \frac{\left(\frac 3 2\right)^x}{x(1+\frac 2 {x^2})}
+  $$
+  poichè $\frac 3 2>1$ abbiamo che il numeratore tende ad infinito, ed essendo un esponenziale è un infinito di ordine superiore rispetto al denominatore che è il polinomio $x$ (possiamo ignorare il fattore $(1+\frac 2 {x^2})$ perchè tende ad $1$ e non da quindi contributi alla forma indeterminata). Da questo segue che il limite tende a $+\infty$.
+</p>
+</div>
+
+
+
+
+	</div><!-- container -->
+
+<footer>
+   <div class="container">
+  <hr/>
+    <p>Riferimenti per le immagini:</p>
+    <ul class="square">
+        <li><a href="http://www.emathhelp.net/notes/calculus-1/continuity-of-the-function/definition-of-continuous-function/" target="blank">eMathHelp</a></li>
+        
+      </ul>
+    
+  </div>
+<style>
+.author-contact{text-align:center;font-size:12px;color:rgb(160,160,160);cursor:pointer;margin:18px 0 8px;font-family:Helvetica,Verdana,Tahoma;user-select:none;}
+.author-contact a{color:rgb(120,120,120);text-decoration:none;}
+.author-contact a:hover{text-decoration:underline;}
+</style>
+<p id="author-footer" class="author-contact" onclick="toggleAuthorInfo()" data-expanded="false">Contatta l'autore</p>
+<script>
+function toggleAuthorInfo() {
+  var footer = document.getElementById("author-footer");
+  if (footer.getAttribute("data-expanded") === "true") {
+    footer.textContent = "Contatta l'autore";
+    footer.setAttribute("data-expanded", "false");
+  } else {
+    var revEmail = "moc.liamg@ecsidocram";
+    var email = revEmail.split("").reverse().join("");
+    footer.innerHTML = '<a href="mailto:' + email + '">' + email + '</a>';
+    footer.setAttribute("data-expanded", "true");
+  }
+}
+</script>
+</footer>
+
+
+<!-- End Document
+================================================== -->
+</body>
+</html>    
