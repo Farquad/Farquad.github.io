@@ -98,6 +98,22 @@ let forcedEventIndex = -1; // Indice dell'evento forzato nel gruppo same-year
 
 // Variabili per l'inerzia e ottimizzazione layout
 let velocity = 0; // Velocità in anni/ms
+const FRAME_MS = 16.666;
+// La linea è ferma sotto un pixel a frame. Il fantasma si spegne prima, a movimento lento.
+const STOP_PIXELS_PER_FRAME = 1;
+const GHOST_PIXELS_PER_FRAME = 4;
+
+function pixelsPerFrame() {
+    return Math.abs(velocity) * pixelsPerYear * FRAME_MS;
+}
+
+function inertiaHasStopped() {
+    return pixelsPerFrame() < STOP_PIXELS_PER_FRAME;
+}
+
+function motionIsEvident() {
+    return pixelsPerFrame() >= GHOST_PIXELS_PER_FRAME;
+}
 let lastDragTime = 0;
 let lastDragYear = 0;
 let lastLayoutCenterYear = centerYear;
@@ -334,8 +350,8 @@ window.addEventListener('mouseup', (e) => {
             handleInteraction(e.clientX, e.clientY);
         }
 
-        // Se ci siamo fermati prima di rilasciare, o se la velocità è trascurabile
-        if (performance.now() - lastDragTime > 100 || Math.abs(velocity) < 0.0001) {
+        // Se ci siamo fermati prima di rilasciare, o se lo scorrimento è sotto un pixel a frame
+        if (performance.now() - lastDragTime > 100 || inertiaHasStopped()) {
             velocity = 0;
             needsLayoutUpdate = true;
         }
@@ -510,8 +526,8 @@ canvas.addEventListener('touchend', (e) => {
         }
 
         if (isDragging || isPinching) {
-            // Se non c'è inerzia (ci siamo fermati o la velocità è nulla), ricalcoliamo subito
-            if (performance.now() - lastDragTime > 100 || Math.abs(velocity) < 0.0001) {
+            // Se lo scorrimento è sotto un pixel a frame, ricalcoliamo subito
+            if (performance.now() - lastDragTime > 100 || inertiaHasStopped()) {
                 velocity = 0;
                 needsLayoutUpdate = true;
             }
@@ -1245,8 +1261,38 @@ searchSequenceHorizontalBottom.sort((a, b) => {
     return b.dir - a.dir; // dir 2 (sotto) preferito
 });
 
+// Resta tra un layout e l'altro: stessa etichetta, font e larghezza non vengono rimisurati.
+let textMeasureCache = new Map();
+
+function measureLabelText(textLabel, fontSize, unscaledMaxWidth, scale) {
+    if (!textMeasureCache) {
+        ctx.font = `bold ${fontSize}px Arial`;
+        const lines = wrapText(ctx, textLabel, unscaledMaxWidth);
+        let unscaledBoxWidth = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const lw = ctx.measureText(lines[i]).width;
+            if (lw > unscaledBoxWidth) unscaledBoxWidth = lw;
+        }
+        return { lines, boxWidth: unscaledBoxWidth * scale };
+    }
+
+    const key = fontSize + '\0' + scale + '\0' + unscaledMaxWidth + '\0' + textLabel;
+    let entry = textMeasureCache.get(key);
+    if (!entry) {
+        ctx.font = `bold ${fontSize}px Arial`;
+        const lines = wrapText(ctx, textLabel, unscaledMaxWidth);
+        let unscaledBoxWidth = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const lw = ctx.measureText(lines[i]).width;
+            if (lw > unscaledBoxWidth) unscaledBoxWidth = lw;
+        }
+        entry = { lines, boxWidth: unscaledBoxWidth * scale };
+        textMeasureCache.set(key, entry);
+    }
+    return entry;
+}
+
 function calculateLayout(pos, level, dir, shift, textLabel, labelDotSize, fontSize, scale, canvasCenterX, canvasCenterY, dynamicRightSpace = 50) {
-    ctx.font = `bold ${fontSize}px Arial`;
     const gap = 8; // Spazio tra pallino finale e inizio del testo
     let offset;
     let maxWidth;
@@ -1270,14 +1316,9 @@ function calculateLayout(pos, level, dir, shift, textLabel, labelDotSize, fontSi
     }
     
     const unscaledMaxWidth = maxWidth / scale;
-    const lines = wrapText(ctx, textLabel, unscaledMaxWidth);
-    let boxWidth = 0;
-    lines.forEach(l => {
-        const lw = ctx.measureText(l).width;
-        if (lw > boxWidth) boxWidth = lw;
-    });
-    
-    boxWidth = boxWidth * scale;
+    const measured = measureLabelText(textLabel, fontSize, unscaledMaxWidth, scale);
+    const lines = measured.lines;
+    const boxWidth = measured.boxWidth;
     const lineHeight = fontSize * 1.2 * scale;
     const boxHeight = lines.length * lineHeight;
     
@@ -1341,40 +1382,98 @@ function calculateLayout(pos, level, dir, shift, textLabel, labelDotSize, fontSi
     return { offset, shift, dir, lines, boxWidth, boxHeight, lineHeight, gap, shapes: { lineX1, lineY1, lineX2, lineY2, textRect, labelDotX: lineX2, labelDotY: lineY2, labelDotSize } };
 }
 
+// Fasce lungo l'asse della timeline: due etichette che non si sovrappongono qui non possono collidere.
+const COLLISION_BAND_PX = 128;
+const COLLISION_AXIS_PAD = 32;
+let collisionBands = null;
+let collisionStamp = 0;
+
+function axisSpan(shapes) {
+    let min;
+    let max;
+    if (isVertical) {
+        min = Math.min(shapes.lineY1, shapes.lineY2, shapes.textRect.top, shapes.textRect.bottom, shapes.labelDotY);
+        max = Math.max(shapes.lineY1, shapes.lineY2, shapes.textRect.top, shapes.textRect.bottom, shapes.labelDotY);
+    } else {
+        min = Math.min(shapes.lineX1, shapes.lineX2, shapes.textRect.left, shapes.textRect.right, shapes.labelDotX);
+        max = Math.max(shapes.lineX1, shapes.lineX2, shapes.textRect.left, shapes.textRect.right, shapes.labelDotX);
+    }
+    return { min, max };
+}
+
+function indexLayoutShape(shapes) {
+    if (!collisionBands) return;
+    const span = axisSpan(shapes);
+    shapes._stamp = 0;
+    const from = Math.floor(span.min / COLLISION_BAND_PX);
+    const to = Math.floor(span.max / COLLISION_BAND_PX);
+    for (let b = from; b <= to; b++) {
+        let list = collisionBands.get(b);
+        if (!list) {
+            list = [];
+            collisionBands.set(b, list);
+        }
+        list.push(shapes);
+    }
+}
+
+function shapesCollide(shapes, oc) {
+    if (rectIntersect(shapes.textRect, oc.textRect)) return true;
+
+    if (segmentRectIntersect(shapes.lineX1, shapes.lineY1, shapes.lineX2, shapes.lineY2, oc.textRect)) return true;
+    if (segmentRectIntersect(oc.lineX1, oc.lineY1, oc.lineX2, oc.lineY2, shapes.textRect)) return true;
+
+    if (distToSegment(oc.labelDotX, oc.labelDotY, shapes.lineX1, shapes.lineY1, shapes.lineX2, shapes.lineY2) < oc.labelDotSize + 8) return true;
+    if (distToSegment(shapes.labelDotX, shapes.labelDotY, oc.lineX1, oc.lineY1, oc.lineX2, oc.lineY2) < shapes.labelDotSize + 8) return true;
+
+    const dx = shapes.labelDotX - oc.labelDotX;
+    const dy = shapes.labelDotY - oc.labelDotY;
+    if (Math.sqrt(dx * dx + dy * dy) < shapes.labelDotSize + oc.labelDotSize + 8) return true;
+
+    const sameOrigin = (Math.abs(shapes.lineX1 - oc.lineX1) < 0.1 && Math.abs(shapes.lineY1 - oc.lineY1) < 0.1);
+    if (!sameOrigin && lineIntersectSegment(shapes.lineX1, shapes.lineY1, shapes.lineX2, shapes.lineY2, oc.lineX1, oc.lineY1, oc.lineX2, oc.lineY2)) {
+        return true;
+    }
+    return false;
+}
+
 function checkCollisionGlobal(shapes, shapesArray, uiHeight) {
-    // Controllo fuori schermo ai lati. 
-    // Poiché calcoliamo con il centerYear attuale, i limiti di schermo orizzontali/verticali sono validi 
+    // Controllo fuori schermo ai lati.
+    // Poiché calcoliamo con il centerYear attuale, i limiti di schermo orizzontali/verticali sono validi
     // e invarianti per il pan lungo l'asse principale.
     const collisionHeight = isKeyboardProbablyOpen ? maxSeenHeight : height;
-    
+
     if (isVertical) {
         if (shapes.textRect.left < 0 || shapes.textRect.right > width) return true;
     } else {
         if (shapes.textRect.top < uiHeight - 10 || shapes.textRect.bottom > collisionHeight) return true;
     }
 
-    for (let oc of shapesArray) {
-        if (rectIntersect(shapes.textRect, oc.textRect)) return true;
-        
-        if (segmentRectIntersect(shapes.lineX1, shapes.lineY1, shapes.lineX2, shapes.lineY2, oc.textRect)) return true;
-        if (segmentRectIntersect(oc.lineX1, oc.lineY1, oc.lineX2, oc.lineY2, shapes.textRect)) return true;
-        
-        if (distToSegment(oc.labelDotX, oc.labelDotY, shapes.lineX1, shapes.lineY1, shapes.lineX2, shapes.lineY2) < oc.labelDotSize + 8) return true;
-        if (distToSegment(shapes.labelDotX, shapes.labelDotY, oc.lineX1, oc.lineY1, oc.lineX2, oc.lineY2) < shapes.labelDotSize + 8) return true;
-        
-        const dx = shapes.labelDotX - oc.labelDotX;
-        const dy = shapes.labelDotY - oc.labelDotY;
-        if (Math.sqrt(dx*dx + dy*dy) < shapes.labelDotSize + oc.labelDotSize + 8) return true;
-
-        const sameOrigin = (Math.abs(shapes.lineX1 - oc.lineX1) < 0.1 && Math.abs(shapes.lineY1 - oc.lineY1) < 0.1);
-        if (!sameOrigin && lineIntersectSegment(shapes.lineX1, shapes.lineY1, shapes.lineX2, shapes.lineY2, oc.lineX1, oc.lineY1, oc.lineX2, oc.lineY2)) {
-            return true; 
+    if (collisionBands) {
+        const span = axisSpan(shapes);
+        const from = Math.floor((span.min - COLLISION_AXIS_PAD) / COLLISION_BAND_PX);
+        const to = Math.floor((span.max + COLLISION_AXIS_PAD) / COLLISION_BAND_PX);
+        collisionStamp++;
+        for (let b = from; b <= to; b++) {
+            const list = collisionBands.get(b);
+            if (!list) continue;
+            for (let i = 0; i < list.length; i++) {
+                const oc = list[i];
+                if (oc._stamp === collisionStamp) continue;
+                oc._stamp = collisionStamp;
+                if (shapesCollide(shapes, oc)) return true;
+            }
         }
+        return false;
+    }
+
+    for (let oc of shapesArray) {
+        if (shapesCollide(shapes, oc)) return true;
     }
     return false;
 }
 
-function findValidLayoutGlobal(pos, textLabel, labelDotSize, fontSize, scale, shapesArray, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace = 50, preferredDir = 1) {
+function findValidLayoutGlobal(pos, textLabel, labelDotSize, fontSize, scale, shapesArray, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace = 50, preferredDir = 1, searchLimit = null) {
     let sequence;
     if (isVertical) {
         sequence = preferredDir === 1 ? searchSequenceVerticalLeft : searchSequenceVerticalRight;
@@ -1382,9 +1481,13 @@ function findValidLayoutGlobal(pos, textLabel, labelDotSize, fontSize, scale, sh
         sequence = preferredDir === 1 ? searchSequenceHorizontalTop : searchSequenceHorizontalBottom;
     }
     for (let config of sequence) {
+        if (searchLimit && (config.level > searchLimit.maxLevel || Math.abs(config.shift) > searchLimit.maxShift)) {
+            continue;
+        }
         const layout = calculateLayout(pos, config.level, config.dir, config.shift, textLabel, labelDotSize, fontSize, scale, canvasCenterX, canvasCenterY, dynamicRightSpace);
         if (!checkCollisionGlobal(layout.shapes, shapesArray, uiHeight)) {
             shapesArray.push(layout.shapes);
+            indexLayoutShape(layout.shapes);
             return layout;
         }
     }
@@ -1417,6 +1520,124 @@ function initEventProperties() {
 // Chiamata immediata per pre-calcolare al caricamento
 initEventProperties();
 
+// Indice per anno: il dataset non cambia dopo il caricamento.
+// La ricerca binaria sostituisce lo scan lineare sia nel layout sia nel disegno dei pallini.
+let eventsByYear = timelineData.slice().sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year;
+    return a.title.localeCompare(b.title);
+});
+
+function lowerBoundYear(year) {
+    let lo = 0;
+    let hi = eventsByYear.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (eventsByYear[mid].year < year) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+
+function upperBoundYear(year) {
+    let lo = 0;
+    let hi = eventsByYear.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (eventsByYear[mid].year <= year) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+
+function yearRangeBounds(start, end) {
+    return { from: lowerBoundYear(start), to: upperBoundYear(end) };
+}
+
+function eventsInYearRange(start, end, categoryActive) {
+    const bounds = yearRangeBounds(start, end);
+    const result = [];
+    for (let i = bounds.from; i < bounds.to; i++) {
+        const e = eventsByYear[i];
+        if (!categoryActive || categoryActive(e)) result.push(e);
+    }
+    return result;
+}
+
+// Margine di anni, oltre lo schermo, per cui si calcolano le etichette.
+const LABEL_YEAR_MARGIN = 0.4;
+// Impronta di un'etichetta lungo l'asse: in orizzontale il testo è largo, in verticale conta lo shift.
+const LABEL_SLOT_PX_HORIZONTAL = 220;
+const LABEL_SLOT_PX_VERTICAL = 100;
+const SHORT_SEARCH_LIMIT = { maxLevel: 2, maxShift: 40 };
+const SPARSE_SEARCH_LIMIT = { maxLevel: 2, maxShift: 0 };
+
+function labelWindowBounds() {
+    const dimension = isVertical ? height : width;
+    if (!dimension || !pixelsPerYear) return null;
+    const yearsVisible = dimension / pixelsPerYear;
+    const buffer = yearsVisible * LABEL_YEAR_MARGIN;
+    const start = centerYear - yearsVisible / 2 - buffer;
+    const end = centerYear + yearsVisible / 2 + buffer;
+    return yearRangeBounds(start, end);
+}
+
+function labelSlotPx() {
+    return isVertical ? LABEL_SLOT_PX_VERTICAL : LABEL_SLOT_PX_HORIZONTAL;
+}
+
+let lastLayoutSnapshot = null;
+
+function activeCategoriesKey() {
+    return (activeCategories.politica ? '1' : '0')
+        + (activeCategories.scienza ? '1' : '0')
+        + (activeCategories.cultura ? '1' : '0')
+        + (activeCategories.tecnologia ? '1' : '0')
+        + (activeCategories.oggi ? '1' : '0');
+}
+
+function viewStillInsideLastLayout() {
+    const snap = lastLayoutSnapshot;
+    if (!snap) return false;
+    if (snap.isVertical !== isVertical) return false;
+    if (snap.width !== width || snap.height !== height) return false;
+    if (snap.forcedEventId !== forcedEventId) return false;
+    if (snap.searchResult !== searchResult) return false;
+    if (snap.categoriesKey !== activeCategoriesKey()) return false;
+    if (!pixelsPerYear || !snap.pixelsPerYear) return false;
+    const zoomRatio = snap.pixelsPerYear / pixelsPerYear;
+    if (zoomRatio < 0.999 || zoomRatio > 1.001) return false;
+
+    const bounds = labelWindowBounds();
+    if (!bounds) return false;
+    return bounds.from === snap.eventFrom && bounds.to === snap.eventTo;
+}
+
+function shiftVisibleShapesForPan() {
+    const snap = lastLayoutSnapshot;
+    if (!snap || snap.centerYear === centerYear) return;
+    const deltaPx = (snap.centerYear - centerYear) * pixelsPerYear;
+    if (deltaPx === 0) return;
+
+    eventStates.forEach(state => {
+        const s = state.shapes;
+        if (!s || !s.textRect) return;
+        if (isVertical) {
+            s.lineY1 += deltaPx;
+            s.lineY2 += deltaPx;
+            s.labelDotY += deltaPx;
+            s.textRect.top += deltaPx;
+            s.textRect.bottom += deltaPx;
+        } else {
+            s.lineX1 += deltaPx;
+            s.lineX2 += deltaPx;
+            s.labelDotX += deltaPx;
+            s.textRect.left += deltaPx;
+            s.textRect.right += deltaPx;
+        }
+    });
+    snap.centerYear = centerYear;
+}
+
 
 // --- CALCOLO GLOBALE DEL LAYOUT ---
 function getEffectiveImportance(e) {
@@ -1437,8 +1658,8 @@ function computeGlobalLayout() {
     const dimension = isVertical ? height : width;
     const yearsVisible = dimension / pixelsPerYear;
     
-    // Riduciamo il buffer al 200% per favorire il calcolo degli elementi effettivamente vicini
-    const buffer = yearsVisible * 2.0; 
+    // Le etichette si calcolano solo poco oltre lo schermo: i pallini restano su una fascia più larga in draw().
+    const buffer = yearsVisible * LABEL_YEAR_MARGIN;
     const visibleStart = centerYear - yearsVisible / 2 - buffer;
     const visibleEnd = centerYear + yearsVisible / 2 + buffer;
 
@@ -1469,21 +1690,20 @@ function computeGlobalLayout() {
     }
 
     // Selezioniamo SOLO gli eventi attivi e nel range (buffer) per evitare calcoli inutili
-    const allActiveEventsInRange = timelineData.filter(e => 
-        activeCategories[e.category] &&
-        e.year >= visibleStart && 
-        e.year <= visibleEnd
+    const allActiveEventsInRange = eventsInYearRange(
+        visibleStart,
+        visibleEnd,
+        e => activeCategories[e.category]
     );
 
-    // Rilassiamo il filtro di densità quando facciamo zoom molto profondi
-    // (Pochi anni visibili = più spazio in pixel per ogni anno)
-    // Soglie raddoppiate per sfruttare meglio lo spazio a destra/sinistra
-    let densityThreshold = 3; // Default: max 3 eventi per "finestra" di 30 pixel, prima era 6
-    if (yearsVisible < 50) densityThreshold = 10;
-    if (yearsVisible < 10) densityThreshold = 20;
-    if (yearsVisible < 2) densityThreshold = 40; // Praticamente nessun limite di bucket se zoom molto alto
+    // La finestra è l'impronta di un'etichetta lungo l'asse, non il pallino.
+    // A zoom ampio due testi non stanno nella stessa slot; a zoom stretto sì.
+    let densityThreshold = 2;
+    if (yearsVisible < 50) densityThreshold = 6;
+    if (yearsVisible < 10) densityThreshold = 12;
+    if (yearsVisible < 2) densityThreshold = 24;
 
-    const windowSizePixels = 30; 
+    const windowSizePixels = labelSlotPx();
     const windowSize = windowSizePixels / pixelsPerYear;
     
     const buckets = new Map();
@@ -1587,7 +1807,16 @@ function computeGlobalLayout() {
         return a.title.localeCompare(b.title);
     });
 
+    // Quanti box ci stanno davvero lungo l'asse. Il filtro per finestre da 30 px
+    // resta, ma non può più moltiplicare i candidati su tutta la fascia.
+    const labelCandidateCap = Math.max(40, Math.floor((2 * dimension) / 36));
+    if (eventsToCompute.length > labelCandidateCap) {
+        eventsToCompute = eventsToCompute.slice(0, labelCandidateCap);
+    }
+
     globalLayoutShapes = [];
+    collisionBands = new Map();
+    collisionStamp = 0;
     const baseFontSize = 18;
     ctx.font = `bold ${baseFontSize}px Arial`;
 
@@ -1595,6 +1824,10 @@ function computeGlobalLayout() {
     eventStates.forEach(state => state.isVisible = false);
 
     let nextPreferredDir = 1; // Iniziamo preferendo la sinistra/sopra (1)
+    const saturatedBins = new Set();
+    const searchedBins = new Set();
+    const slotPx = labelSlotPx();
+    const wideView = yearsVisible >= 50;
 
     eventsToCompute.forEach(e => {
         const eImp = getEffectiveImportance(e);
@@ -1688,18 +1921,27 @@ function computeGlobalLayout() {
         
         const preferredDir = state.lastDir !== null ? state.lastDir : nextPreferredDir;
 
+        // Il primo evento del bin prova tutta la sequenza. A zoom ampio i successivi
+        // provano solo le posizioni vicine; se falliscono, il tratto è saturo.
+        const anchorBin = Math.floor(pos / slotPx);
+        if (saturatedBins.has(anchorBin)) {
+            state.isVisible = false;
+            state.shapes = null;
+            return;
+        }
+
+        const sparseScreen = activeEventsOnScreenCount <= 2;
+        const shortSearch = !sparseScreen && wideView && searchedBins.has(anchorBin);
+        searchedBins.add(anchorBin);
+        const searchLimit = sparseScreen ? SPARSE_SEARCH_LIMIT : (shortSearch ? SHORT_SEARCH_LIMIT : null);
+
         let eventFontSize = baseFontSize;
-        let layout = findValidLayoutGlobal(pos, textLabel, labelDotSize, eventFontSize, targetScale, globalLayoutShapes, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace, preferredDir);
+        let layout = findValidLayoutGlobal(pos, textLabel, labelDotSize, eventFontSize, targetScale, globalLayoutShapes, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace, preferredDir, searchLimit);
         
-        // Se non entra, ci sono al max 2 eventi sullo schermo, e l'evento è sullo schermo, proviamo a ridurre il font
-        if (layout === null && activeEventsOnScreenCount <= 2 && e.year >= screenStart && e.year <= screenEnd) {
-            for (let testFont = 16; testFont >= 8; testFont -= 2) {
-                layout = findValidLayoutGlobal(pos, textLabel, labelDotSize, testFont, targetScale, globalLayoutShapes, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace, preferredDir);
-                if (layout !== null) {
-                    eventFontSize = testFont;
-                    break;
-                }
-            }
+        // Con al massimo due eventi a schermo, un solo font più piccolo e le stesse poche posizioni.
+        if (layout === null && sparseScreen && e.year >= screenStart && e.year <= screenEnd) {
+            eventFontSize = 14;
+            layout = findValidLayoutGlobal(pos, textLabel, labelDotSize, eventFontSize, targetScale, globalLayoutShapes, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace, preferredDir, SPARSE_SEARCH_LIMIT);
         }
         
         if (layout !== null) {
@@ -1724,17 +1966,40 @@ function computeGlobalLayout() {
         } else {
             state.isVisible = false;
             state.shapes = null; // Pulisci shapes se non visibile
+            saturatedBins.add(anchorBin);
         }
     });
 
+    const placedBounds = yearRangeBounds(visibleStart, visibleEnd);
+    lastLayoutSnapshot = {
+        pixelsPerYear,
+        isVertical,
+        width,
+        height,
+        forcedEventId,
+        searchResult,
+        categoriesKey: activeCategoriesKey(),
+        centerYear,
+        rangeStart: visibleStart,
+        rangeEnd: visibleEnd,
+        eventFrom: placedBounds.from,
+        eventTo: placedBounds.to
+    };
+    collisionBands = null;
     needsLayoutUpdate = false;
 }
 
 // Funzione principale di disegno
 function draw() {
     if (needsLayoutUpdate) {
-        computeGlobalLayout();
-        lastLayoutCenterYear = centerYear;
+        // Stessi eventi nella fascia delle etichette: si spostano solo le shape già calcolate.
+        if (viewStillInsideLastLayout()) {
+            shiftVisibleShapesForPan();
+            needsLayoutUpdate = false;
+        } else {
+            computeGlobalLayout();
+            lastLayoutCenterYear = centerYear;
+        }
     }
 
     ctx.clearRect(0, 0, width, height);
@@ -1945,7 +2210,7 @@ function draw() {
 
     // Consideriamo l'utente "in interazione" se c'è tocco o c'è una velocità significativa
     // (L'ombra è pesante, la disattiviamo mentre si muove per i 60fps lisci)
-    const isInteracting = isDragging || isPinching || Math.abs(velocity) > 0.0001 || isZoomingWithWheel || isButtonAnimating || performance.now() < buttonGhostingUntil;
+    const isInteracting = isDragging || isPinching || motionIsEvident() || isZoomingWithWheel || isButtonAnimating || performance.now() < buttonGhostingUntil;
     
     // Animazione dell'effetto fantasma
     let targetAlpha = 1.0;
@@ -1964,8 +2229,8 @@ function draw() {
 
     // Rendering degli eventi memorizzati in eventStates
     // Renderizziamo SOLO ciò che è strettamente vicino allo schermo (margine 20%) per massimizzare gli FPS.
-    // Il layout in sottofondo ha già un buffer del 500% (non calcoliamo collisioni), 
-    // ma al Canvas passiamo solo la manciata di nodi attualmente nel campo visivo.
+    // Le etichette sono già state calcolate su una fascia più stretta; qui passiamo al canvas
+    // solo i nodi attualmente nel campo visivo.
     const renderYearBuffer = yearsVisible * 0.2;
     const baseFontSize = 18;
     ctx.font = `bold ${baseFontSize}px Arial`;
@@ -1985,9 +2250,13 @@ function draw() {
         baseDotSize: 8
     };
 
-    let backgroundDots = timelineData;
+    const backgroundDots = eventsInYearRange(
+        bgVisibleStart,
+        bgVisibleEnd,
+        e => activeCategories[e.category]
+    );
     if (activeCategories['oggi'] && todayYear >= bgVisibleStart && todayYear <= bgVisibleEnd) {
-        backgroundDots = timelineData.concat([todayBgEvent]);
+        backgroundDots.push(todayBgEvent);
     }
 
     backgroundDots.forEach(e => {
@@ -2223,21 +2492,19 @@ function animate(time) {
     // Questo previene che un lag improvviso spari centerYear migliaia di anni nel futuro basandosi sulla velocità attuale.
     if (dt > 32) dt = 32;
 
-    // Gestione dell'inerzia
-    if (!isDragging && !isPinching && Math.abs(velocity) > 0.0001) {
+    // Gestione dell'inerzia. La soglia è in pixel a frame, così non dipende dallo zoom.
+    if (!isDragging && !isPinching && !inertiaHasStopped()) {
         centerYear += velocity * dt;
         clampCenterYear();
         
-        // Ho RIMOSSO totalmente il ricalcolo intermedio. 
         // Durante il movimento (per trascinamento o per inerzia) il layout è congelato.
-        // Il buffer a 500% assicura che ci siano sempre eventi disegnati anche su scroll lunghi.
         
         // Frizione: 0.92 per un arresto fluido, lasciando scorrere la timeline più a lungo
-        const frictionFactor = Math.pow(0.92, dt / 16.666);
+        const frictionFactor = Math.pow(0.92, dt / FRAME_MS);
         velocity *= frictionFactor; 
         
-        // Quando l'inerzia finisce DEL TUTTO, scatta l'UNICO ricalcolo del layout
-        if (Math.abs(velocity) < 0.0001) {
+        // Quando il movimento scende sotto un pixel a frame, scatta il ricalcolo del layout
+        if (inertiaHasStopped()) {
             velocity = 0;
             needsLayoutUpdate = true; 
         }
