@@ -4,7 +4,7 @@
   var indice = document.getElementById("nota-indice");
   var contenuto = document.getElementById("nota-contenuto");
 
-  if (!nota || !titolo || !indice || !contenuto) return;
+  if (!titolo || !indice || !contenuto) return;
 
   function fail(message) {
     contenuto.textContent = message;
@@ -86,6 +86,51 @@
     });
   }
 
+  function show(md) {
+    if (typeof marked === "undefined" || !marked.parse) {
+      fail("Non riesco a leggere la nota.");
+      return;
+    }
+    var source = stripFrontMatter(md);
+    var protectedMath = protectMath(source);
+    var html = restoreMath(marked.parse(protectedMath.text), protectedMath.tokens);
+    var root = document.createElement("div");
+    root.innerHTML = html;
+
+    var h1 = root.querySelector("h1");
+    if (h1) {
+      titolo.textContent = h1.textContent;
+      document.title = h1.textContent;
+      h1.parentNode.removeChild(h1);
+    }
+
+    var used = {};
+    var heads = root.querySelectorAll("h2");
+    for (var i = 0; i < heads.length; i++) {
+      var id = slug(heads[i].textContent, used);
+      heads[i].id = id;
+      var p = document.createElement("p");
+      var a = document.createElement("a");
+      a.href = "#" + id;
+      a.textContent = heads[i].textContent;
+      p.appendChild(a);
+      indice.appendChild(p);
+    }
+
+    contenuto.appendChild(root);
+    typeset();
+  }
+
+  if (typeof window.NOTA_TESTO === "string") {
+    show(window.NOTA_TESTO);
+    return;
+  }
+
+  if (!nota) {
+    fail("Non riesco a leggere la nota.");
+    return;
+  }
+
   var path = nota.split("/").map(encodeURIComponent).join("/");
 
   fetch(path)
@@ -93,39 +138,7 @@
       if (!response.ok) throw new Error("HTTP " + response.status);
       return response.text();
     })
-    .then(function (md) {
-      if (typeof marked === "undefined" || !marked.parse) {
-        throw new Error("marked");
-      }
-      var source = stripFrontMatter(md);
-      var protectedMath = protectMath(source);
-      var html = restoreMath(marked.parse(protectedMath.text), protectedMath.tokens);
-      var root = document.createElement("div");
-      root.innerHTML = html;
-
-      var h1 = root.querySelector("h1");
-      if (h1) {
-        titolo.textContent = h1.textContent;
-        document.title = h1.textContent;
-        h1.parentNode.removeChild(h1);
-      }
-
-      var used = {};
-      var heads = root.querySelectorAll("h2");
-      for (var i = 0; i < heads.length; i++) {
-        var id = slug(heads[i].textContent, used);
-        heads[i].id = id;
-        var p = document.createElement("p");
-        var a = document.createElement("a");
-        a.href = "#" + id;
-        a.textContent = heads[i].textContent;
-        p.appendChild(a);
-        indice.appendChild(p);
-      }
-
-      contenuto.appendChild(root);
-      return typeset();
-    })
+    .then(show)
     .catch(function () {
       fail("Non riesco a leggere la nota.");
     });

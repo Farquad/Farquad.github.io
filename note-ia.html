@@ -34,7 +34,46 @@
 	<link rel="stylesheet" href="skeleton.css">
 	<link rel="stylesheet" href="layout.css">
 	<style>
-		#nota-contenuto img { max-width: 100%; height: auto; }
+		#nota-contenuto { margin-bottom: 64px; }
+		#nota-contenuto img {
+			display: block;
+			max-width: 100%;
+			height: auto;
+			margin: 16px auto;
+		}
+		#nota-contenuto ul { list-style: disc outside; margin-left: 30px; }
+		#nota-contenuto ul ul { list-style: circle outside; }
+		#nota-contenuto ol { margin-left: 30px; }
+		#nota-contenuto pre {
+			background: #f6f6f6;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			padding: 12px 16px;
+			overflow-x: auto;
+			margin: 0 0 20px;
+			color: #333;
+		}
+		#nota-contenuto pre code {
+			font-family: Consolas, "Courier New", monospace;
+			font-size: 13px;
+			line-height: 1.45;
+			color: inherit;
+		}
+		html.theme-dark #nota-contenuto pre {
+			background: #2a2a2a;
+			border-color: #444;
+			color: #e4e4e4;
+		}
+		#nota-indice {
+			max-height: calc(100vh - 220px);
+			overflow-y: auto;
+			padding-bottom: 16px;
+			box-sizing: border-box;
+			scrollbar-width: none;
+		}
+		#nota-indice::-webkit-scrollbar {
+			display: none;
+		}
 	</style>
 
 	<!--[if lt IE 9]>
@@ -67,9 +106,73 @@
 
     </div>
 
+<footer>
+   <div class="container">
+  <hr />
+  </div>
+<style>
+.author-contact{text-align:center;font-size:12px;color:rgb(160,160,160);cursor:pointer;margin:18px 0 48px;font-family:Helvetica,Verdana,Tahoma;user-select:none;}
+.author-contact a{color:rgb(120,120,120);text-decoration:none;}
+.author-contact a:hover{text-decoration:underline;}
+</style>
+<p id="author-footer" class="author-contact" onclick="toggleAuthorInfo()" data-expanded="false">Contatta l'autore</p>
 <script>
-  window.NOTA = "NoteMarkdown/IA/Note sul tema dell'Intelligenza Artificiale.md";
+function toggleAuthorInfo() {
+  var footer = document.getElementById("author-footer");
+  if (footer.getAttribute("data-expanded") === "true") {
+    footer.textContent = "Contatta l'autore";
+    footer.setAttribute("data-expanded", "false");
+  } else {
+    var revEmail = "moc.liamg@ecsidocram";
+    var email = revEmail.split("").reverse().join("");
+    footer.innerHTML = '<a href="mailto:' + email + '">' + email + '</a>';
+    footer.setAttribute("data-expanded", "true");
+  }
+}
 </script>
+</footer>
+
+<script>
+(function () {
+  var nav = document.getElementById("nota-indice");
+  var small = window.matchMedia("(max-width: 767px)");
+  function place() {
+    if (small.matches) {
+      nav.style.position = "";
+      nav.style.top = "";
+      nav.style.maxHeight = "";
+      return;
+    }
+    var scrollTop = window.scrollY;
+    var footer = document.querySelector("footer");
+    var container = nav.parentElement;
+    var containerTop = container.getBoundingClientRect().top + scrollTop;
+    var footerTop = footer.getBoundingClientRect().top + scrollTop;
+    var marginTop = parseFloat(getComputedStyle(nav).marginTop) || 0;
+    var maxScroll = footerTop - containerTop - nav.offsetHeight - marginTop - 120;
+    if (maxScroll < 160) maxScroll = 160;
+
+    if (scrollTop < 160) {
+      nav.style.position = "absolute";
+      nav.style.top = "160px";
+      nav.style.maxHeight = "calc(100vh - 220px)";
+    } else if (scrollTop < maxScroll) {
+      nav.style.position = "fixed";
+      nav.style.top = "0";
+      nav.style.maxHeight = "calc(100vh - 60px)";
+    } else {
+      nav.style.position = "absolute";
+      nav.style.top = maxScroll + "px";
+      nav.style.maxHeight = "calc(100vh - 60px)";
+    }
+  }
+  window.addEventListener("scroll", place);
+  window.addEventListener("resize", place);
+  if (small.addEventListener) small.addEventListener("change", place);
+  place();
+})();
+</script>
+<script src="NoteMarkdown/IA/nota-ia.js"></script>
 <script src="render-nota.js"></script>
 
 </body>
