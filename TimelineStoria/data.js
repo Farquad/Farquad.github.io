@@ -546,7 +546,7 @@ const timelineData = [
     { year: toNumber("17/03/1861"), title: "Proclamazione del Regno d'Italia", category: "politica", importance: 1 },
     { year: toNumber("12/04/1861"), title: "Attacco a Fort Sumter: inizio della Guerra Civile Americana", category: "politica", importance: 1 },
     { year: toNumber("03/04/1862"), title: "Victor Hugo pubblica 'I miserabili'", category: "cultura", importance: 3 },
-    { year: 1862, title: "Lord Kelvin stima fra 20 e 400 milioni di anni dal tempo di raffreddamento di una Terra inizialmente fusa, valore rivelatosi sottostimato", category: "scienza", importance: 2 },
+    { year: toNumber("28/04/1862"), title: "Lord Kelvin stima fra 20 e 400 milioni di anni dal tempo di raffreddamento di una Terra inizialmente fusa, valore rivelatosi sottostimato", category: "scienza", importance: 2 },
     { year: toNumber("20/04/1864"), title: "Louis Pasteur e Claude Bernard completano il primo test della pastorizzazione", category: "scienza", importance: 3 },
     { year: toNumber("15/01/1866"), title: "Inizia la pubblicazione a puntate di 'Delitto e castigo' di Dostoevskij", category: "cultura", importance: 3 },
     { year: toNumber("03/01/1868"), title: "Restaurazione Meiji: l'Imperatore riprende il potere, inizia la modernizzazione del Giappone", category: "politica", importance: 2 },
@@ -597,9 +597,10 @@ const timelineData = [
     // 1910s
     { year: toNumber("04/06/1911"), title: "Inaugurazione dell'Altare della Patria (Vittoriano) a Roma", category: "cultura", importance: 3 },
     { year: toNumber("15/04/1912"), title: "Affondamento del Titanic", category: "cultura", importance: 2 },
+    // Pubblicato nel marzo 1913 (usato convenzionalmente il 15/03)
+    { year: toNumber("15/03/1913"), title: "Arthur Holmes, in 'The Age of the Earth', in base al decadimento dell'uranio in piombo nelle rocce propone almeno 1,6 miliardi di anni, stima che sarà corretta al rialzo", category: "scienza", importance: 3 },
     { year: toNumber("01/12/1913"), title: "Inaugurazione della catena di montaggio mobile alla Ford", category: "tecnologia", importance: 3 },
     { year: toNumber("14/11/1913"), title: "Pubblicazione di 'Dalla parte di Swann', primo volume de 'Alla ricerca del tempo perduto' di Proust", category: "cultura", importance: 3 },
-    { year: 1913, title: "Arthur Holmes, in 'The Age of the Earth', in base al decadimento dell'uranio in piombo nelle rocce propone almeno 1,6 miliardi di anni, stima che sarà corretta al rialzo", category: "scienza", importance: 3 },
     { year: toNumber("28/06/1914"), title: "Attentato di Sarajevo (assassinio dell'arciduca Francesco Ferdinando)", category: "politica", importance: 2 },
     { year: toNumber("28/07/1914"), title: "L'Austria-Ungheria dichiara guerra alla Serbia (inizio della I Guerra Mondiale)", category: "politica", importance: 1 },
     { year: toNumber("15/08/1914"), title: "Apertura del Canale di Panama", category: "tecnologia", importance: 4 },
@@ -659,8 +660,9 @@ const timelineData = [
     { year: toNumber("12/04/1955"), title: "Annuncio del successo del vaccino antipolio di Jonas Salk", category: "scienza", importance: 2 },
     { year: toNumber("29/07/1954"), title: "Pubblicazione de 'La Compagnia dell'Anello', primo volume del Signore degli Anelli", category: "cultura", importance: 4 },
     { year: toNumber("27/06/1954"), title: "Colpo di Stato in Guatemala: le forze appoggiate dalla CIA depongono Jacobo Árbenz", category: "politica", importance: 3 },
+    // Fascicolo di ottobre 1956 (usato convenzionalmente il 15/10)
+    { year: toNumber("15/10/1956"), title: "Clair Patterson stima per l'età della Terra in 4,5 miliardi di anni in base agli isotopi del piombo nei meteoriti, valore oggi accettato come corretto", category: "scienza", importance: 2 },
     { year: toNumber("29/10/1956"), title: "Inizio della Crisi di Suez con l'invasione israeliana del Sinai", category: "politica", importance: 3 },
-    { year: 1956, title: "Clair Patterson stima per l'età della Terra in 4,5 miliardi di anni in base agli isotopi del piombo nei meteoriti, valore oggi accettato come corretto", category: "scienza", importance: 2 },
     { year: toNumber("04/10/1957"), title: "L'URSS lancia lo Sputnik 1, il primo satellite artificiale", category: "tecnologia", importance: 1 },
     { year: toNumber("31/01/1958"), title: "Domenico Modugno vince Sanremo con 'Nel blu dipinto di blu'", category: "cultura", importance: 4 },
     { year: toNumber("06/03/1957"), title: "Il Ghana dichiara l'indipendenza: primo Paese dell'Africa subsahariana a liberarsi dal colonialismo", category: "politica", importance: 3 },
