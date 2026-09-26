@@ -66,16 +66,15 @@
 
   if (dark) root.classList.add("theme-dark");
 
-  var style = document.createElement("style");
-  style.textContent =
-    "html.theme-dark{background:#fff;filter:invert(1) hue-rotate(180deg);}" +
-    "#theme-toggle{position:fixed;top:10px;right:12px;z-index:2147483647;" +
-    "width:30px;height:30px;padding:0;margin:0;border:1px solid rgba(0,0,0,.12);" +
-    "border-radius:50%;background:rgba(255,255,255,.55);color:#2c2c2c;cursor:pointer;" +
-    "opacity:.55;line-height:0;display:flex;align-items:center;justify-content:center;}" +
-    "#theme-toggle:hover,#theme-toggle:focus{opacity:1;outline:none;}" +
-    "#theme-toggle svg{display:block;}";
-  (document.head || root).appendChild(style);
+  var cssHref = "theme.css";
+  if (src) {
+    var slash = src.lastIndexOf("/");
+    cssHref = (slash >= 0 ? src.slice(0, slash + 1) : "") + "theme.css";
+  }
+  var link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = cssHref;
+  (document.head || root).appendChild(link);
 
   var sun =
     '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">' +

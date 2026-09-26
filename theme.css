@@ -1,0 +1,174 @@
+/* Temi delle pagine di testo. I colori si applicano tramite le variabili usate in base.css. */
+
+:root {
+	color-scheme: light;
+	background: var(--bg);
+	color: var(--text);
+	--bg: #fff;
+	--text: #444;
+	--heading: #181818;
+	--muted: #777;
+	--strong: #333;
+	--cite: #555;
+	--link: blue;
+	--link-visited: purple;
+	--border: #ddd;
+	--button-bg: #eee;
+	--button-bg-hover: #ddd;
+	--button-bg-active: #ccc;
+	--button-text: #444;
+	--button-text-hover: #222;
+	--button-border: #aaa;
+	--button-border-light: #ccc;
+	--button-border-hover: #888;
+	--button-border-hover-light: #aaa;
+	--button-border-active: #666;
+	--button-shadow: 0 1px rgba(255, 255, 255, .75);
+	--input-bg: #fff;
+	--input-text: #777;
+	--input-border: #ccc;
+	--input-focus-border: #aaa;
+	--input-focus-text: #444;
+}
+
+html.theme-dark {
+	color-scheme: dark;
+	--bg: #1c1c1c;
+	--text: #e4e4e4;
+	--heading: #f3f3f3;
+	--muted: #a3a3a3;
+	--strong: #f0f0f0;
+	--cite: #b5b5b5;
+	--link: #8eb6ff;
+	--link-visited: #d0a8ee;
+	--border: #444;
+	--button-bg: #2e2e2e;
+	--button-bg-hover: #3a3a3a;
+	--button-bg-active: #454545;
+	--button-text: #e4e4e4;
+	--button-text-hover: #fff;
+	--button-border: #666;
+	--button-border-light: #555;
+	--button-border-hover: #888;
+	--button-border-hover-light: #777;
+	--button-border-active: #999;
+	--button-shadow: none;
+	--input-bg: #141414;
+	--input-text: #c8c8c8;
+	--input-border: #555;
+	--input-focus-border: #888;
+	--input-focus-text: #e4e4e4;
+}
+
+/* Figure disegnate sullo sfondo del testo: in tema scuro diventano il negativo, con le tinte dei tratti ripristinate. */
+tech {
+	display: contents;
+}
+
+html.theme-dark tech img,
+html.theme-dark tech canvas,
+html.theme-dark tech svg {
+	filter: invert(1) hue-rotate(180deg);
+}
+
+/* Formule: il colore segue il testo anche dopo il cambio tema. */
+html.theme-dark .MathJax,
+html.theme-dark .MathJax_Display,
+html.theme-dark mjx-container,
+html.theme-dark .MathJax *,
+html.theme-dark mjx-container * {
+	color: var(--text) !important;
+	border-color: var(--text);
+}
+
+/* Colori scritti nei fogli delle singole pagine. */
+html.theme-dark .caps {
+	color: var(--heading);
+}
+
+html.theme-dark .greytext,
+html.theme-dark .site-subtitle {
+	color: var(--muted);
+}
+
+html.theme-dark .div3 {
+	color: var(--text);
+	border-color: #3a3a3a;
+	background: transparent;
+}
+
+html.theme-dark .div3:hover {
+	background: #2e2e2e;
+	color: var(--text);
+	box-shadow: 0 0 3px rgba(255, 255, 255, .25);
+}
+
+html.theme-dark .div3:hover h3 {
+	color: var(--heading);
+}
+
+html.theme-dark .author-contact {
+	color: #9a9a9a;
+}
+
+html.theme-dark .author-contact a {
+	color: #b0b0b0;
+}
+
+html.theme-dark .tblGenFixed td {
+	background-color: var(--bg);
+	color: var(--text);
+	border-color: var(--border);
+}
+
+#theme-toggle {
+	position: fixed;
+	top: 10px;
+	right: 12px;
+	z-index: 2147483647;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	margin: 0;
+	border: 1px solid rgba(0, 0, 0, .12);
+	border-radius: 50%;
+	background: rgba(255, 255, 255, .55);
+	color: #2c2c2c;
+	cursor: pointer;
+	opacity: .55;
+	line-height: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-shadow: none;
+	font-weight: normal;
+	box-shadow: none;
+}
+
+#theme-toggle:hover,
+#theme-toggle:focus,
+#theme-toggle:active {
+	opacity: 1;
+	outline: none;
+	background: rgba(255, 255, 255, .85);
+	color: #2c2c2c;
+	border-color: rgba(0, 0, 0, .2);
+}
+
+html.theme-dark #theme-toggle {
+	border-color: rgba(255, 255, 255, .2);
+	background: rgba(30, 30, 30, .55);
+	color: #e8e8e8;
+}
+
+html.theme-dark #theme-toggle:hover,
+html.theme-dark #theme-toggle:focus,
+html.theme-dark #theme-toggle:active {
+	background: rgba(30, 30, 30, .85);
+	color: #e8e8e8;
+	border-color: rgba(255, 255, 255, .35);
+}
+
+#theme-toggle svg {
+	display: block;
+}

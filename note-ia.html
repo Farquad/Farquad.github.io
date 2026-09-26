@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="it"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="it"> <![endif]-->
+<!--[if IE 8 ]><html class="ie ie8" lang="it"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="it"> <!--<![endif]-->
+<head>
+    <script src="theme.js"></script>
+
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [["$", "$"], ["\\(", "\\)"]],
+          displayMath: [["$$", "$$"], ["\\[", "\\]"]]
+        },
+        options: {
+          skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"]
+        },
+        chtml: {
+          matchFontHeight: false,
+          scale: 1
+        }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/lib/marked.umd.js"></script>
+
+	<meta charset="utf-8">
+	<title>Intelligenza Artificiale</title>
+	<meta name="description" content="Note sul tema dell'Intelligenza Artificiale">
+	<meta name="author" content="Marco Discendenti">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link rel="stylesheet" href="base.css">
+	<link rel="stylesheet" href="skeleton.css">
+	<link rel="stylesheet" href="layout.css">
+	<style>
+		#nota-contenuto img { max-width: 100%; height: auto; }
+	</style>
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+</head>
+<body>
+
+    <div class="container">
+
+		<div class="sixteen columns">
+      <h1 id="nota-titolo" class="remove-bottom" style="margin-top: 40px">Intelligenza Artificiale</h1>
+      <br>
+      <p style="text-align:right;">$\rightarrow$ <a href="/">Home</a></p>
+			<hr />
+		</div>
+
+    <div class="navcolumn" id="nota-indice"></div>
+
+    <div class="three columns">&nbsp;</div>
+
+    <div class="thirteen columns">
+      <div class="columns" id="nota-contenuto"></div>
+    </div>
+
+    </div>
+
+<script>
+  window.NOTA = "NoteMarkdown/IA/Note sul tema dell'Intelligenza Artificiale.md";
+</script>
+<script src="render-nota.js"></script>
+
+</body>
+</html>

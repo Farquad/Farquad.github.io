@@ -9,17 +9,9 @@
   
      <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
     
-    <script type="text/x-mathjax-config">   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}}); </script> 
-    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"> </script>
+<script src="mathjax-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
     <script type="text/javascript" src="animatescroll.js"></script>
-    <!-- equation numbering on -->
-<script type="text/x-mathjax-config">
-MathJax.Hub.Config({
-  
-  
-  TeX: { equationNumbers: { autoNumber: "AMS" } }
-});
-</script>
     
 <script>
   
@@ -255,7 +247,7 @@ img.full{
     
     <div class="ten columns">
   	<p class="centeredImage">
-      <img src="https://yourmaths.files.wordpress.com/2014/07/vks1-4.png" width="60%">
+      <tech><img src="https://yourmaths.files.wordpress.com/2014/07/vks1-4.png" width="60%"></tech>
       </p>
      
     
@@ -324,7 +316,7 @@ ovvero il modulo della loro differenza.
 </p>
 
 <p class="centeredImage">
-      <img src="mod_diff.gif" width="80%">
+      <tech><img src="mod_diff.gif" width="80%"></tech>
       </p>
 
 <p>
@@ -376,18 +368,18 @@ $\forall \varepsilon>0$ $\exists N_\varepsilon$ tale che $\forall n\geq N_\varep
 <ul class="square">
   <li>la successione $1$, $\frac 1 2$, $\frac 1 3$, $\frac 1 4$, $\frac 1 5$, ... che tende "al limite" a $0$</li>
       <p class="centeredImage">
-      <img src="/succtab1n.gif" width="70%">
+      <tech><img src="/succtab1n.gif" width="70%"></tech>
       </p>
       
       <p class="centeredImage">
-      <img src="/succ2.gif" width="70%">
+      <tech><img src="/succ2.gif" width="70%"></tech>
       </p>
   <li>la successione $2$, $\frac 3 2$, $\frac 4 3$, $\frac 5 4$, ... che tende "al limite" $1$</li>
   <p class="centeredImage">
-      <img src="/succtabn1n.gif" width="70%">
+      <tech><img src="/succtabn1n.gif" width="70%"></tech>
       </p>
   <p class="centeredImage">
-      <img src="/succ1.gif" width="70%">
+      <tech><img src="/succ1.gif" width="70%"></tech>
       </p>
 </ul>
 <p>
@@ -417,7 +409,7 @@ La definizione può essere illustrata così:
 <!--
       <img src="http://img213.imageshack.us/img213/5001/unledsy.jpg" width="70%">
       -->
-      <img src="unledsy.jpg" width="70%">
+      <tech><img src="unledsy.jpg" width="70%"></tech>
       </p>
 <p>
   dove $N$ corrisponde al valore soglia $N_\varepsilon$ e le linee orizzontali $L-\varepsilon$ e $L+\varepsilon$ delimitano la regione in cui abbiamo $|a_n-L|<\varepsilon$.
@@ -450,13 +442,13 @@ Ci chiediamo: per quali valori di $n$ risulta $|\frac {n+1} n  - 1|<\varepsilon$
   che rappresentiamo con una tabella:
   </p>
   <p class="centeredImage">
-      <img src="/succ_osc.gif" width="70%">
+      <tech><img src="/succ_osc.gif" width="70%"></tech>
       </p>
   <p>
   e con un grafico:
   </p>
   <p class="centeredImage">
-      <img src="succ_osc_graf.gif" width="70%">
+      <tech><img src="succ_osc_graf.gif" width="70%"></tech>
       </p>
       </br>
   <p>
@@ -473,12 +465,12 @@ Ci chiediamo: per quali valori di $n$ risulta $|\frac {n+1} n  - 1|<\varepsilon$
     Abbiamo visto che una successione può convergere verso un valore limite o oscillare entro un insieme di valori senza convergere a nessuno in particolare. Vediamo un altro comportamento possibile. Consideriamo le successioni $a_n=n$, $a_n=n^2$, $a_n=2^n$. La successione $2^n$ è rappresentata di seguito:
     </p>
      <p class="centeredImage">
-      <img src="tab2allan.gif" width="70%">
+      <tech><img src="tab2allan.gif" width="70%"></tech>
       </p>
   <p>
   </p>
   <p class="centeredImage">
-      <img src="graf2allan.gif" width="70%">
+      <tech><img src="graf2allan.gif" width="70%"></tech>
       </p>
     
     <p>
@@ -501,7 +493,7 @@ Comunque scegliamo $M>0$ esiste un valore "soglia" $N_M$ tale che per tutti i va
 Una successione si definisce associando ad ogni numero naturale $n$ un numero reale $a_n$. Ad esempio la successione $1$, $\frac 1 2$, $\frac 1 3$, $\frac 1 4$ associa $1\mapsto 1$, $2\mapsto \frac 1 2$, $3 \mapsto \frac 1 3$, ..., $n \mapsto \frac 1 n$ come si vede dalla tabella:
 </p>
 <p class="centeredImage">
-      <img src="/succtab1n.gif" width="70%">
+      <tech><img src="/succtab1n.gif" width="70%"></tech>
 </p>
 <p>
 Una "funzione di variabile reale" invece si definisce associando ad ogni numero reale $x \in I \subset \mathbb R$ un altro numero reale che indichiamo $f(x)$. L'insieme $I$ si chiama "dominio" della funzione, è l'insieme da cui prendiamo i valori in "input". Non essendo possibile indicare per ogni numero $x$ il corrispondente numero $f(x)$ (essendo tipicamente il dominio $I$ infinito) la definizione viene fatta di solito con una formula, come per le successioni (ad esempio scriviamo $f(x)=2x$ per associare ad ogni numero il suo doppio).
@@ -707,7 +699,7 @@ Comunque scegliamo una distanza $\varepsilon>0$ esiste una distanza "soglia" $\d
   </p>
   
     <p class="centeredImage">
-      <img src="successioni_somma.png" width="80%">
+      <tech><img src="successioni_somma.png" width="80%"></tech>
       </p>
   <p>Quello che vediamo ci conferma che in effetti il limite della somma $a_n+b_n$ sembra essere proprio $2$ cioè la somma dei limiti delle successioni che abbiamo sommato. D'altra parte usando l'algebra vediamo che $\frac {n -2} {n}+\frac {n+1}{n}=\frac {2n-1}{n}=2-\frac 1 n$ dunque la sua distanza da $2$ è $\frac 1 n$ che tende a $0$, ciò significa che $2$ è effettivamente il limite di questa somma.</p>
   
