@@ -1,10 +1,68 @@
 (function () {
   var KEY = "tema";
   var root = document.documentElement;
+  var script = document.currentScript;
+  var src = (script && script.getAttribute("src")) || "";
+  var isApp = src.indexOf("../") !== -1;
+
   var dark = false;
   try {
     dark = localStorage.getItem(KEY) === "dark";
   } catch (e) {}
+
+  if (isApp) {
+    function labelOf(el) {
+      return (
+        (el.getAttribute("aria-label") || "") + " " +
+        (el.getAttribute("title") || "") + " " +
+        (el.id || "") + " " +
+        (typeof el.className === "string" ? el.className : "") + " " +
+        (el.textContent || "")
+      ).toLowerCase();
+    }
+
+    function findAppSwitch() {
+      var nodes = document.querySelectorAll("button, [role='switch'], input[type='checkbox']");
+      for (var i = 0; i < nodes.length; i++) {
+        var text = labelOf(nodes[i]);
+        if (/passa al tema|tema chiaro|tema scuro|dark mode|light mode|toggle-theme|theme-toggle|data-theme/.test(text)) {
+          return nodes[i];
+        }
+      }
+      return null;
+    }
+
+    function currentIsDark(el) {
+      var text = labelOf(el);
+      if (/passa al tema chiaro/.test(text)) return true;
+      if (/passa al tema scuro/.test(text)) return false;
+      var pressed = el.getAttribute("aria-pressed");
+      if (pressed === "true" || pressed === "false") return pressed === "true";
+      if (el.tagName === "INPUT" && el.type === "checkbox") return !!el.checked;
+      var mode = root.getAttribute("data-theme") || (document.body && document.body.getAttribute("data-theme"));
+      if (mode === "dark" || mode === "scuro") return true;
+      if (mode === "light" || mode === "chiaro") return false;
+      if (root.classList.contains("dark") || (document.body && document.body.classList.contains("dark"))) return true;
+      return null;
+    }
+
+    function syncAppTheme() {
+      var el = findAppSwitch();
+      if (!el || el.getAttribute("data-tema-synced") === "1") return;
+      var now = currentIsDark(el);
+      if (now === null || now === dark) return;
+      el.setAttribute("data-tema-synced", "1");
+      el.click();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", syncAppTheme);
+    } else {
+      syncAppTheme();
+    }
+    window.addEventListener("load", syncAppTheme);
+    return;
+  }
 
   if (dark) root.classList.add("theme-dark");
 
