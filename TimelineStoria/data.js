@@ -661,7 +661,7 @@ const timelineData = [
     { year: toNumber("29/07/1954"), title: "Pubblicazione de 'La Compagnia dell'Anello', primo volume del Signore degli Anelli", category: "cultura", importance: 4 },
     { year: toNumber("27/06/1954"), title: "Colpo di Stato in Guatemala: le forze appoggiate dalla CIA depongono Jacobo Árbenz", category: "politica", importance: 3 },
     // Fascicolo di ottobre 1956 (usato convenzionalmente il 15/10)
-    { year: toNumber("15/10/1956"), title: "Clair Patterson stima per l'età della Terra in 4,5 miliardi di anni in base agli isotopi del piombo nei meteoriti, valore oggi accettato come corretto", category: "scienza", importance: 2 },
+    { year: toNumber("15/10/1956"), title: "Clair Patterson stima l'età della Terra in 4,5 miliardi di anni basandosi sugli isotopi del piombo nei meteoriti, valore oggi accettato come corretto", category: "scienza", importance: 2 },
     { year: toNumber("29/10/1956"), title: "Inizio della Crisi di Suez con l'invasione israeliana del Sinai", category: "politica", importance: 3 },
     { year: toNumber("04/10/1957"), title: "L'URSS lancia lo Sputnik 1, il primo satellite artificiale", category: "tecnologia", importance: 1 },
     { year: toNumber("31/01/1958"), title: "Domenico Modugno vince Sanremo con 'Nel blu dipinto di blu'", category: "cultura", importance: 4 },

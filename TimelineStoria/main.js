@@ -209,6 +209,12 @@ function formatFullDate(year) {
     return null;
 }
 
+// Stessa codifica di toNumber: l'anno intero è il 1° gennaio, il resto dell'anno è la frazione dei giorni.
+function todayDecimalYear() {
+    const oggi = new Date();
+    return toNumber(`${oggi.getDate()}/${oggi.getMonth() + 1}/${oggi.getFullYear()}`);
+}
+
 // Helper per collisioni 2D
 function rectIntersect(r1, r2) {
     return !(r2.left >= r1.right || 
@@ -570,7 +576,7 @@ function handleInteraction(clientX, clientY) {
     let minDistance = 20; // raggio in pixel per il click
 
     // --- Prima fase: cerca click sui pallini ---
-    const clickTodayYear = new Date().getFullYear();
+    const clickTodayYear = todayDecimalYear();
     const clickTodayBgEvent = {
         year: clickTodayYear,
         title: "Oggi",
@@ -1732,7 +1738,7 @@ function computeGlobalLayout() {
         }
     }
 
-    const currentYearNum = new Date().getFullYear();
+    const currentYearNum = todayDecimalYear();
     const todayEvent = {
         year: currentYearNum,
         title: "Oggi",
@@ -2013,7 +2019,7 @@ function draw() {
     const visibleStart = centerYear - yearsVisible / 2;
     const visibleEnd = centerYear + yearsVisible / 2;
     
-    const currentYearNum = new Date().getFullYear();
+    const currentYearNum = todayDecimalYear();
     const currentYearPos = isVertical ? 
         canvasCenterY + (currentYearNum - centerYear) * pixelsPerYear :
         canvasCenterX + (currentYearNum - centerYear) * pixelsPerYear;
@@ -2241,7 +2247,7 @@ function draw() {
     const bgVisibleStart = centerYear - yearsVisible / 2 - bgRenderBuffer;
     const bgVisibleEnd = centerYear + yearsVisible / 2 + bgRenderBuffer;
 
-    const todayYear = new Date().getFullYear();
+    const todayYear = todayDecimalYear();
     const todayBgEvent = {
         year: todayYear,
         title: "Oggi",
