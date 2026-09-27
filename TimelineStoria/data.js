@@ -758,7 +758,7 @@ const timelineData = [
     { year: toNumber("26/07/2024"), title: "Cerimonia di apertura dei Giochi della XXXIII Olimpiade a Parigi", category: "cultura", importance: 3 },
     { year: toNumber("18/01/2024"), title: "BMW integra i robot umanoidi Figure 01 nella produzione negli Stati Uniti", category: "tecnologia", importance: 3 },
     { year: toNumber("08/12/2023"), title: "La FDA approva Casgevy, la prima terapia genica basata su CRISPR per l'uso umano", category: "scienza", importance: 3 },
-    { year: toNumber("04/09/2026"), title: "Missione Artemis II: record previsto di distanza umana dalla Terra (406.773 km)", category: "scienza", importance: 2 }
+    { year: toNumber("06/04/2026"), title: "Missione Artemis II: record di distanza umana dalla Terra (406.771 km)", category: "scienza", importance: 2 }
 ];
 
 const frenchRevolutionEvents = [

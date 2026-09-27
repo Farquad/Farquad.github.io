@@ -1,0 +1,11 @@
+Di seguito è riportato il tag Google per questo account. Copialo e incollalo nel codice di ogni pagina del tuo sito web, subito dopo l'elemento <head>. Non aggiungere più di un tag Google per pagina.
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0K7SE4960W"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0K7SE4960W');
+</script>
