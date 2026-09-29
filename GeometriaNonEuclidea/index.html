@@ -90,6 +90,7 @@
             box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
             border-radius: 50%;
             cursor: crosshair;
+            touch-action: none;
         }
 
         @media (max-width: 820px) {
@@ -143,13 +144,14 @@
 </head>
 <body>
     <div id="toolbar">
-        <button id="btn-point" class="active">Punto</button>
         <button id="btn-move">Muovi</button>
+        <button id="btn-point" class="active">Punto</button>
         <button id="btn-line">Retta (2 Punti)</button>
         <button id="btn-segment">Segmento</button>
         <button id="btn-vector">Vettore</button>
         <button id="btn-perp">Perpendicolare</button>
         <button id="btn-bisector">Asse Segmento</button>
+        <button id="btn-rand-triangle">Triangolo Random</button>
         <button id="btn-measure">Misura</button>
         <button id="btn-angle">Angolo</button>
         <div class="tool-row">
@@ -158,7 +160,6 @@
             <button id="btn-flow-stop" class="flow-ctrl" title="Ferma il flusso" disabled>&#9632;</button>
             <button id="btn-flow-play" class="flow-ctrl" title="Avvia il flusso" disabled>&#9654;</button>
         </div>
-        <button id="btn-rand-triangle">Triangolo Random</button>
         <span class="instructions" id="instructions">Clicca sul disco per aggiungere un punto.</span>
         <button id="btn-clear">Pulisci</button>
     </div>
@@ -692,11 +693,99 @@
             return true;
         }
 
-        // Gestione Eventi Mouse
-        canvas.addEventListener('mousedown', e => {
-            const pos = getMousePos(e);
-            if (Math.hypot(pos.x, pos.y) > 1) return; // Ignora se fuori dal disco
-            
+        const DRAG_THRESHOLD_PX = 8;
+        let activePointerId = null;
+        let pendingDrag = null; // punto premuto in attesa di capire se è un tap o un trascinamento
+
+        function findDraggablePoint(pos) {
+            const closest = findClosestEntity(pos, ['point']);
+            if (!closest) return null;
+            const p = points.find(pt => pt.id === closest.id);
+            if (!p || (p.constraint && p.constraint.type === 'intersection')) return null;
+            return p;
+        }
+
+        function beginDrag(p) {
+            draggingPoint = p;
+            draggingPoint.originalPos = { x: draggingPoint.x, y: draggingPoint.y };
+        }
+
+        function applyDrag(pos) {
+            let finalPos = pos;
+
+            if (draggingPoint.constraint && (draggingPoint.constraint.type === 'line' || draggingPoint.constraint.type === 'segment')) {
+                const computed = getComputedLines();
+                const lineRef = computed.find(l => l.id === draggingPoint.constraint.id);
+                if (lineRef) finalPos = projectOnLine(pos, lineRef);
+            }
+
+            const d = Math.hypot(finalPos.x, finalPos.y);
+            if (d >= 0.99) {
+                draggingPoint.x = (finalPos.x / d) * 0.99;
+                draggingPoint.y = (finalPos.y / d) * 0.99;
+            } else {
+                draggingPoint.x = finalPos.x;
+                draggingPoint.y = finalPos.y;
+            }
+
+            updateConstraints(draggingPoint.id);
+            // Il trascinamento vince sul flusso: ripartiamo dalla nuova configurazione
+            if (flowSpec) rebaselineFlow();
+        }
+
+        // Aggiorna evidenziazione e anteprima. Sul tocco non c'è un movimento prima della pressione.
+        function updateHover(pos) {
+            let allowedTypes = [];
+            if (mode === 'MOVE') allowedTypes = ['point'];
+            else if (mode === 'PERP') allowedTypes = ['point', 'line', 'segment'];
+            else if (mode === 'BISECTOR') allowedTypes = ['point', 'segment'];
+            else if (mode === 'MEASURE') allowedTypes = ['segment'];
+            else if (mode === 'ANGLE') allowedTypes = ['point'];
+            else if (mode === 'FLOW') allowedTypes = ['point', 'line', 'segment'];
+
+            let newHoveredEntities = [];
+            let newPreviewIntersection = null;
+
+            if (mode === 'POINT' || POINT_CONSUMER_MODES.includes(mode)) {
+                // Un punto esistente ha sempre la precedenza: gli altri enti servono
+                // solo a decidere dove nascerà il punto creato al volo
+                const closestPoint = POINT_CONSUMER_MODES.includes(mode) ? findClosestEntity(pos, ['point']) : null;
+
+                if (closestPoint) {
+                    newHoveredEntities = [closestPoint];
+                } else {
+                    newPreviewIntersection = findPreviewIntersection(pos);
+                    if (newPreviewIntersection) {
+                        newHoveredEntities = [
+                            { type: newPreviewIntersection.l1.entityType, id: newPreviewIntersection.l1.id, entity: newPreviewIntersection.l1 },
+                            { type: newPreviewIntersection.l2.entityType, id: newPreviewIntersection.l2.id, entity: newPreviewIntersection.l2 }
+                        ];
+                    } else {
+                        const closest = findClosestEntity(pos, ['line', 'segment']);
+                        if (closest) newHoveredEntities = [closest];
+                    }
+                }
+            } else {
+                const closest = findClosestEntity(pos, allowedTypes);
+                if (closest) newHoveredEntities = [closest];
+            }
+
+            let needsRedraw = false;
+            const prevIds = hoveredEntities.map(e => e.type + e.id).sort().join(',');
+            const newIds = newHoveredEntities.map(e => e.type + e.id).sort().join(',');
+            if (prevIds !== newIds) {
+                hoveredEntities = newHoveredEntities;
+                needsRedraw = true;
+            }
+
+            if (previewIntersection !== newPreviewIntersection) {
+                previewIntersection = newPreviewIntersection;
+                needsRedraw = true;
+            }
+            return needsRedraw;
+        }
+
+        function handleClick(pos) {
             if (mode === 'POINT') {
                 if (previewIntersection) {
                     points.push({ 
@@ -718,16 +807,6 @@
                     points.push({ id: nextId++, x: finalPos.x, y: finalPos.y, constraint });
                     saveState();
                     draw();
-                }
-            }
-            else if (mode === 'MOVE') {
-                const closest = findClosestEntity(pos, ['point']);
-                if (closest) {
-                    const p = points.find(pt => pt.id === closest.id);
-                    if (p && (!p.constraint || p.constraint.type !== 'intersection')) {
-                        draggingPoint = p;
-                        draggingPoint.originalPos = { x: draggingPoint.x, y: draggingPoint.y };
-                    }
                 }
             }
             else if (POINT_CONSUMER_MODES.includes(mode)) {
@@ -843,88 +922,7 @@
                     draw();
                 }
             }
-        });
-
-        canvas.addEventListener('mousemove', e => {
-            const pos = getMousePos(e);
-            let needsRedraw = false;
-
-            // POINT e le modalità che creano punti al volo hanno una logica di hover dedicata
-            let allowedTypes = [];
-            if (mode === 'MOVE') allowedTypes = ['point'];
-            else if (mode === 'PERP') allowedTypes = ['point', 'line', 'segment'];
-            else if (mode === 'BISECTOR') allowedTypes = ['point', 'segment'];
-            else if (mode === 'MEASURE') allowedTypes = ['segment'];
-            else if (mode === 'ANGLE') allowedTypes = ['point'];
-            else if (mode === 'FLOW') allowedTypes = ['point', 'line', 'segment'];
-
-            let newHoveredEntities = [];
-            let newPreviewIntersection = null;
-
-            if (mode === 'POINT' || POINT_CONSUMER_MODES.includes(mode)) {
-                // Un punto esistente ha sempre la precedenza: gli altri enti servono
-                // solo a decidere dove nascerà il punto creato al volo
-                const closestPoint = POINT_CONSUMER_MODES.includes(mode) ? findClosestEntity(pos, ['point']) : null;
-
-                if (closestPoint) {
-                    newHoveredEntities = [closestPoint];
-                } else {
-                    newPreviewIntersection = findPreviewIntersection(pos);
-                    if (newPreviewIntersection) {
-                        newHoveredEntities = [
-                            { type: newPreviewIntersection.l1.entityType, id: newPreviewIntersection.l1.id, entity: newPreviewIntersection.l1 },
-                            { type: newPreviewIntersection.l2.entityType, id: newPreviewIntersection.l2.id, entity: newPreviewIntersection.l2 }
-                        ];
-                    } else {
-                        const closest = findClosestEntity(pos, ['line', 'segment']);
-                        if (closest) newHoveredEntities = [closest];
-                    }
-                }
-            } else {
-                const closest = findClosestEntity(pos, allowedTypes);
-                if (closest) newHoveredEntities = [closest];
-            }
-
-            const prevIds = hoveredEntities.map(e => e.type + e.id).sort().join(',');
-            const newIds = newHoveredEntities.map(e => e.type + e.id).sort().join(',');
-            if (prevIds !== newIds) {
-                hoveredEntities = newHoveredEntities;
-                needsRedraw = true;
-            }
-            
-            if (previewIntersection !== newPreviewIntersection) {
-                previewIntersection = newPreviewIntersection;
-                needsRedraw = true;
-            }
-
-            if (draggingPoint) {
-                let finalPos = pos;
-                
-                if (draggingPoint.constraint && (draggingPoint.constraint.type === 'line' || draggingPoint.constraint.type === 'segment')) {
-                    const computed = getComputedLines();
-                    const lineRef = computed.find(l => l.id === draggingPoint.constraint.id);
-                    if (lineRef) {
-                        finalPos = projectOnLine(pos, lineRef);
-                    }
-                }
-                
-                const d = Math.hypot(finalPos.x, finalPos.y);
-                if (d >= 0.99) {
-                    draggingPoint.x = (finalPos.x / d) * 0.99;
-                    draggingPoint.y = (finalPos.y / d) * 0.99;
-                } else {
-                    draggingPoint.x = finalPos.x;
-                    draggingPoint.y = finalPos.y;
-                }
-                
-                updateConstraints(draggingPoint.id);
-                // Il trascinamento vince sul flusso: ripartiamo dalla nuova configurazione
-                if (flowSpec) rebaselineFlow();
-                needsRedraw = true;
-            }
-
-            if (needsRedraw) draw();
-        });
+        }
 
         function endDrag() {
             if (draggingPoint) {
@@ -936,9 +934,69 @@
             }
         }
 
-        canvas.addEventListener('mouseup', endDrag);
-        canvas.addEventListener('mouseleave', () => {
+        function promotePendingDrag(pos) {
+            const p = pendingDrag.point;
+            pendingDrag = null;
+            setMode('MOVE');
+            const still = points.find(pt => pt.id === p.id);
+            if (still && (!still.constraint || still.constraint.type !== 'intersection')) {
+                beginDrag(still);
+                applyDrag(pos);
+            }
+        }
+
+        function finishPointer(e) {
+            if (activePointerId === null || e.pointerId !== activePointerId) return;
+            const tap = pendingDrag;
+            pendingDrag = null;
+            activePointerId = null;
+            if (tap) handleClick({ x: tap.x, y: tap.y });
             endDrag();
+            if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+        }
+
+        canvas.addEventListener('pointerdown', e => {
+            if (e.button !== 0 || activePointerId !== null) return;
+            const pos = getMousePos(e);
+            if (Math.hypot(pos.x, pos.y) > 1) return;
+
+            try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+            activePointerId = e.pointerId;
+            if (e.cancelable) e.preventDefault();
+            updateHover(pos);
+
+            const draggable = findDraggablePoint(pos);
+            if (mode === 'MOVE') {
+                if (draggable) beginDrag(draggable);
+                return;
+            }
+            if (draggable) {
+                pendingDrag = { point: draggable, clientX: e.clientX, clientY: e.clientY, x: pos.x, y: pos.y };
+                return;
+            }
+            handleClick(pos);
+        });
+
+        canvas.addEventListener('pointermove', e => {
+            if (activePointerId !== null && e.pointerId !== activePointerId) return;
+            const pos = getMousePos(e);
+
+            if (pendingDrag && e.pointerId === activePointerId) {
+                const dist = Math.hypot(e.clientX - pendingDrag.clientX, e.clientY - pendingDrag.clientY);
+                if (dist < DRAG_THRESHOLD_PX) return;
+                promotePendingDrag(pos);
+            }
+
+            const needsRedraw = updateHover(pos) || !!draggingPoint;
+            if (draggingPoint) applyDrag(pos);
+            if (needsRedraw) draw();
+        });
+
+        canvas.addEventListener('pointerup', finishPointer);
+        canvas.addEventListener('pointercancel', finishPointer);
+        canvas.addEventListener('pointerleave', e => {
+            if (activePointerId !== null) return;
+            if (e.pointerId !== undefined && canvas.hasPointerCapture(e.pointerId)) return;
             hoveredEntities = [];
             previewIntersection = null;
             draw();
