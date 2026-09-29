@@ -1,13 +1,16 @@
 (function () {
   var KEY = "tema";
+  var FONT_KEY = "carattere";
   var root = document.documentElement;
   var script = document.currentScript;
   var src = (script && script.getAttribute("src")) || "";
   var isApp = src.indexOf("../") !== -1;
 
   var dark = false;
+  var sans = true;
   try {
     dark = localStorage.getItem(KEY) === "dark";
+    sans = localStorage.getItem(FONT_KEY) !== "serif";
   } catch (e) {}
 
   if (isApp) {
@@ -65,6 +68,7 @@
   }
 
   if (dark) root.classList.add("theme-dark");
+  if (sans) root.classList.add("font-sans");
 
   var cssHref = "theme.css";
   if (src) {
@@ -96,21 +100,47 @@
     btn.title = label;
   }
 
+  function paintFont(btn) {
+    var isSans = root.classList.contains("font-sans");
+    btn.textContent = "Aa";
+    btn.setAttribute("aria-pressed", isSans ? "true" : "false");
+    var label = isSans ? "Passa al carattere con grazie" : "Passa al carattere senza grazie";
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+  }
+
   function mount() {
-    if (document.getElementById("theme-toggle")) return;
-    var btn = document.createElement("button");
-    btn.id = "theme-toggle";
-    btn.type = "button";
-    paint(btn);
-    btn.addEventListener("click", function () {
-      var next = !root.classList.contains("theme-dark");
-      root.classList.toggle("theme-dark", next);
-      try {
-        localStorage.setItem(KEY, next ? "dark" : "light");
-      } catch (e) {}
+    if (!document.getElementById("theme-toggle")) {
+      var btn = document.createElement("button");
+      btn.id = "theme-toggle";
+      btn.type = "button";
       paint(btn);
-    });
-    document.body.appendChild(btn);
+      btn.addEventListener("click", function () {
+        var next = !root.classList.contains("theme-dark");
+        root.classList.toggle("theme-dark", next);
+        try {
+          localStorage.setItem(KEY, next ? "dark" : "light");
+        } catch (e) {}
+        paint(btn);
+      });
+      document.body.appendChild(btn);
+    }
+
+    if (!document.getElementById("font-toggle")) {
+      var fontBtn = document.createElement("button");
+      fontBtn.id = "font-toggle";
+      fontBtn.type = "button";
+      paintFont(fontBtn);
+      fontBtn.addEventListener("click", function () {
+        var next = !root.classList.contains("font-sans");
+        root.classList.toggle("font-sans", next);
+        try {
+          localStorage.setItem(FONT_KEY, next ? "sans" : "serif");
+        } catch (e) {}
+        paintFont(fontBtn);
+      });
+      document.body.appendChild(fontBtn);
+    }
   }
 
   if (document.body) mount();
