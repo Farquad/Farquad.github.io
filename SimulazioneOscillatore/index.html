@@ -1,0 +1,2574 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oscillatore armonico</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #f0883e;
+      --accent-dim: #9e4c16;
+      --danger: #f85149;
+      --input: #21262d;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      height: 100%;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      background: var(--bg);
+      min-width: 0;
+      min-height: 0;
+      overscroll-behavior: none;
+    }
+
+    #simCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px 14px 28px;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      min-height: 0;
+      overflow-x: clip;
+      overflow-y: auto;
+    }
+
+    .file-bar {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .file-bar .dropdown {
+      position: relative;
+      flex: 1.35;
+      min-width: 0;
+    }
+
+    .file-bar .btn {
+      width: auto;
+      flex: 1;
+      font-size: 0.82rem;
+      padding: 8px 10px;
+      white-space: nowrap;
+    }
+
+    .file-bar .dropdown .btn {
+      width: 100%;
+    }
+
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      z-index: 30;
+      flex-direction: column;
+      background: #1a2129;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+    }
+
+    .dropdown.open .dropdown-menu {
+      display: flex;
+    }
+
+    .dropdown-menu button {
+      width: 100%;
+      text-align: left;
+      padding: 9px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    .dropdown-menu button:hover {
+      background: rgba(240, 136, 62, 0.16);
+    }
+
+    .sidebar h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .section {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #1a2129;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .section.objects-section {
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .section-header:hover { background: rgba(255,255,255,0.03); }
+
+    .section-body {
+      padding: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .section.collapsed .section-body { display: none; }
+    .section.collapsed .collapse-btn { transform: rotate(-90deg); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--input);
+      color: var(--text);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn:hover {
+      background: #2a3139;
+      border-color: var(--muted);
+    }
+
+    .btn-primary {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover { background: #b85a1c; }
+
+    .transport {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .btn-icon {
+      width: 38px;
+      flex: 0 0 38px;
+      height: 38px;
+      padding: 0;
+    }
+
+    .btn-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+      display: block;
+    }
+
+    .btn-icon .icon-play { display: none; }
+    .btn-icon .icon-stop { display: block; }
+    .btn-icon:not([aria-pressed="true"]) .icon-play { display: block; }
+    .btn-icon:not([aria-pressed="true"]) .icon-stop { display: none; }
+
+    .transport .btn-icon[aria-pressed="true"] {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .transport-speed {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .transport-speed input[type="range"] {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .transport-speed .value {
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      font-size: 0.85rem;
+      min-width: 3.4em;
+      text-align: right;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .control:last-child { margin-bottom: 0; }
+
+    .control.control-switch {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .control.control-switch > label {
+      flex-shrink: 0;
+      font-size: 0.85rem;
+    }
+
+    .control.control-switch .segmented {
+      width: 70%;
+      flex: 0 0 70%;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.85rem;
+    }
+
+    .control-row .value {
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+    }
+
+    .segmented {
+      display: flex;
+      align-items: stretch;
+      position: relative;
+      isolation: isolate;
+      width: 100%;
+      min-height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--bg);
+      cursor: pointer;
+      flex-shrink: 0;
+      touch-action: manipulation;
+    }
+
+    .segmented label {
+      position: relative;
+      z-index: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1 1 0;
+      align-self: stretch;
+      min-height: 32px;
+      text-align: center;
+      font-size: 0.8rem;
+      padding: 6px 4px;
+      cursor: pointer;
+      user-select: none;
+      color: var(--muted);
+      border-right: 1px solid var(--border);
+      transition: background 0.15s, color 0.15s;
+      pointer-events: none;
+    }
+
+    .segmented label:last-child { border-right: none; }
+
+    .segmented input {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .segmented span {
+      pointer-events: none;
+    }
+
+    .segmented label:has(input:checked) {
+      background: var(--accent-dim);
+      color: var(--text);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .empty-hint {
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 8px 2px;
+    }
+
+    .object-boxes {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      padding-bottom: 12px;
+    }
+
+    .obj-box {
+      border: 1px solid var(--border);
+      border-left-width: 4px;
+      border-left-color: var(--box-color, var(--accent));
+      border-radius: 8px;
+      background: var(--input);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .obj-box.selected {
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--box-color) 70%, transparent);
+    }
+
+    .obj-box-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .obj-box-header:hover { background: rgba(255,255,255,0.03); }
+
+    .collapse-btn {
+      width: 22px;
+      height: 22px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.7rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .collapse-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+    .obj-box.collapsed .collapse-btn { transform: rotate(-90deg); }
+
+    .spring-state {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .spring-state[data-state="elastic"] { color: var(--muted); }
+    .spring-state[data-state="yield"] { color: #f08c00; }
+    .spring-state[data-state="broken"] { color: #ff6b6b; }
+
+    .obj-title {
+      flex: 1;
+      font-size: 0.88rem;
+      font-weight: 600;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .remove {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.15rem;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .remove:hover {
+      background: rgba(248, 81, 73, 0.2);
+      color: var(--danger);
+    }
+
+    .obj-box-body {
+      padding: 0 10px 14px;
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+
+    .obj-box.collapsed .obj-box-body { display: none; }
+
+    .obj-trace-wrap {
+      margin: 8px 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #0b0f14;
+      overflow: hidden;
+    }
+
+    .obj-trace {
+      display: block;
+      width: 100%;
+      height: 76px;
+      pointer-events: none;
+    }
+
+    .obj-box .control.control-switch > label {
+      max-width: 48%;
+      line-height: 1.25;
+    }
+
+    .obj-box .control.control-switch .segmented {
+      width: 46%;
+      flex: 0 0 46%;
+    }
+
+    .motor-sliders[data-disabled="true"] {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .app[data-view="horizontal"] #gravityControl {
+      display: none;
+    }
+
+    .app[data-friction="false"] .friction-ui {
+      display: none;
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr minmax(240px, 42vh);
+      }
+      .sidebar {
+        border-left: none;
+        border-top: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" data-view="horizontal" data-friction="true">
+    <div class="canvas-wrap">
+      <canvas id="simCanvas"></canvas>
+    </div>
+    <aside class="sidebar">
+      <div class="file-bar">
+        <div class="dropdown" id="loadDropdown">
+          <button type="button" class="btn" id="loadMenuBtn" aria-haspopup="true" aria-expanded="false">Carica / preset</button>
+          <div class="dropdown-menu" role="menu">
+            <button type="button" role="menuitem" id="presetScaleBtn">10 oscillatori in scala</button>
+            <button type="button" role="menuitem" id="loadFileBtn">Carica da file…</button>
+          </div>
+        </div>
+        <button type="button" class="btn" id="saveBtn">Salva</button>
+      </div>
+      <input type="file" id="loadFileInput" accept="application/json,.json" hidden />
+
+      <div class="section" id="simSection">
+        <div class="section-header" role="button" tabindex="0" aria-expanded="true" aria-controls="simSectionBody">
+          <button type="button" class="collapse-btn" title="Espandi / comprimi" tabindex="-1" aria-hidden="true">▼</button>
+          <h2>Simulazione</h2>
+        </div>
+        <div class="section-body" id="simSectionBody">
+          <div class="transport" role="group" aria-label="Riproduzione">
+            <button type="button" class="btn btn-icon" id="playPauseBtn" aria-pressed="true" title="Stop" aria-label="Stop">
+              <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              <svg class="icon-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+            </button>
+            <button type="button" class="btn btn-icon" id="resetBtn" title="Ripristina" aria-label="Ripristina">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+            </button>
+            <div class="transport-speed">
+              <input type="range" id="timeScaleSlider" min="0.25" max="4" step="0.05" value="1" aria-label="Velocità del tempo" />
+              <span class="value" id="timeScaleValue">1.00×</span>
+            </div>
+          </div>
+          <div class="control control-switch">
+            <label>Vista</label>
+            <div class="segmented" role="radiogroup" aria-label="Vista">
+              <label>
+                <input type="radio" name="viewMode" id="viewH" value="horizontal" checked />
+                <span>Orizzontale</span>
+              </label>
+              <label>
+                <input type="radio" name="viewMode" id="viewV" value="vertical" />
+                <span>Verticale</span>
+              </label>
+            </div>
+          </div>
+          <div class="control control-switch" id="gravityControl">
+            <label>Gravità</label>
+            <div class="segmented" role="radiogroup" aria-label="Gravità">
+              <label>
+                <input type="radio" name="gravityMode" id="gravityOn" value="on" checked />
+                <span>Accesa</span>
+              </label>
+              <label>
+                <input type="radio" name="gravityMode" id="gravityOff" value="off" />
+                <span>Spenta</span>
+              </label>
+            </div>
+          </div>
+          <div class="control control-switch">
+            <label>Attrito</label>
+            <div class="segmented" role="radiogroup" aria-label="Attrito">
+              <label>
+                <input type="radio" name="frictionMode" id="frictionOn" value="on" checked />
+                <span>Sì</span>
+              </label>
+              <label>
+                <input type="radio" name="frictionMode" id="frictionOff" value="off" />
+                <span>No</span>
+              </label>
+            </div>
+          </div>
+          <div class="friction-ui">
+            <div class="control">
+              <div class="control-row">
+                <label for="cViscSlider">Attrito viscoso</label>
+                <span class="value" id="cViscValue">0.20</span>
+              </div>
+              <input type="range" id="cViscSlider" min="0" max="8" step="0.05" value="0.2" />
+            </div>
+            <p class="hint">Viscoso: rispetto all’aria. Interno: smorzamento della molla (per oscillatore).</p>
+          </div>
+          <p class="hint">Pinch o rotella per lo zoom; trascina lo sfondo per spostare la vista. Doppio clic per reimpostare.</p>
+        </div>
+      </div>
+
+      <div class="section" id="anchorSection">
+        <div class="section-header" role="button" tabindex="0" aria-expanded="true" aria-controls="anchorSectionBody">
+          <button type="button" class="collapse-btn" title="Espandi / comprimi" tabindex="-1" aria-hidden="true">▼</button>
+          <h2>Ancoraggio</h2>
+        </div>
+        <div class="section-body" id="anchorSectionBody">
+          <div class="control control-switch">
+            <label>Motore</label>
+            <div class="segmented" role="radiogroup" aria-label="Motore">
+              <label>
+                <input type="radio" name="motorMode" id="motorOff" value="off" checked />
+                <span>Spento</span>
+              </label>
+              <label>
+                <input type="radio" name="motorMode" id="motorOn" value="on" />
+                <span>Acceso</span>
+              </label>
+            </div>
+          </div>
+          <div class="motor-sliders" id="motorSliders" data-disabled="true">
+            <div class="control">
+              <div class="control-row">
+                <label for="freqSlider">Frequenza</label>
+                <span class="value" id="freqValue">1.00 Hz</span>
+              </div>
+              <input type="range" id="freqSlider" min="0.1" max="4" step="0.05" value="1" />
+            </div>
+            <div class="control">
+              <div class="control-row">
+                <label for="ampSlider">Ampiezza</label>
+                <span class="value" id="ampValue">0.08 m</span>
+              </div>
+              <input type="range" id="ampSlider" min="0" max="0.35" step="0.01" value="0.08" />
+            </div>
+          </div>
+          <p class="hint" style="margin-top:8px">Trascina il muro (vista H) o il pavimento (vista V). Con il motore acceso il drag sposta il centro di oscillazione.</p>
+        </div>
+      </div>
+
+      <div class="section objects-section" id="objectsSection">
+        <div class="section-header" role="button" tabindex="0" aria-expanded="true" aria-controls="objectsSectionBody">
+          <button type="button" class="collapse-btn" title="Espandi / comprimi" tabindex="-1" aria-hidden="true">▼</button>
+          <h2>Oscillatori</h2>
+        </div>
+        <div class="section-body" id="objectsSectionBody">
+          <button type="button" class="btn btn-primary" id="addBtn">+ Aggiungi oscillatore</button>
+          <p class="hint" style="margin-top:8px">Oltre 3,6 m la molla snerva; a 4,2 m si rompe. Il reset la ripristina.</p>
+          <div class="object-boxes" id="objectBoxes"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+(() => {
+  "use strict";
+
+  const G = 9.81;
+  const L0 = 1.45;
+  const MIN_LEN = 0.07;
+  const L_ELASTIC = 3.6;
+  const L_BREAK = 4.2;
+  const L_PANIC = 8;
+  const V_PANIC = 80;
+  const DL_ELASTIC = L_ELASTIC - L0;
+  const DT = 1 / 120;
+  const TRACE_WINDOW = 6;
+  const TRACE_SAMPLES = Math.round(TRACE_WINDOW / DT);
+  const M_MIN = 0.3;
+  const M_MAX = 4;
+  const K_MIN = 20;
+  const K_MAX = 250;
+  const C_MAX = 8;
+  const MASS_M_MIN = 0.18;
+  const MASS_M_MAX = 0.46;
+  const ANCHOR_THICK_M = 0.11;
+  const PALETTE = [
+    "#4c6ef5", "#f08c00", "#37b24d", "#e64980", "#15aabf",
+    "#ae3ec9", "#fab005", "#fd7e14", "#74c0fc", "#ff6b6b"
+  ];
+
+  const appEl = document.querySelector(".app");
+  const canvas = document.getElementById("simCanvas");
+  const ctx = canvas.getContext("2d");
+  const boxesEl = document.getElementById("objectBoxes");
+  const cViscSlider = document.getElementById("cViscSlider");
+  const cViscValue = document.getElementById("cViscValue");
+  const motorSliders = document.getElementById("motorSliders");
+  const freqSlider = document.getElementById("freqSlider");
+  const freqValue = document.getElementById("freqValue");
+  const ampSlider = document.getElementById("ampSlider");
+  const ampValue = document.getElementById("ampValue");
+  const playPauseBtn = document.getElementById("playPauseBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const timeScaleSlider = document.getElementById("timeScaleSlider");
+  const timeScaleValue = document.getElementById("timeScaleValue");
+
+  let nextId = 1;
+  const state = {
+    view: "horizontal",
+    running: true,
+    timeScale: 1,
+    gravity: true,
+    friction: true,
+    cVisc: 0.2,
+    sAnchor: 0,
+    vAnchor: 0,
+    simTime: 0,
+    selectedId: null,
+    motor: { on: false, f: 1, A: 0.08, s0: 0, t0: 0 },
+    oscillators: []
+  };
+
+  const ZOOM_MIN = 0.35;
+  const ZOOM_MAX = 5;
+
+  const camera = {
+    zoom: 1,
+    panX: 0,
+    panY: 0
+  };
+
+  const drag = {
+    kind: null,
+    id: null,
+    offsetS: 0,
+    lastS: 0,
+    lastT: 0,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    startPanX: 0,
+    startPanY: 0
+  };
+
+  const pointers = new Map();
+  let pinch = null;
+
+  let layout = {
+    cssW: 0,
+    cssH: 0,
+    pxPerM: 120,
+    originX: 56,
+    originY: 0,
+    laterals: [],
+    massPx: [],
+    massM: [],
+    floorY: 0
+  };
+
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function clamp(v, a, b) {
+    return Math.max(a, Math.min(b, v));
+  }
+
+  function hexToRgb(hex) {
+    const h = hex.replace("#", "");
+    return {
+      r: parseInt(h.slice(0, 2), 16),
+      g: parseInt(h.slice(2, 4), 16),
+      b: parseInt(h.slice(4, 6), 16)
+    };
+  }
+
+  function rgbStr(r, g, b, a) {
+    if (a == null) return `rgb(${r|0},${g|0},${b|0})`;
+    return `rgba(${r|0},${g|0},${b|0},${a})`;
+  }
+
+  function mixHex(a, b, t) {
+    const A = hexToRgb(a);
+    const B = hexToRgb(b);
+    return rgbStr(lerp(A.r, B.r, t), lerp(A.g, B.g, t), lerp(A.b, B.b, t));
+  }
+
+  function shade(hex, k) {
+    const c = hexToRgb(hex);
+    const t = k < 0 ? 0 : 255;
+    const p = Math.abs(k);
+    return rgbStr(lerp(c.r, t, p), lerp(c.g, t, p), lerp(c.b, t, p));
+  }
+
+  function saturatedRgb(hex) {
+    const c = hexToRgb(hex);
+    const s = 255 / Math.max(c.r, c.g, c.b, 1);
+    return { r: c.r * s, g: c.g * s, b: c.b * s };
+  }
+
+  function ledFill(hex, t) {
+    t = clamp(t, 0, 1);
+    const m = saturatedRgb(hex);
+    if (t <= 0.5) {
+      const u = t / 0.5;
+      return rgbStr(m.r * u, m.g * u, m.b * u);
+    }
+    const u = (t - 0.5) / 0.5;
+    return rgbStr(
+      lerp(m.r, 255, u * 0.94),
+      lerp(m.g, 255, u * 0.94),
+      lerp(m.b, 255, u * 0.94)
+    );
+  }
+
+  function ledOnAmount(t) {
+    t = clamp(t, 0, 1);
+    if (t <= 0.5) return (t / 0.5) * 0.4;
+    return 0.4 + ((t - 0.5) / 0.5) * 0.6;
+  }
+
+  function lemonHaloRgb(hex) {
+    const m = saturatedRgb(hex);
+    return {
+      r: lerp(m.r, 255, 0.4),
+      g: lerp(m.g, 247, 0.44),
+      b: lerp(m.b, 96, 0.22)
+    };
+  }
+
+  function massSizeM(m) {
+    const t = clamp((m - M_MIN) / (M_MAX - M_MIN), 0, 1);
+    return lerp(MASS_M_MIN, MASS_M_MAX, t);
+  }
+
+  function springWidthPx(k) {
+    const t = clamp((k - K_MIN) / (K_MAX - K_MIN), 0, 1);
+    return lerp(2.4, 9.5, t);
+  }
+
+  function restGeom(osc, view, gravity) {
+    const Ln = osc && Number.isFinite(osc.Ln) ? osc.Ln : L0;
+    const gOn = gravity !== undefined ? gravity : state.gravity;
+    if (view === "vertical" && gOn) {
+      return Ln - (osc.m * G) / osc.k;
+    }
+    return Ln;
+  }
+
+  function restS(osc) {
+    return state.sAnchor + restGeom(osc, state.view);
+  }
+
+  function naturalFreqHz(osc) {
+    return Math.sqrt(osc.k / osc.m) / (2 * Math.PI);
+  }
+
+  function platformLedIntensity(osc) {
+    if (osc.broken) return 0;
+    if (drag.kind === "anchor") return 0;
+    if (!state.motor.on || state.motor.A < 0.005) return 0;
+    const f0 = naturalFreqHz(osc);
+    const sigma = 0.16 + 0.06 * f0;
+    const detune = (state.motor.f - f0) / sigma;
+    return 1 / (1 + detune * detune);
+  }
+
+  function makeOscillator(opts) {
+    const id = opts && opts.id != null ? opts.id : nextId++;
+    if (id >= nextId) nextId = id + 1;
+    const m = opts && opts.m != null ? opts.m : 1.2;
+    const k = opts && opts.k != null ? opts.k : 80;
+    const osc = {
+      id,
+      m: clamp(m, M_MIN, M_MAX),
+      k: clamp(k, K_MIN, K_MAX),
+      cInt: clamp(opts && opts.cInt != null ? opts.cInt : 0.35, 0, C_MAX),
+      color: typeof (opts && opts.color) === "string" ? opts.color : PALETTE[(id - 1) % PALETTE.length],
+      s: 0,
+      v: 0,
+      collapsed: !!(opts && opts.collapsed),
+      motionAnalysis: !!(opts && opts.motionAnalysis),
+      Ln: L0,
+      broken: !!(opts && opts.broken),
+      trace: makeTrace()
+    };
+    if (Number.isFinite(opts && opts.Ln)) {
+      osc.Ln = clamp(opts.Ln, L0, L_BREAK);
+    }
+    if (opts && Number.isFinite(opts.s)) osc.s = opts.s;
+    else osc.s = state.sAnchor + restGeom(osc, state.view);
+    osc.v = opts && Number.isFinite(opts.v) ? opts.v : 0;
+    return osc;
+  }
+
+  function createOscillator(randomize) {
+    if (randomize) {
+      return makeOscillator({
+        m: lerp(M_MIN, M_MAX, Math.random()),
+        k: lerp(K_MIN, K_MAX, Math.random())
+      });
+    }
+    return makeOscillator({});
+  }
+
+  function findOsc(id) {
+    return state.oscillators.find((o) => o.id === id) || null;
+  }
+
+  function makeTrace() {
+    return { buf: new Float32Array(TRACE_SAMPLES), i: 0, n: 0 };
+  }
+
+  function clearTrace(osc) {
+    osc.trace.i = 0;
+    osc.trace.n = 0;
+  }
+
+  function displacement(osc) {
+    return osc.s - restS(osc);
+  }
+
+  function liveAmplitude(osc) {
+    return motionPhasor(osc).A;
+  }
+
+  function recordTrace(osc) {
+    const tr = osc.trace;
+    tr.buf[tr.i] = displacement(osc);
+    tr.i = (tr.i + 1) % TRACE_SAMPLES;
+    if (tr.n < TRACE_SAMPLES) tr.n++;
+  }
+
+  function traceSample(tr, j) {
+    const start = tr.n < TRACE_SAMPLES ? 0 : tr.i;
+    return tr.buf[(start + j) % TRACE_SAMPLES];
+  }
+
+  function resizeCanvas() {
+    const wrap = canvas.parentElement;
+    const dpr = window.devicePixelRatio || 1;
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    canvas.width = Math.max(1, Math.floor(w * dpr));
+    canvas.height = Math.max(1, Math.floor(h * dpr));
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    canvas._cssW = w;
+    canvas._cssH = h;
+  }
+
+  function updateLayout() {
+    const cssW = canvas._cssW || canvas.clientWidth;
+    const cssH = canvas._cssH || canvas.clientHeight;
+    const n = state.oscillators.length;
+    const massM = state.oscillators.map((o) => massSizeM(o.m));
+
+    const worldLen = L0 + MASS_M_MAX + 0.75;
+    let pxPerM;
+    if (state.view === "horizontal") {
+      pxPerM = clamp((cssW - 110) / worldLen, 90, 320);
+    } else {
+      pxPerM = clamp((cssH - 100) / worldLen, 90, 320);
+    }
+
+    const massPx = massM.map((m) => m * pxPerM);
+    const laterals = [];
+
+    if (state.view === "horizontal") {
+      const originX = 58;
+      const originY = cssH - 48;
+      const floorY = cssH - 28;
+      const available = Math.max(80, floorY - 56);
+      const slot = n > 0 ? available / n : available;
+      for (let i = 0; i < n; i++) {
+        laterals[i] = 40 + slot * (i + 0.5);
+      }
+      layout = { cssW, cssH, pxPerM, originX, originY, laterals, massPx, massM, floorY };
+    } else {
+      const originX = cssW / 2;
+      const originY = cssH - 52;
+      const available = Math.max(80, cssW - 48);
+      const slot = n > 0 ? available / n : available;
+      const start = (cssW - slot * n) / 2;
+      for (let i = 0; i < n; i++) {
+        laterals[i] = start + slot * (i + 0.5);
+      }
+      layout = { cssW, cssH, pxPerM, originX, originY, laterals, massPx, massM, floorY: originY };
+    }
+  }
+
+  function sToCanvas(s) {
+    if (state.view === "horizontal") {
+      return layout.originX + s * layout.pxPerM;
+    }
+    return layout.originY - s * layout.pxPerM;
+  }
+
+  function pointerToS(cssX, cssY) {
+    if (state.view === "horizontal") {
+      return (cssX - layout.originX) / layout.pxPerM;
+    }
+    return (layout.originY - cssY) / layout.pxPerM;
+  }
+
+  function massRectAt(i, s) {
+    const size = layout.massPx[i];
+    const lat = layout.laterals[i];
+    const attach = sToCanvas(s);
+    const n = Math.max(1, state.oscillators.length);
+    if (state.view === "horizontal") {
+      const slot = Math.max(80, layout.floorY - 56) / n;
+      const h = Math.min(size, Math.max(22, slot - 10));
+      return { x: attach, y: lat - h / 2, w: size, h, r: Math.min(10, h * 0.18) };
+    }
+    const slot = Math.max(80, layout.cssW - 48) / n;
+    const w = Math.min(size, Math.max(22, slot - 10));
+    return { x: lat - w / 2, y: attach - size, w, h: size, r: Math.min(10, w * 0.18) };
+  }
+
+  function massRect(i) {
+    return massRectAt(i, state.oscillators[i].s);
+  }
+
+  function massCenterOf(r) {
+    return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+  }
+
+  function anchorRect() {
+    const t = ANCHOR_THICK_M * layout.pxPerM;
+    const face = sToCanvas(state.sAnchor);
+    if (state.view === "horizontal") {
+      return { x: face - t, y: 12, w: t + 4, h: Math.max(40, layout.floorY - 12) };
+    }
+    return { x: 12, y: face, w: layout.cssW - 24, h: t + 4 };
+  }
+
+  function hitMass(cssX, cssY) {
+    for (let i = state.oscillators.length - 1; i >= 0; i--) {
+      const r = massRect(i);
+      if (cssX >= r.x && cssX <= r.x + r.w && cssY >= r.y && cssY <= r.y + r.h) {
+        return state.oscillators[i];
+      }
+    }
+    return null;
+  }
+
+  function hitAnchor(cssX, cssY) {
+    const r = anchorRect();
+    const pad = 10;
+    return cssX >= r.x - pad && cssX <= r.x + r.w + pad &&
+      cssY >= r.y - pad && cssY <= r.y + r.h + pad;
+  }
+
+  function resetCamera() {
+    camera.zoom = 1;
+    camera.panX = 0;
+    camera.panY = 0;
+  }
+
+  function screenPoint(ev) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+  }
+
+  function screenToWorld(sx, sy) {
+    return {
+      x: (sx - camera.panX) / camera.zoom,
+      y: (sy - camera.panY) / camera.zoom
+    };
+  }
+
+  function zoomAt(sx, sy, factor) {
+    const world = screenToWorld(sx, sy);
+    camera.zoom = clamp(camera.zoom * factor, ZOOM_MIN, ZOOM_MAX);
+    camera.panX = sx - world.x * camera.zoom;
+    camera.panY = sy - world.y * camera.zoom;
+  }
+
+  function pinchGeometry() {
+    if (pointers.size < 2) return null;
+    const pts = [];
+    pointers.forEach((p) => pts.push(p));
+    const midX = (pts[0].x + pts[1].x) / 2;
+    const midY = (pts[0].y + pts[1].y) / 2;
+    const dist = Math.max(1, Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y));
+    return { midX, midY, dist };
+  }
+
+  function beginPinch() {
+    const g = pinchGeometry();
+    if (!g) return;
+    if (drag.kind === "mass" || drag.kind === "anchor") {
+      if (drag.kind === "anchor" && state.motor.on) {
+        state.motor.s0 = state.sAnchor;
+        state.motor.t0 = state.simTime;
+      }
+    }
+    drag.kind = null;
+    drag.id = null;
+    drag.pointerId = null;
+    pinch = {
+      worldX: (g.midX - camera.panX) / camera.zoom,
+      worldY: (g.midY - camera.panY) / camera.zoom,
+      startDist: g.dist,
+      startZoom: camera.zoom
+    };
+    canvas.style.cursor = "grabbing";
+  }
+
+  function updatePinch() {
+    const g = pinchGeometry();
+    if (!g || !pinch) return;
+    camera.zoom = clamp(pinch.startZoom * (g.dist / pinch.startDist), ZOOM_MIN, ZOOM_MAX);
+    camera.panX = g.midX - pinch.worldX * camera.zoom;
+    camera.panY = g.midY - pinch.worldY * camera.zoom;
+  }
+
+  function setView(next) {
+    if (next === state.view) return;
+    const prev = state.view;
+    for (const osc of state.oscillators) {
+      const stretch = osc.s - state.sAnchor - restGeom(osc, prev);
+      osc.s = state.sAnchor + restGeom(osc, next) + stretch;
+    }
+    state.view = next;
+    appEl.dataset.view = next;
+    resetCamera();
+  }
+
+  function setGravity(on) {
+    if (on === state.gravity) return;
+    if (state.view === "vertical") {
+      for (const osc of state.oscillators) {
+        const stretch = osc.s - state.sAnchor - restGeom(osc, state.view, state.gravity);
+        osc.s = state.sAnchor + restGeom(osc, state.view, on) + stretch;
+      }
+    }
+    state.gravity = on;
+  }
+
+  function setFriction(on) {
+    if (on === state.friction) return;
+    state.friction = on;
+    appEl.dataset.friction = on ? "true" : "false";
+  }
+
+  function setMotor(on) {
+    if (on && !state.motor.on) {
+      state.motor.s0 = state.sAnchor;
+      state.motor.t0 = state.simTime;
+    }
+    state.motor.on = on;
+    motorSliders.dataset.disabled = on ? "false" : "true";
+  }
+
+  function updateTransportUi() {
+    playPauseBtn.setAttribute("aria-pressed", state.running ? "true" : "false");
+    playPauseBtn.setAttribute("aria-label", state.running ? "Stop" : "Play");
+    playPauseBtn.title = state.running ? "Stop" : "Play";
+    timeScaleSlider.value = String(state.timeScale);
+    timeScaleValue.textContent = state.timeScale.toFixed(2) + "×";
+  }
+
+  function setRunning(on) {
+    if (on && !state.running) {
+      lastTs = 0;
+      acc = 0;
+    }
+    state.running = on;
+    updateTransportUi();
+  }
+
+  function resetToRest() {
+    drag.kind = null;
+    drag.id = null;
+    drag.pointerId = null;
+    pointers.clear();
+    pinch = null;
+    state.vAnchor = 0;
+    if (state.motor.on) {
+      state.sAnchor = state.motor.s0;
+      state.motor.t0 = state.simTime;
+    }
+    for (const osc of state.oscillators) {
+      osc.broken = false;
+      osc.Ln = L0;
+      osc.v = 0;
+      osc.s = state.sAnchor + restGeom(osc, state.view);
+      clearTrace(osc);
+    }
+  }
+
+  function updateAnchor(dt) {
+    if (drag.kind === "anchor") return;
+    if (state.motor.on) {
+      const t = state.simTime - state.motor.t0;
+      const w = 2 * Math.PI * state.motor.f;
+      state.sAnchor = state.motor.s0 + state.motor.A * Math.sin(w * t);
+      state.vAnchor = state.motor.A * w * Math.cos(w * t);
+    } else {
+      state.vAnchor = 0;
+    }
+    state.sAnchor = clamp(state.sAnchor, -0.45, 1.15);
+  }
+
+  function springLength(osc) {
+    return osc.s - state.sAnchor;
+  }
+
+  function springState(osc) {
+    if (osc.broken) return "broken";
+    if (osc.Ln > L0 + 1e-4) return "yield";
+    return "elastic";
+  }
+
+  function formatSpringState(osc) {
+    const s = springState(osc);
+    if (s === "broken") return "Rotta";
+    if (s === "yield") return "Snervata";
+    return "Elastica";
+  }
+
+  function breakSpring(osc) {
+    osc.broken = true;
+    if (!Number.isFinite(osc.v)) osc.v = 0;
+    else osc.v = clamp(osc.v, -V_PANIC, V_PANIC);
+    if (!Number.isFinite(osc.s)) {
+      osc.s = state.sAnchor + (Number.isFinite(osc.Ln) ? osc.Ln : L0);
+    }
+  }
+
+  function applySpringLimits(osc) {
+    if (!Number.isFinite(osc.s) || !Number.isFinite(osc.v)) {
+      breakSpring(osc);
+      return;
+    }
+    if (Math.abs(osc.v) > V_PANIC) {
+      breakSpring(osc);
+      return;
+    }
+    const L = springLength(osc);
+    if (!Number.isFinite(L) || L > L_PANIC) {
+      breakSpring(osc);
+      return;
+    }
+    if (osc.broken) return;
+    if (L >= L_BREAK) {
+      breakSpring(osc);
+      return;
+    }
+    const stretch = L - osc.Ln;
+    if (stretch > DL_ELASTIC) osc.Ln = L - DL_ELASTIC;
+  }
+
+  function accel(osc) {
+    const L = springLength(osc);
+    const Fspring = osc.broken ? 0 : osc.k * (osc.Ln - L);
+    const Fint = !osc.broken && state.friction ? -osc.cInt * (osc.v - state.vAnchor) : 0;
+    const Fvisc = state.friction ? -state.cVisc * osc.v : 0;
+    const Fg = state.view === "vertical" && state.gravity ? -osc.m * G : 0;
+    return (Fspring + Fint + Fvisc + Fg) / osc.m;
+  }
+
+  function step(dt) {
+    state.simTime += dt;
+    updateAnchor(dt);
+    const halfDt = 0.5 * dt;
+    for (const osc of state.oscillators) {
+      if (drag.kind === "mass" && drag.id === osc.id) continue;
+      applySpringLimits(osc);
+      const a0 = accel(osc);
+      osc.s += osc.v * dt + halfDt * a0 * dt;
+      const minS = state.sAnchor + MIN_LEN;
+      if (osc.s < minS) {
+        osc.s = minS;
+        if (osc.v < 0) osc.v *= -0.15;
+        applySpringLimits(osc);
+        continue;
+      }
+      applySpringLimits(osc);
+      osc.v += halfDt * (a0 + accel(osc));
+      applySpringLimits(osc);
+    }
+    for (const osc of state.oscillators) recordTrace(osc);
+  }
+
+  function roundRect(c, x, y, w, h, r) {
+    const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+    c.beginPath();
+    c.moveTo(x + rr, y);
+    c.arcTo(x + w, y, x + w, y + h, rr);
+    c.arcTo(x + w, y + h, x, y + h, rr);
+    c.arcTo(x, y + h, x, y, rr);
+    c.arcTo(x, y, x + w, y, rr);
+    c.closePath();
+  }
+
+  function drawMass(r, color, selected) {
+    const { x, y, w, h } = r;
+    const rr = Math.max(0, Math.min(r.r, w / 2, h / 2));
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.45)";
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 3;
+    roundRect(ctx, x, y, w, h, rr);
+    const vol = ctx.createRadialGradient(
+      x + rr * 0.7, y + rr * 0.65, 0,
+      x + w * 0.46, y + h * 0.5, Math.hypot(w, h) * 0.74
+    );
+    vol.addColorStop(0, shade(color, 0.52));
+    vol.addColorStop(0.26, shade(color, 0.2));
+    vol.addColorStop(0.58, color);
+    vol.addColorStop(1, shade(color, -0.44));
+    ctx.fillStyle = vol;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    roundRect(ctx, x, y, w, h, rr);
+    ctx.clip();
+
+    const spec = ctx.createRadialGradient(
+      x + rr * 0.48, y + rr * 0.42, 0,
+      x + rr * 0.48, y + rr * 0.42, Math.max(10, rr * 1.9)
+    );
+    spec.addColorStop(0, "rgba(255,255,255,0.58)");
+    spec.addColorStop(0.38, "rgba(255,255,255,0.18)");
+    spec.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = spec;
+    ctx.fillRect(x, y, w * 0.72, h * 0.72);
+
+    const cornerShade = ctx.createRadialGradient(
+      x + w - rr * 0.4, y + h - rr * 0.38, 0,
+      x + w - rr * 0.4, y + h - rr * 0.38, Math.max(12, rr * 2.15)
+    );
+    cornerShade.addColorStop(0, "rgba(0,0,0,0.4)");
+    cornerShade.addColorStop(0.5, "rgba(0,0,0,0.14)");
+    cornerShade.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = cornerShade;
+    ctx.fillRect(x + w * 0.28, y + h * 0.28, w * 0.72, h * 0.72);
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = selected ? 8.4 : 7.2;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y + h * 0.62);
+    ctx.lineTo(x, y + rr);
+    ctx.arcTo(x, y, x + rr, y, rr);
+    ctx.lineTo(x + w - rr, y);
+    ctx.arcTo(x + w, y, x + w, y + rr, rr);
+    ctx.lineTo(x + w, y + h * 0.18);
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + w, y + h * 0.18);
+    ctx.lineTo(x + w, y + h - rr);
+    ctx.arcTo(x + w, y + h, x + w - rr, y + h, rr);
+    ctx.lineTo(x + rr, y + h);
+    ctx.arcTo(x, y + h, x, y + h - rr, rr);
+    ctx.lineTo(x, y + h * 0.62);
+    ctx.strokeStyle = "rgba(0,0,0,0.42)";
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSpring(ax, ay, bx, by, coils, radius, width, tint, broken) {
+    if (broken) {
+      drawBrokenSpring(ax, ay, bx, by, coils, radius, width, tint);
+      return;
+    }
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const px = -uy;
+    const py = ux;
+    const tintRgb = hexToRgb(tint);
+
+    function metal(t, a) {
+      t = clamp(t, 0, 1);
+      const u = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
+      const r0 = t < 0.5 ? 48 : 132;
+      const r1 = t < 0.5 ? 132 : 236;
+      const g0 = t < 0.5 ? 54 : 140;
+      const g1 = t < 0.5 ? 140 : 241;
+      const b0 = t < 0.5 ? 62 : 150;
+      const b1 = t < 0.5 ? 150 : 246;
+      return rgbStr(
+        lerp(lerp(r0, r1, u), tintRgb.r, 0.1),
+        lerp(lerp(g0, g1, u), tintRgb.g, 0.1),
+        lerp(lerp(b0, b1, u), tintRgb.b, 0.1),
+        a
+      );
+    }
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const gx = px * (width + 5);
+    const gy = py * (width + 5);
+    function coilGradient(isFront) {
+      const g = ctx.createLinearGradient(ax - gx, ay - gy, ax + gx, ay + gy);
+      if (isFront) {
+        g.addColorStop(0, metal(0.96));
+        g.addColorStop(0.32, metal(0.72));
+        g.addColorStop(1, metal(0.38));
+      } else {
+        g.addColorStop(0, metal(0.42));
+        g.addColorStop(0.4, metal(0.26));
+        g.addColorStop(1, metal(0.1));
+      }
+      return g;
+    }
+
+    function strokePoly(pts, isFront) {
+      if (pts.length < 2) return;
+      const w = width * (isFront ? 1.06 : 0.9);
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.strokeStyle = isFront ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.22)";
+      ctx.lineWidth = w + (isFront ? 2.2 : 1.3);
+      ctx.stroke();
+      ctx.strokeStyle = coilGradient(isFront);
+      ctx.lineWidth = w;
+      ctx.stroke();
+      if (isFront) {
+        ctx.strokeStyle = metal(0.98, 0.4);
+        ctx.lineWidth = Math.max(0.7, w * 0.22);
+        ctx.stroke();
+      }
+    }
+
+    function strokeRod(x0, y0, x1, y1) {
+      strokePoly([{ x: x0, y: y0 }, { x: x1, y: y1 }], true);
+    }
+
+    if (len < 14) {
+      strokeRod(ax, ay, bx, by);
+      ctx.restore();
+      return;
+    }
+
+    const stub = Math.min(16, Math.max(7, len * 0.1));
+    const usable = Math.max(8, len - 2 * stub);
+    const n = Math.max(8, coils * 2);
+    const tilt = Math.min(radius * 0.28, (usable / n) * 0.45);
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const edge = i === 0 || i === n;
+      const sign = i % 2 === 0 ? 1 : -1;
+      const along = stub + t * usable + (edge ? 0 : sign * tilt);
+      const lat = edge ? 0 : radius * sign;
+      pts.push({
+        x: ax + ux * along + px * lat,
+        y: ay + uy * along + py * lat
+      });
+    }
+
+    for (let i = 1; i < n; i += 2) {
+      strokePoly([pts[i], pts[i + 1]], false);
+    }
+    strokeRod(ax, ay, pts[0].x, pts[0].y);
+    strokeRod(pts[n].x, pts[n].y, bx, by);
+    for (let i = 0; i < n; i += 2) {
+      strokePoly([pts[i], pts[i + 1]], true);
+    }
+
+    ctx.restore();
+  }
+
+  function drawBreakCap(x, y, ux, uy, width, tint) {
+    const px = -uy;
+    const py = ux;
+    const rgb = hexToRgb(tint);
+    const s = Math.max(6, width * 1.4);
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.strokeStyle = rgbStr(lerp(rgb.r, 40, 0.35), lerp(rgb.g, 40, 0.35), lerp(rgb.b, 40, 0.35));
+    ctx.lineWidth = Math.max(1.6, width * 0.7);
+    ctx.beginPath();
+    ctx.moveTo(x + px * s, y + py * s);
+    ctx.lineTo(x - px * s * 0.55 + ux * s * 0.35, y - py * s * 0.55 + uy * s * 0.35);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - px * s * 0.2, y - py * s * 0.2);
+    ctx.lineTo(x + px * s * 0.75 - ux * s * 0.4, y + py * s * 0.75 - uy * s * 0.4);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawBrokenSpring(ax, ay, bx, by, coils, radius, width, tint) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const pxPerM = layout.pxPerM || 120;
+    let aLen = clamp(pxPerM * 0.38, 22, 74);
+    let dLen = clamp(pxPerM * 0.16, 12, 34);
+    if (aLen + dLen > len * 0.82) {
+      const scale = (len * 0.82) / (aLen + dLen);
+      aLen *= scale;
+      dLen *= scale;
+    }
+    if (aLen > 14) {
+      const ax2 = ax + ux * aLen;
+      const ay2 = ay + uy * aLen;
+      drawSpring(ax, ay, ax2, ay2, Math.max(4, coils - 5), radius, width, tint);
+      drawBreakCap(ax2, ay2, ux, uy, width, tint);
+    }
+    if (dLen > 10) {
+      const bx2 = bx - ux * dLen;
+      const by2 = by - uy * dLen;
+      drawSpring(bx2, by2, bx, by, 3, radius * 0.72, Math.max(1.6, width * 0.82), tint);
+      drawBreakCap(bx2, by2, -ux, -uy, width, tint);
+    }
+  }
+
+  function springAttach(i) {
+    const lat = layout.laterals[i];
+    const face = sToCanvas(state.sAnchor);
+    if (state.view === "horizontal") {
+      return { ax: face, ay: lat };
+    }
+    return { ax: lat, ay: face };
+  }
+
+  function drawAnchorLight(i) {
+    const osc = state.oscillators[i];
+    const { ax, ay } = springAttach(i);
+    const inset = 7;
+    const cx = state.view === "horizontal" ? ax - inset : ax;
+    const cy = state.view === "horizontal" ? ay : ay + inset;
+    const intensity = platformLedIntensity(osc);
+    const lit = ledOnAmount(intensity);
+    const radius = 5.2;
+
+    if (lit > 0.02) {
+      const h = lemonHaloRgb(osc.color);
+      const glowR = radius * lerp(1.05, 5.6, lit);
+      const glow = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, glowR);
+      glow.addColorStop(0, rgbStr(
+        lerp(h.r, 255, 0.62),
+        lerp(h.g, 255, 0.55),
+        lerp(h.b, 210, 0.28),
+        0.82 * lit
+      ));
+      glow.addColorStop(0.34, rgbStr(h.r, h.g, h.b, 0.4 * lit));
+      glow.addColorStop(1, rgbStr(h.r, h.g, h.b, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = intensity <= 0.02 ? "#000000" : ledFill(osc.color, intensity);
+    ctx.fill();
+  }
+
+  function drawBackdrop() {
+    const { cssW, cssH } = layout;
+    const g = ctx.createLinearGradient(0, 0, 0, cssH);
+    g.addColorStop(0, "#121821");
+    g.addColorStop(1, "#0b0e13");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, cssW, cssH);
+  }
+
+  function drawFloor() {
+    if (state.view !== "horizontal") return;
+    const fy = layout.floorY;
+    const span = 8000;
+    const floorGrad = ctx.createLinearGradient(0, fy, 0, fy + Math.max(48, layout.cssH - fy));
+    floorGrad.addColorStop(0, "#2a313a");
+    floorGrad.addColorStop(1, "#151a20");
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(-span, fy, span * 2, span);
+    ctx.strokeStyle = "#5a6573";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-span, fy);
+    ctx.lineTo(span, fy);
+    ctx.stroke();
+  }
+
+  function drawAnchor() {
+    const r = anchorRect();
+    const g = state.view === "horizontal"
+      ? ctx.createLinearGradient(r.x, 0, r.x + r.w, 0)
+      : ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+    g.addColorStop(0, "#3a424c");
+    g.addColorStop(0.45, "#2b323b");
+    g.addColorStop(1, "#1b2027");
+    ctx.fillStyle = g;
+    roundRect(ctx, r.x, r.y, r.w, r.h, 6);
+    ctx.fill();
+    ctx.strokeStyle = "#6a7380";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = "rgba(240,136,62,0.28)";
+    ctx.lineWidth = 2;
+    if (state.view === "horizontal") {
+      for (let y = r.y + 16; y < r.y + r.h; y += 18) {
+        ctx.beginPath();
+        ctx.moveTo(r.x + 4, y);
+        ctx.lineTo(r.x + r.w - 4, y);
+        ctx.stroke();
+      }
+    } else {
+      for (let x = r.x + 16; x < r.x + r.w; x += 18) {
+        ctx.beginPath();
+        ctx.moveTo(x, r.y + 4);
+        ctx.lineTo(x, r.y + r.h - 4);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function motionPhasor(osc) {
+    const x = osc.s - restS(osc);
+    const omega = Math.sqrt(Math.max(osc.k / osc.m, 1e-12));
+    const q = (osc.v - state.vAnchor) / omega;
+    const A = Math.hypot(x, q);
+    const sinTh = A > 1e-8 ? -q / A : 0;
+    return { x, A, sinTh };
+  }
+
+  function drawArrowHead(x, y, ux, uy, size) {
+    const px = -uy;
+    const py = ux;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - ux * size + px * size * 0.42, y - uy * size + py * size * 0.42);
+    ctx.lineTo(x - ux * size - px * size * 0.42, y - uy * size - py * size * 0.42);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawMotionAnalysis(i) {
+    const osc = state.oscillators[i];
+    if (!osc.motionAnalysis || osc.broken) return;
+
+    const { A, sinTh } = motionPhasor(osc);
+    const horiz = state.view === "horizontal";
+    const origin = massCenterOf(massRectAt(i, restS(osc)));
+    const cm = massCenterOf(massRect(i));
+    const cx = origin.x;
+    const cy = origin.y;
+    const scale = layout.pxPerM;
+    const Rpx = A * scale;
+    const axisLen = Math.max(Rpx + 24, 58);
+    const rgb = hexToRgb(osc.color);
+    const axisColor = rgbStr(
+      lerp(rgb.r, 230, 0.42),
+      lerp(rgb.g, 237, 0.42),
+      lerp(rgb.b, 243, 0.42),
+      0.78
+    );
+    const yCirc = A * sinTh;
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.strokeStyle = axisColor;
+    ctx.fillStyle = axisColor;
+    ctx.lineWidth = 1.15;
+    ctx.beginPath();
+    ctx.moveTo(cx - axisLen, cy);
+    ctx.lineTo(cx + axisLen, cy);
+    ctx.stroke();
+    drawArrowHead(cx + axisLen, cy, 1, 0, 8);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + axisLen);
+    ctx.lineTo(cx, cy - axisLen);
+    ctx.stroke();
+    drawArrowHead(cx, cy - axisLen, 0, -1, 8);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = "600 11px Segoe UI, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("x", cx + axisLen + 4, cy + 5);
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("y", cx - 6, cy - axisLen - 2);
+
+    const tickPx = 0.1 * scale;
+    if (tickPx >= 9) {
+      ctx.strokeStyle = rgbStr(rgb.r, rgb.g, rgb.b, 0.28);
+      ctx.lineWidth = 1;
+      const nTick = Math.floor(axisLen / tickPx);
+      for (let k = -nTick; k <= nTick; k++) {
+        if (!k) continue;
+        const d = k * tickPx;
+        ctx.beginPath();
+        ctx.moveTo(cx + d, cy - 3.4);
+        ctx.lineTo(cx + d, cy + 3.4);
+        ctx.moveTo(cx - 3.4, cy + d);
+        ctx.lineTo(cx + 3.4, cy + d);
+        ctx.stroke();
+      }
+    }
+
+    if (Rpx >= 2.5) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, Rpx, 0, Math.PI * 2);
+      ctx.fillStyle = rgbStr(rgb.r, rgb.g, rgb.b, 0.07);
+      ctx.fill();
+      ctx.strokeStyle = rgbStr(rgb.r, rgb.g, rgb.b, 0.82);
+      ctx.lineWidth = 1.65;
+      ctx.stroke();
+
+      ctx.beginPath();
+      if (horiz) {
+        ctx.moveTo(cx - Rpx, cy);
+        ctx.lineTo(cx + Rpx, cy);
+      } else {
+        ctx.moveTo(cx, cy - Rpx);
+        ctx.lineTo(cx, cy + Rpx);
+      }
+      ctx.strokeStyle = rgbStr(rgb.r, rgb.g, rgb.b, 0.4);
+      ctx.lineWidth = 1.15;
+      ctx.stroke();
+
+      const px = horiz ? cm.x : cx - yCirc * scale;
+      const py = horiz ? cy - yCirc * scale : cm.y;
+      const qx = cm.x;
+      const qy = cm.y;
+
+      ctx.setLineDash([5.5, 4.5]);
+      ctx.strokeStyle = rgbStr(rgb.r, rgb.g, rgb.b, 0.92);
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(qx, qy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.beginPath();
+      ctx.arc(px, py, 5.4, 0, Math.PI * 2);
+      ctx.fillStyle = osc.color;
+      ctx.fill();
+      ctx.lineWidth = 1.7;
+      ctx.strokeStyle = "#fff";
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  function drawMassCenterGlow(i) {
+    const osc = state.oscillators[i];
+    if (!osc.motionAnalysis || osc.broken) return;
+    const p = massCenterOf(massRect(i));
+    const rgb = hexToRgb(osc.color);
+    const h = lemonHaloRgb(osc.color);
+    const core = 4.8;
+    const glowR = core * 4.4;
+    const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
+    glow.addColorStop(0, rgbStr(
+      lerp(h.r, 255, 0.78),
+      lerp(h.g, 255, 0.7),
+      lerp(h.b, 230, 0.35),
+      0.98
+    ));
+    glow.addColorStop(0.22, rgbStr(h.r, h.g, h.b, 0.62));
+    glow.addColorStop(1, rgbStr(h.r, h.g, h.b, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, core, 0, Math.PI * 2);
+    ctx.fillStyle = rgbStr(
+      lerp(rgb.r, 255, 0.42),
+      lerp(rgb.g, 255, 0.42),
+      lerp(rgb.b, 255, 0.42)
+    );
+    ctx.fill();
+    ctx.lineWidth = 1.55;
+    ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.stroke();
+  }
+
+  function drawOscillator(i) {
+    const osc = state.oscillators[i];
+    const lat = layout.laterals[i];
+    const attach = sToCanvas(osc.s);
+    const face = sToCanvas(state.sAnchor);
+    const width = springWidthPx(osc.k);
+    const coils = 9;
+    const amp = lerp(11, 18, clamp((osc.k - K_MIN) / (K_MAX - K_MIN), 0, 1));
+    let ax, ay, bx, by;
+    if (state.view === "horizontal") {
+      ax = face;
+      ay = lat;
+      bx = attach;
+      by = lat;
+    } else {
+      ax = lat;
+      ay = face;
+      bx = lat;
+      by = attach;
+    }
+    if (osc.motionAnalysis) {
+      ctx.save();
+      ctx.globalAlpha = 0.34;
+    }
+    drawSpring(ax, ay, bx, by, coils, amp, width, osc.color, osc.broken);
+
+    const r = massRect(i);
+    drawMass(r, osc.color, state.selectedId === osc.id);
+
+    ctx.fillStyle = "#fff";
+    ctx.font = `700 ${Math.max(12, Math.min(22, r.h * 0.42))}px Segoe UI, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(osc.id), r.x + r.w / 2, r.y + r.h / 2 + 1);
+    if (osc.motionAnalysis) ctx.restore();
+  }
+
+  function draw() {
+    updateLayout();
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawBackdrop();
+    ctx.setTransform(
+      dpr * camera.zoom, 0, 0, dpr * camera.zoom,
+      dpr * camera.panX, dpr * camera.panY
+    );
+    drawFloor();
+    drawAnchor();
+    for (let i = 0; i < state.oscillators.length; i++) {
+      drawOscillator(i);
+    }
+    for (let i = 0; i < state.oscillators.length; i++) {
+      drawAnchorLight(i);
+    }
+    for (let i = 0; i < state.oscillators.length; i++) {
+      drawMotionAnalysis(i);
+    }
+    for (let i = 0; i < state.oscillators.length; i++) {
+      drawMassCenterGlow(i);
+    }
+  }
+
+  function drawTraces() {
+    const canvases = boxesEl.querySelectorAll("canvas.obj-trace");
+    for (const canvas of canvases) {
+      const osc = findOsc(parseInt(canvas.dataset.id, 10));
+      if (!osc) continue;
+      const box = canvas.closest(".obj-box");
+      const xSpan = box?.querySelector('[data-val="x"]');
+      if (xSpan) xSpan.textContent = displacement(osc).toFixed(2) + " m";
+      const aSpan = box?.querySelector('[data-val="A"]');
+      if (aSpan) aSpan.textContent = osc.broken ? "—" : formatA(liveAmplitude(osc));
+      const springSpan = box?.querySelector('[data-val="spring"]');
+      if (springSpan) {
+        springSpan.textContent = formatSpringState(osc);
+        springSpan.dataset.state = springState(osc);
+      }
+      drawTrace(canvas, osc);
+    }
+  }
+
+  function drawTrace(canvas, osc) {
+    const cssW = canvas.clientWidth;
+    const cssH = canvas.clientHeight;
+    if (cssW < 8 || cssH < 8) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const bw = Math.max(1, Math.floor(cssW * dpr));
+    const bh = Math.max(1, Math.floor(cssH * dpr));
+    if (canvas.width !== bw || canvas.height !== bh) {
+      canvas.width = bw;
+      canvas.height = bh;
+    }
+
+    const c = canvas.getContext("2d");
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, cssW, cssH);
+
+    const padX = 6;
+    const padY = 8;
+    const innerW = Math.max(1, cssW - padX * 2);
+    const innerH = Math.max(1, cssH - padY * 2);
+    const midY = cssH / 2;
+    const scale = L0;
+    const tr = osc.trace;
+    const n = tr.n;
+
+    c.strokeStyle = "rgba(139, 148, 158, 0.22)";
+    c.lineWidth = 1;
+    c.setLineDash([3, 4]);
+    c.beginPath();
+    c.moveTo(padX, midY);
+    c.lineTo(cssW - padX, midY);
+    c.stroke();
+    c.setLineDash([]);
+
+    if (n < 2) return;
+
+    function xAt(j) {
+      return padX + (j / (TRACE_SAMPLES - 1)) * innerW;
+    }
+    function yAt(val) {
+      return midY - (val / scale) * (innerH / 2);
+    }
+
+    c.save();
+    c.beginPath();
+    c.rect(padX, padY, innerW, innerH);
+    c.clip();
+
+    const rgb = hexToRgb(osc.color);
+    c.beginPath();
+    c.moveTo(xAt(0), yAt(traceSample(tr, 0)));
+    for (let j = 1; j < n; j++) {
+      c.lineTo(xAt(j), yAt(traceSample(tr, j)));
+    }
+    const lastX = xAt(n - 1);
+    c.lineTo(lastX, midY);
+    c.lineTo(xAt(0), midY);
+    c.closePath();
+    c.fillStyle = rgbStr(rgb.r, rgb.g, rgb.b, 0.14);
+    c.fill();
+
+    c.beginPath();
+    c.moveTo(xAt(0), yAt(traceSample(tr, 0)));
+    for (let j = 1; j < n; j++) {
+      c.lineTo(xAt(j), yAt(traceSample(tr, j)));
+    }
+    c.strokeStyle = osc.color;
+    c.lineWidth = 1.7;
+    c.lineJoin = "round";
+    c.lineCap = "round";
+    c.stroke();
+
+    const lastY = yAt(traceSample(tr, n - 1));
+    c.beginPath();
+    c.arc(lastX, lastY, 2.4, 0, Math.PI * 2);
+    c.fillStyle = osc.color;
+    c.fill();
+    c.restore();
+  }
+
+  function formatM(v) { return v.toFixed(2) + " kg"; }
+  function formatK(v) { return v.toFixed(0) + " N/m"; }
+  function formatC(v) { return v.toFixed(2); }
+  function formatF0(v) { return v.toFixed(2) + " Hz"; }
+  function formatA(v) { return v.toFixed(2) + " m"; }
+
+  function oscCardHtml(osc) {
+    const sel = state.selectedId === osc.id ? " selected" : "";
+    const col = osc.collapsed ? " collapsed" : "";
+    return `
+      <div class="obj-box${sel}${col}" data-id="${osc.id}" style="--box-color:${osc.color}">
+        <div class="obj-box-header">
+          <button type="button" class="collapse-btn" title="Espandi / comprimi" tabindex="-1" aria-hidden="true">▼</button>
+          <span class="obj-title">Oscillatore ${osc.id}</span>
+          <span class="spring-state" data-val="spring" data-state="${springState(osc)}">${formatSpringState(osc)}</span>
+          <button type="button" class="remove" title="Rimuovi">×</button>
+        </div>
+        <div class="obj-box-body">
+          <div class="control-row" style="margin-bottom:4px">
+            <label>Posizione</label>
+            <span class="value" data-val="x">${displacement(osc).toFixed(2)} m</span>
+          </div>
+          <div class="obj-trace-wrap">
+            <canvas class="obj-trace" data-id="${osc.id}" aria-label="Posizione nel tempo"></canvas>
+          </div>
+          <div class="control">
+            <div class="control-row">
+              <label>Massa</label>
+              <span class="value" data-val="m">${formatM(osc.m)}</span>
+            </div>
+            <input type="range" data-prop="m" min="${M_MIN}" max="${M_MAX}" step="0.05" value="${osc.m}" />
+          </div>
+          <div class="control">
+            <div class="control-row">
+              <label>Costante k</label>
+              <span class="value" data-val="k">${formatK(osc.k)}</span>
+            </div>
+            <input type="range" data-prop="k" min="${K_MIN}" max="${K_MAX}" step="1" value="${osc.k}" />
+          </div>
+          <div class="control">
+            <div class="control-row">
+              <label>Frequenza caratteristica</label>
+              <span class="value" data-val="f0">${formatF0(naturalFreqHz(osc))}</span>
+            </div>
+            <div class="control-row">
+              <label>Ampiezza</label>
+              <span class="value" data-val="A">${osc.broken ? "—" : formatA(liveAmplitude(osc))}</span>
+            </div>
+          </div>
+          <div class="control friction-ui">
+            <div class="control-row">
+              <label>Attrito interno</label>
+              <span class="value" data-val="cInt">${formatC(osc.cInt)}</span>
+            </div>
+            <input type="range" data-prop="cInt" min="0" max="${C_MAX}" step="0.05" value="${osc.cInt}" />
+          </div>
+          <div class="control control-switch">
+            <label>Analisi del moto</label>
+            <div class="segmented" role="radiogroup" aria-label="Analisi del moto">
+              <label>
+                <input type="radio" name="motionAnalysis-${osc.id}" value="off" data-flag="motionAnalysis" ${osc.motionAnalysis ? "" : "checked"} />
+                <span>Off</span>
+              </label>
+              <label>
+                <input type="radio" name="motionAnalysis-${osc.id}" value="on" data-flag="motionAnalysis" ${osc.motionAnalysis ? "checked" : ""} />
+                <span>On</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderOscCards() {
+    if (!state.oscillators.length) {
+      boxesEl.innerHTML = `<p class="empty-hint">Nessun oscillatore.</p>`;
+      return;
+    }
+    boxesEl.innerHTML = state.oscillators.map(oscCardHtml).join("");
+  }
+
+  function addOscillator(randomize) {
+    const osc = createOscillator(randomize);
+    state.oscillators.push(osc);
+    state.selectedId = osc.id;
+    renderOscCards();
+  }
+
+  function removeOscillator(id) {
+    state.oscillators = state.oscillators.filter((o) => o.id !== id);
+    if (state.selectedId === id) {
+      state.selectedId = state.oscillators.length
+        ? state.oscillators[state.oscillators.length - 1].id
+        : null;
+    }
+    renderOscCards();
+  }
+
+  function exportSnapshot() {
+    return {
+      version: 2,
+      view: state.view,
+      running: state.running,
+      timeScale: state.timeScale,
+      gravity: state.gravity,
+      friction: state.friction,
+      cVisc: state.cVisc,
+      sAnchor: state.sAnchor,
+      vAnchor: state.vAnchor,
+      simTime: state.simTime,
+      selectedId: state.selectedId,
+      motor: {
+        on: state.motor.on,
+        f: state.motor.f,
+        A: state.motor.A,
+        s0: state.motor.s0,
+        t0: state.motor.t0
+      },
+      oscillators: state.oscillators.map((o) => ({
+        id: o.id,
+        m: o.m,
+        k: o.k,
+        cInt: o.cInt,
+        color: o.color,
+        s: o.s,
+        v: o.v,
+        collapsed: o.collapsed,
+        motionAnalysis: !!o.motionAnalysis,
+        Ln: o.Ln,
+        broken: !!o.broken
+      }))
+    };
+  }
+
+  function syncUiFromState() {
+    appEl.dataset.view = state.view;
+    appEl.dataset.friction = state.friction ? "true" : "false";
+    document.getElementById("viewH").checked = state.view === "horizontal";
+    document.getElementById("viewV").checked = state.view === "vertical";
+    document.getElementById("gravityOn").checked = state.gravity;
+    document.getElementById("gravityOff").checked = !state.gravity;
+    document.getElementById("frictionOn").checked = state.friction;
+    document.getElementById("frictionOff").checked = !state.friction;
+    document.getElementById("motorOn").checked = state.motor.on;
+    document.getElementById("motorOff").checked = !state.motor.on;
+    motorSliders.dataset.disabled = state.motor.on ? "false" : "true";
+    cViscSlider.value = String(state.cVisc);
+    cViscValue.textContent = formatC(state.cVisc);
+    freqSlider.value = String(state.motor.f);
+    freqValue.textContent = state.motor.f.toFixed(2) + " Hz";
+    ampSlider.value = String(state.motor.A);
+    ampValue.textContent = state.motor.A.toFixed(2) + " m";
+    updateTransportUi();
+    renderOscCards();
+  }
+
+  function applySnapshot(data) {
+    if (!data || typeof data !== "object") throw new Error("invalid");
+    const oscillators = Array.isArray(data.oscillators) ? data.oscillators : [];
+    const motor = data.motor && typeof data.motor === "object" ? data.motor : {};
+    drag.kind = null;
+    drag.id = null;
+    drag.pointerId = null;
+    nextId = 1;
+    state.view = data.view === "vertical" ? "vertical" : "horizontal";
+    state.running = data.running !== false;
+    state.timeScale = clamp(Number(data.timeScale) || 1, 0.25, 4);
+    state.gravity = data.gravity !== false;
+    state.friction = data.friction !== false;
+    state.cVisc = clamp(Number(data.cVisc) || 0, 0, 8);
+    state.sAnchor = clamp(Number.isFinite(data.sAnchor) ? data.sAnchor : 0, -0.45, 1.15);
+    state.vAnchor = Number.isFinite(data.vAnchor) ? data.vAnchor : 0;
+    state.simTime = Number.isFinite(data.simTime) ? data.simTime : 0;
+    state.motor.on = !!motor.on;
+    state.motor.f = clamp(Number(motor.f) || 1, 0.1, 4);
+    state.motor.A = clamp(Number(motor.A) || 0, 0, 0.35);
+    state.motor.s0 = Number.isFinite(motor.s0) ? motor.s0 : state.sAnchor;
+    state.motor.t0 = Number.isFinite(motor.t0) ? motor.t0 : state.simTime;
+    state.oscillators = oscillators.map((raw) => makeOscillator(raw || {}));
+    const ids = state.oscillators.map((o) => o.id);
+    state.selectedId = ids.includes(data.selectedId)
+      ? data.selectedId
+      : (ids.length ? ids[ids.length - 1] : null);
+    syncUiFromState();
+  }
+
+  function saveToFile() {
+    const blob = new Blob([JSON.stringify(exportSnapshot(), null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "oscillatori.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function loadScalePreset() {
+    drag.kind = null;
+    nextId = 1;
+    state.sAnchor = 0;
+    state.vAnchor = 0;
+    if (state.motor.on) {
+      state.motor.s0 = 0;
+      state.motor.t0 = state.simTime;
+    }
+    const n = 10;
+    state.oscillators = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      state.oscillators.push(makeOscillator({
+        m: lerp(M_MIN, M_MAX, t),
+        k: lerp(K_MAX, K_MIN, t),
+        collapsed: true
+      }));
+    }
+    state.selectedId = state.oscillators[0].id;
+    renderOscCards();
+  }
+
+  function canvasPoint(ev) {
+    const s = screenPoint(ev);
+    return screenToWorld(s.x, s.y);
+  }
+
+  function updateCursor() {
+    canvas.style.cursor = (drag.kind || pinch) ? "grabbing" : "grab";
+  }
+
+  function startPan(pointerId, sx, sy) {
+    drag.kind = "pan";
+    drag.id = null;
+    drag.pointerId = pointerId;
+    drag.startX = sx;
+    drag.startY = sy;
+    drag.startPanX = camera.panX;
+    drag.startPanY = camera.panY;
+    canvas.style.cursor = "grabbing";
+  }
+
+  canvas.addEventListener("pointerdown", (ev) => {
+    if (ev.button !== 0) return;
+    ev.preventDefault();
+    const s = screenPoint(ev);
+    pointers.set(ev.pointerId, { x: s.x, y: s.y });
+    try { canvas.setPointerCapture(ev.pointerId); } catch (_) {}
+
+    if (pointers.size >= 2) {
+      beginPinch();
+      return;
+    }
+
+    const p = screenToWorld(s.x, s.y);
+    const osc = hitMass(p.x, p.y);
+    const worldS = pointerToS(p.x, p.y);
+    const now = performance.now();
+    if (osc) {
+      drag.kind = "mass";
+      drag.id = osc.id;
+      drag.offsetS = osc.s - worldS;
+      drag.lastS = worldS;
+      drag.lastT = now;
+      drag.pointerId = ev.pointerId;
+      osc.v = 0;
+      state.selectedId = osc.id;
+      boxesEl.querySelectorAll(".obj-box").forEach((b) => {
+        b.classList.toggle("selected", parseInt(b.dataset.id, 10) === osc.id);
+      });
+      canvas.style.cursor = "grabbing";
+      return;
+    }
+    if (hitAnchor(p.x, p.y)) {
+      drag.kind = "anchor";
+      drag.id = null;
+      drag.offsetS = state.sAnchor - worldS;
+      drag.lastS = worldS;
+      drag.lastT = now;
+      drag.pointerId = ev.pointerId;
+      state.vAnchor = 0;
+      if (state.motor.on) {
+        state.motor.s0 = state.sAnchor;
+        state.motor.t0 = state.simTime;
+      }
+      canvas.style.cursor = "grabbing";
+      return;
+    }
+    startPan(ev.pointerId, s.x, s.y);
+  });
+
+  canvas.addEventListener("pointermove", (ev) => {
+    const s = screenPoint(ev);
+    if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, { x: s.x, y: s.y });
+
+    if (pointers.size >= 2) {
+      if (!pinch) beginPinch();
+      updatePinch();
+      return;
+    }
+
+    if (!drag.kind) {
+      updateCursor();
+      return;
+    }
+
+    if (drag.kind === "pan") {
+      if (drag.pointerId != null && ev.pointerId !== drag.pointerId) return;
+      camera.panX = drag.startPanX + (s.x - drag.startX);
+      camera.panY = drag.startPanY + (s.y - drag.startY);
+      canvas.style.cursor = "grabbing";
+      return;
+    }
+
+    if (drag.pointerId != null && ev.pointerId !== drag.pointerId) return;
+    const p = screenToWorld(s.x, s.y);
+    const worldS = pointerToS(p.x, p.y);
+    const now = performance.now();
+    const dt = Math.max(1e-4, (now - drag.lastT) / 1000);
+    const vPtr = (worldS - drag.lastS) / dt;
+    if (drag.kind === "mass") {
+      const osc = findOsc(drag.id);
+      if (osc) {
+        osc.s = clamp(worldS + drag.offsetS, state.sAnchor + MIN_LEN, state.sAnchor + 3.2);
+        osc.v = vPtr;
+        applySpringLimits(osc);
+      }
+    } else if (drag.kind === "anchor") {
+      state.sAnchor = clamp(worldS + drag.offsetS, -0.45, 1.15);
+      state.vAnchor = vPtr;
+      if (state.motor.on) {
+        state.motor.s0 = state.sAnchor;
+        state.motor.t0 = state.simTime;
+      }
+    }
+    drag.lastS = worldS;
+    drag.lastT = now;
+  });
+
+  function endDrag(ev) {
+    if (ev) {
+      if (!pointers.has(ev.pointerId) && drag.pointerId !== ev.pointerId) return;
+      pointers.delete(ev.pointerId);
+    }
+    const wasPinch = !!pinch;
+
+    if (pointers.size >= 2) {
+      beginPinch();
+      return;
+    }
+
+    if (pointers.size === 1 && wasPinch) {
+      pinch = null;
+      let id = null;
+      let p = null;
+      pointers.forEach((pt, pid) => {
+        id = pid;
+        p = pt;
+      });
+      startPan(id, p.x, p.y);
+      return;
+    }
+
+    pinch = null;
+    if (drag.kind === "anchor" && state.motor.on) {
+      state.motor.s0 = state.sAnchor;
+      state.motor.t0 = state.simTime;
+    }
+    drag.kind = null;
+    drag.id = null;
+    drag.pointerId = null;
+    canvas.style.cursor = "grab";
+  }
+
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("pointerleave", () => {
+    if (!drag.kind && !pinch) canvas.style.cursor = "grab";
+  });
+
+  canvas.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    const s = screenPoint(ev);
+    let dy = ev.deltaY;
+    if (ev.deltaMode === 1) dy *= 16;
+    else if (ev.deltaMode === 2) dy *= canvas.clientHeight;
+    zoomAt(s.x, s.y, Math.exp(-dy * 0.0018));
+  }, { passive: false });
+
+  let gestureZoom = null;
+  canvas.addEventListener("gesturestart", (ev) => {
+    ev.preventDefault();
+    if (pointers.size >= 2) return;
+    gestureZoom = { start: camera.zoom };
+  });
+  canvas.addEventListener("gesturechange", (ev) => {
+    ev.preventDefault();
+    if (pointers.size >= 2 || !gestureZoom) return;
+    const s = screenPoint(ev);
+    const target = clamp(gestureZoom.start * ev.scale, ZOOM_MIN, ZOOM_MAX);
+    zoomAt(s.x, s.y, target / camera.zoom);
+  });
+  canvas.addEventListener("gestureend", (ev) => {
+    ev.preventDefault();
+    gestureZoom = null;
+  });
+
+  canvas.addEventListener("dblclick", (ev) => {
+    const p = canvasPoint(ev);
+    if (hitMass(p.x, p.y) || hitAnchor(p.x, p.y)) return;
+    resetCamera();
+  });
+
+  document.querySelectorAll(".section-header").forEach((header) => {
+    header.addEventListener("click", () => {
+      header.parentElement.classList.toggle("collapsed");
+      header.setAttribute(
+        "aria-expanded",
+        header.parentElement.classList.contains("collapsed") ? "false" : "true"
+      );
+    });
+  });
+
+  document.querySelectorAll("input[name=viewMode]").forEach((el) => {
+    el.addEventListener("change", () => {
+      if (el.checked) setView(el.value);
+    });
+  });
+
+  playPauseBtn.addEventListener("click", () => setRunning(!state.running));
+  resetBtn.addEventListener("click", resetToRest);
+  timeScaleSlider.addEventListener("input", () => {
+    state.timeScale = parseFloat(timeScaleSlider.value);
+    timeScaleValue.textContent = state.timeScale.toFixed(2) + "×";
+  });
+
+  document.querySelectorAll("input[name=gravityMode]").forEach((el) => {
+    el.addEventListener("change", () => {
+      if (el.checked) setGravity(el.value === "on");
+    });
+  });
+
+  document.querySelectorAll("input[name=frictionMode]").forEach((el) => {
+    el.addEventListener("change", () => {
+      if (el.checked) setFriction(el.value === "on");
+    });
+  });
+
+  document.querySelectorAll("input[name=motorMode]").forEach((el) => {
+    el.addEventListener("change", () => {
+      if (el.checked) setMotor(el.value === "on");
+    });
+  });
+
+  cViscSlider.addEventListener("input", () => {
+    state.cVisc = parseFloat(cViscSlider.value);
+    cViscValue.textContent = formatC(state.cVisc);
+  });
+
+  freqSlider.addEventListener("input", () => {
+    state.motor.f = parseFloat(freqSlider.value);
+    freqValue.textContent = state.motor.f.toFixed(2) + " Hz";
+  });
+
+  ampSlider.addEventListener("input", () => {
+    state.motor.A = parseFloat(ampSlider.value);
+    ampValue.textContent = state.motor.A.toFixed(2) + " m";
+  });
+
+  document.getElementById("addBtn").addEventListener("click", () => addOscillator(true));
+
+  const loadDropdown = document.getElementById("loadDropdown");
+  const loadMenuBtn = document.getElementById("loadMenuBtn");
+  const loadFileInput = document.getElementById("loadFileInput");
+
+  function closeLoadMenu() {
+    loadDropdown.classList.remove("open");
+    loadMenuBtn.setAttribute("aria-expanded", "false");
+  }
+
+  loadMenuBtn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    const open = loadDropdown.classList.toggle("open");
+    loadMenuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  document.getElementById("presetScaleBtn").addEventListener("click", () => {
+    loadScalePreset();
+    closeLoadMenu();
+  });
+
+  document.getElementById("loadFileBtn").addEventListener("click", () => {
+    closeLoadMenu();
+    loadFileInput.click();
+  });
+
+  document.getElementById("saveBtn").addEventListener("click", saveToFile);
+
+  loadFileInput.addEventListener("change", async (ev) => {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    if (!file) return;
+    try {
+      applySnapshot(JSON.parse(await file.text()));
+    } catch (_) {
+      alert("File non valido.");
+    }
+  });
+
+  function toggleSegmented(segmented) {
+    if (!segmented || segmented.closest("[data-disabled='true']")) return;
+    const radios = [...segmented.querySelectorAll("input[type=radio]")];
+    if (radios.length < 2) return;
+    const idx = radios.findIndex((r) => r.checked);
+    const next = radios[(idx < 0 ? 0 : idx + 1) % radios.length];
+    if (next.checked) return;
+    next.checked = true;
+    next.dispatchEvent(new Event("input", { bubbles: true }));
+    next.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  document.addEventListener("pointerdown", (ev) => {
+    if (ev.button !== 0) return;
+    const segmented = ev.target.closest(".segmented");
+    if (!segmented) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    toggleSegmented(segmented);
+  }, true);
+
+  document.addEventListener("click", (ev) => {
+    if (!loadDropdown.contains(ev.target)) closeLoadMenu();
+  });
+
+  boxesEl.addEventListener("click", (ev) => {
+    const remove = ev.target.closest(".remove");
+    const header = ev.target.closest(".obj-box-header");
+    const box = ev.target.closest(".obj-box");
+    if (!box) return;
+    const id = parseInt(box.dataset.id, 10);
+    if (remove) {
+      ev.stopPropagation();
+      removeOscillator(id);
+      return;
+    }
+    if (header) {
+      const osc = findOsc(id);
+      if (!osc) return;
+      if (ev.target.closest(".remove")) return;
+      osc.collapsed = !osc.collapsed;
+      box.classList.toggle("collapsed", osc.collapsed);
+      state.selectedId = id;
+      boxesEl.querySelectorAll(".obj-box").forEach((b) => {
+        b.classList.toggle("selected", parseInt(b.dataset.id, 10) === id);
+      });
+    }
+  });
+
+  boxesEl.addEventListener("input", (ev) => {
+    const input = ev.target;
+    if (input.tagName !== "INPUT" || !input.dataset.prop) return;
+    const box = input.closest(".obj-box");
+    if (!box) return;
+    const osc = findOsc(parseInt(box.dataset.id, 10));
+    if (!osc) return;
+    const prop = input.dataset.prop;
+    const val = parseFloat(input.value);
+    osc[prop] = val;
+    const span = box.querySelector(`[data-val="${prop}"]`);
+    if (span) {
+      if (prop === "m") span.textContent = formatM(val);
+      else if (prop === "k") span.textContent = formatK(val);
+      else span.textContent = formatC(val);
+    }
+    if (prop === "m" || prop === "k") {
+      const fSpan = box.querySelector('[data-val="f0"]');
+      if (fSpan) fSpan.textContent = formatF0(naturalFreqHz(osc));
+    }
+    state.selectedId = osc.id;
+  });
+
+  boxesEl.addEventListener("change", (ev) => {
+    const input = ev.target;
+    if (!input || input.dataset.flag !== "motionAnalysis") return;
+    const box = input.closest(".obj-box");
+    if (!box) return;
+    const osc = findOsc(parseInt(box.dataset.id, 10));
+    if (!osc) return;
+    osc.motionAnalysis = input.value === "on";
+    state.selectedId = osc.id;
+    boxesEl.querySelectorAll(".obj-box").forEach((b) => {
+      b.classList.toggle("selected", parseInt(b.dataset.id, 10) === osc.id);
+    });
+  });
+
+  let lastTs = 0;
+  let acc = 0;
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    acc += dt * (state.running ? state.timeScale : 0);
+    let steps = 0;
+    if (state.running) {
+      const maxSteps = Math.min(32, Math.max(8, Math.ceil(state.timeScale * 12)));
+      while (acc >= DT && steps < maxSteps) {
+        step(DT);
+        acc -= DT;
+        steps++;
+      }
+      if (acc > DT * maxSteps) acc = 0;
+    } else {
+      acc = 0;
+    }
+    draw();
+    drawTraces();
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener("resize", resizeCanvas);
+
+  addOscillator(false);
+  resizeCanvas();
+  requestAnimationFrame(loop);
+})();
+  </script>
+</body>
+</html>
