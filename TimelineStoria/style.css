@@ -77,7 +77,26 @@ body, html {
 .controls {
     pointer-events: auto;
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
+}
+
+@media (max-width: 820px) {
+    #ui-container {
+        padding: 8px;
+    }
+    .legend {
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        margin-bottom: 8px;
+    }
+    .legend-item {
+        font-size: 13px;
+    }
+    button {
+        font-size: 14px;
+        padding: 8px 10px;
+    }
 }
 
 button {

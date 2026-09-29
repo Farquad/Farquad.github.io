@@ -116,3 +116,156 @@
   if (document.body) mount();
   else document.addEventListener("DOMContentLoaded", mount);
 })();
+
+// Sul tocco lo slider si sposta solo trascinando il pallino.
+// Un tap sulla barra non cambia il valore. Mouse e penna restano invariati.
+(function () {
+  if (window.__sliderSoloTrascinamento) return;
+  window.__sliderSoloTrascinamento = true;
+
+  var PORTATA = 32;
+  var gestures = new WeakMap();
+  var rejectClick = null;
+  var moveHooked = false;
+
+  function sliderFrom(target) {
+    if (!target || !target.closest) return null;
+    var el = target.closest("input[type='range']");
+    if (!el || el.disabled) return null;
+    return el;
+  }
+
+  function thumbX(slider, raw) {
+    var rect = slider.getBoundingClientRect();
+    var min = parseFloat(slider.min);
+    var max = parseFloat(slider.max);
+    var value = parseFloat(raw);
+    if (!isFinite(min)) min = 0;
+    if (!isFinite(max)) max = 100;
+    if (!isFinite(value)) value = min;
+    var span = max - min;
+    var ratio = span === 0 ? 0 : (value - min) / span;
+    if (ratio < 0) ratio = 0;
+    if (ratio > 1) ratio = 1;
+    if (window.getComputedStyle(slider).direction === "rtl") ratio = 1 - ratio;
+    return rect.left + ratio * rect.width;
+  }
+
+  function onThumb(slider, x, y, raw) {
+    var rect = slider.getBoundingClientRect();
+    if (y < rect.top - 24 || y > rect.bottom + 24) return false;
+    return Math.abs(x - thumbX(slider, raw)) <= PORTATA;
+  }
+
+  function gesture(slider) {
+    var g = gestures.get(slider);
+    if (g) return g;
+    g = { raw: slider.value, reject: false };
+    gestures.set(slider, g);
+    setTimeout(function () {
+      if (gestures.get(slider) === g) gestures.delete(slider);
+    }, 8000);
+    return g;
+  }
+
+  function restore(slider, raw) {
+    if (slider.value === raw) return;
+    slider.value = raw;
+    slider.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function blockMove(e) {
+    var point = e.changedTouches ? e.changedTouches[0] : e;
+    var slider = sliderFrom(e.target);
+    if (!slider || !point) return;
+    var g = gestures.get(slider);
+    if (!g || !g.reject) return;
+    if (e.cancelable) e.preventDefault();
+    restore(slider, g.raw);
+  }
+
+  function armMoveBlock() {
+    if (moveHooked) return;
+    moveHooked = true;
+    document.addEventListener("touchmove", blockMove, { capture: true, passive: false });
+    document.addEventListener("pointermove", blockMove, { capture: true, passive: false });
+  }
+
+  function disarmMoveBlock() {
+    if (!moveHooked) return;
+    moveHooked = false;
+    document.removeEventListener("touchmove", blockMove, true);
+    document.removeEventListener("pointermove", blockMove, true);
+  }
+
+  function reject(slider, g, event) {
+    g.reject = true;
+    rejectClick = { slider: slider, raw: g.raw, until: Date.now() + 30000 };
+    if (event.cancelable) event.preventDefault();
+    restore(slider, g.raw);
+    setTimeout(function () { restore(slider, g.raw); }, 0);
+    requestAnimationFrame(function () { restore(slider, g.raw); });
+    armMoveBlock();
+  }
+
+  function consider(slider, event, x, y) {
+    var g = gesture(slider);
+    if (onThumb(slider, x, y, g.raw)) return;
+    reject(slider, g, event);
+  }
+
+  function endGesture(e) {
+    var slider = sliderFrom(e.target);
+    if (!slider) return;
+    var g = gestures.get(slider);
+    if (!g) return;
+    gestures.delete(slider);
+    if (g.reject && rejectClick && rejectClick.slider === slider) {
+      rejectClick.until = Date.now() + 800;
+    }
+    if (!g.reject) disarmMoveBlock();
+  }
+
+  function blockFollowup(e) {
+    var slider = sliderFrom(e.target);
+    if (!slider || !rejectClick || rejectClick.slider !== slider) return;
+    if (Date.now() > rejectClick.until) {
+      rejectClick = null;
+      return;
+    }
+    if (e.cancelable) e.preventDefault();
+    restore(slider, rejectClick.raw);
+  }
+
+  document.addEventListener("pointerdown", function (e) {
+    var slider = sliderFrom(e.target);
+    if (!slider) return;
+    if (e.pointerType === "touch") {
+      if (e.isPrimary === false) return;
+      consider(slider, e, e.clientX, e.clientY);
+      return;
+    }
+    blockFollowup(e);
+  }, { capture: true, passive: false });
+
+  document.addEventListener("touchstart", function (e) {
+    if (!e.touches || e.touches.length !== 1) return;
+    var slider = sliderFrom(e.target);
+    if (!slider) return;
+    var t = e.changedTouches[0];
+    consider(slider, e, t.clientX, t.clientY);
+  }, { capture: true, passive: false });
+
+  document.addEventListener("mousedown", blockFollowup, true);
+  document.addEventListener("click", blockFollowup, true);
+  document.addEventListener("pointerup", endGesture, true);
+  document.addEventListener("pointercancel", endGesture, true);
+  document.addEventListener("touchend", function (e) {
+    endGesture(e);
+    if (!e.touches || e.touches.length === 0) disarmMoveBlock();
+  }, true);
+  document.addEventListener("touchcancel", function (e) {
+    endGesture(e);
+    if (!e.touches || e.touches.length === 0) disarmMoveBlock();
+  }, true);
+})();

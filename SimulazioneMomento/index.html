@@ -36,7 +36,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 20px;
+            flex-wrap: wrap;
+            gap: 12px 20px;
             margin-bottom: 20px;
             padding: 15px;
             background: #f8f9fa;
@@ -64,6 +65,10 @@
         .weight-source:active {
             cursor: grabbing;
             transform: scale(0.95);
+        }
+        .weight-source.selected {
+            outline: 3px solid #2c3e50;
+            outline-offset: 2px;
         }
         /* Matching height and style for both available weights and attached ones */
         .weight-source[data-mass="1"] { height: 35px; background: #3498db; }
@@ -273,6 +278,7 @@
 
         .controls {
             display: flex;
+            flex-wrap: wrap;
             gap: 15px;
             align-items: center;
             margin-top: 15px;
@@ -360,6 +366,34 @@
             pointer-events: none;
             transform: translateY(10px);
         }
+
+        @media (max-width: 820px) {
+            body {
+                padding: 10px;
+            }
+            #simulation {
+                height: min(380px, 52vh);
+            }
+            .stat-row {
+                flex-wrap: wrap;
+            }
+            .stat-row > span:first-child {
+                width: auto;
+                max-width: 100%;
+            }
+            .canvas-torque {
+                font-size: 0.95em;
+                padding: 6px 8px;
+            }
+            .canvas-torque.left { left: 8px; }
+            .canvas-torque.right { right: 8px; }
+        }
+
+        @media (max-height: 520px) {
+            #simulation {
+                height: min(260px, 46vh);
+            }
+        }
 </style>
 </head>
 <body>
@@ -419,6 +453,7 @@
             const SPACING = 70; // 70px spacing between holes
 
             const rod = document.getElementById('rod');
+            const rodContainer = document.getElementById('rod-container');
             const torqueCanvasLeft = document.getElementById('torque-canvas-left');
             const torqueCanvasRight = document.getElementById('torque-canvas-right');
             const torqueNetEl = document.getElementById('torque-net');
@@ -433,6 +468,15 @@
             // If the rod is considered massless, COM calculation changes. Let's assume massless rod
             // as per standard simple balance lever unless there are no weights.
             const ROD_MASS = 10; // kg, located at pos=0
+
+            let selectedMass = null;
+            let ignoreHoleClick = false;
+
+            function layoutRod() {
+                const sim = document.getElementById('simulation');
+                const scale = Math.min(1, Math.max(0.2, (sim.clientWidth - 4) / 800));
+                rodContainer.style.transform = `translateX(-50%) scale(${scale})`;
+            }
 
             // Generate holes
             HOLE_POSITIONS.forEach(pos => {
@@ -456,6 +500,11 @@
 
                 rod.appendChild(wrapper);
 
+                wrapper.addEventListener('click', () => {
+                    if (ignoreHoleClick || !selectedMass) return;
+                    addWeight(pos, parseInt(selectedMass, 10), hanger);
+                });
+
                 // Drag and drop events on the wider wrapper
                 wrapper.addEventListener('dragover', (e) => {
                     // Removed the !state.isRunning check to allow drag over while running
@@ -469,6 +518,8 @@
 
                 wrapper.addEventListener('drop', (e) => {
                     e.preventDefault();
+                    ignoreHoleClick = true;
+                    setTimeout(() => { ignoreHoleClick = false; }, 0);
                     wrapper.classList.remove('drag-over');
                     
                     try {
@@ -487,6 +538,12 @@
 
             // Setup draggable sources
             document.querySelectorAll('.weight-source').forEach(ws => {
+                ws.addEventListener('click', () => {
+                    selectedMass = selectedMass === ws.dataset.mass ? null : ws.dataset.mass;
+                    document.querySelectorAll('.weight-source').forEach(el => {
+                        el.classList.toggle('selected', el.dataset.mass === selectedMass);
+                    });
+                });
                 ws.addEventListener('dragstart', (e) => {
                     e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'new', mass: ws.dataset.mass }));
                     e.dataTransfer.effectAllowed = 'copy';
@@ -699,6 +756,8 @@
             });
 
             updateTorques();
+            layoutRod();
+            window.addEventListener('resize', layoutRod);
         });
     </script>
 </body>
