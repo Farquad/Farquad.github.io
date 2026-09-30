@@ -72,16 +72,22 @@
 	.horizontal li { display:inline; }
 	.tagbox {
 	  font-family: "LMcaps";
-	  text-align:center;
+	  text-align: center;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	  float: left;
+	  line-height: 1;
 	  border-radius: 15px;
 	  border-style: solid;
 	  border-color: rgb(230,230,230);
 	  border-width: 1px;
 	  margin: 5px;
-	  padding: 10px;
 	  width: auto;
-	  height: 20px;
-	  float:left;
+	  padding: 10px;
+	  /* LMcaps lascia spazio vuoto sotto i maiuscoli: il padding inferiore più alto riporta il tratto al centro. */
+	  padding-top: calc(10px - 0.075em);
+	  padding-bottom: calc(10px + 0.075em);
 	}
 	.tagbox:hover {
 		background: rgb(20,20,20);

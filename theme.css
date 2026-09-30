@@ -139,7 +139,8 @@ html.theme-dark .div3:hover h3 {
 	color: var(--heading);
 }
 
-/* Nel tema chiaro il tag selezionato è quasi nero. Nel tema scuro lo stesso riempimento si confonde con la pagina: si inverte in bianco con testo nero. */
+/* Nel tema chiaro hover e selezione riempiono il tag di quasi nero. Nel tema scuro lo stesso riempimento si confonde con la pagina: entrambi si invertono in bianco con testo nero. */
+html.theme-dark .tagbox:hover,
 html.theme-dark .tagbox.clicked,
 html.theme-dark .tagbox.clicked:hover {
 	background: #fff;

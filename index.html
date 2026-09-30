@@ -219,24 +219,22 @@ text-align: center;
 
 .tagbox {
   font-family: "LMcaps";
-  	text-align:center;	
-    border-radius: 15px;
-    /*border: 2 solid #73AD21;*/
-    
-    border-style: solid;
-    border-color: rgb(230,230,230);
-    border-width: 1px;
-    
-    margin: 5px;
-    padding: 10px; 
-    /*
-    padding-top: 15px;
-    padding-left: 15px;
-    padding-right: 15px:
-    */
-    width: auto;
-    height: 20px; 
-    float:left;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  float: left;
+  line-height: 1;
+  border-radius: 15px;
+  border-style: solid;
+  border-color: rgb(230,230,230);
+  border-width: 1px;
+  margin: 5px;
+  width: auto;
+  padding: 10px;
+  /* LMcaps lascia spazio vuoto sotto i maiuscoli: il padding inferiore più alto riporta il tratto al centro. */
+  padding-top: calc(10px - 0.075em);
+  padding-bottom: calc(10px + 0.075em);
 }
 
 .tagbox:hover {
@@ -363,7 +361,7 @@ text-align: center;
    <!--
 		<div class="one-third column">			
 			<p class="centeredImage">
-      <img src="/gaussian_explosion_small2.jpg" width="200">
+      <img src="gaussian_explosion_small2.jpg" width="200">
       </p>
       
 		</div>
@@ -419,7 +417,7 @@ Algebra
 		<div class="sixteen columns">		
     <!--
     <p class="centeredImage">
-      <img src="/gaussian_explosion_small2.jpg" width="200">
+      <img src="gaussian_explosion_small2.jpg" width="200">
       </p>
     -->
     
