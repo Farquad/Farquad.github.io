@@ -409,8 +409,12 @@ canvas.addEventListener('wheel', (e) => {
     }, 150); // Attende 150ms di inattività prima di ricalcolare
 }, { passive: false });
 
-// Double-click zoom (same effect as zoom+ button)
-canvas.addEventListener('dblclick', () => {
+// Doppio click su un evento: ricerca Google con la descrizione esatta.
+// Sullo spazio vuoto resta lo zoom, come il pulsante zoom+.
+canvas.addEventListener('dblclick', (e) => {
+    const hit = findEventAtPoint(e.clientX, e.clientY);
+    if (hit && openEventGoogleSearch(hit.event)) return;
+
     targetPixelsPerYear = Math.min(maxZoom, targetPixelsPerYear * 1.5);
     targetCenterYear = centerYear;
     isButtonAnimating = true;
@@ -562,7 +566,7 @@ function getDistance(t1, t2) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-function handleInteraction(clientX, clientY) {
+function findEventAtPoint(clientX, clientY) {
     const dimension = isVertical ? height : width;
     const yearsVisible = dimension / pixelsPerYear;
     const bgRenderBuffer = yearsVisible * 0.5;
@@ -571,7 +575,7 @@ function handleInteraction(clientX, clientY) {
     const canvasCenterX = width / 2;
     const canvasCenterY = height / 2;
 
-    let clickedEventId = null;
+    let clickedEvent = null;
     let clickedOnLabel = false;
     let minDistance = 20; // raggio in pixel per il click
 
@@ -594,7 +598,7 @@ function handleInteraction(clientX, clientY) {
         if (!activeCategories[e.category]) return;
         if (e.year < bgVisibleStart || e.year > bgVisibleEnd) return;
 
-        const pos = isVertical ? 
+        const pos = isVertical ?
             canvasCenterY + (e.year - centerYear) * pixelsPerYear :
             canvasCenterX + (e.year - centerYear) * pixelsPerYear;
 
@@ -607,33 +611,54 @@ function handleInteraction(clientX, clientY) {
 
         if (dist < minDistance) {
             minDistance = dist;
-            clickedEventId = e.year + '_' + e.title;
+            clickedEvent = e;
             clickedOnLabel = false;
         }
     });
 
     // --- Seconda fase: cerca click sulle labels ---
-    if (!clickedEventId) {
+    if (!clickedEvent) {
         eventStates.forEach((state, eventId) => {
             if (!state.isVisible || !state.shapes || !state.shapes.textRect) return;
-            
+
             const rect = state.shapes.textRect;
-            if (clientX >= rect.left && clientX <= rect.right && 
+            if (clientX >= rect.left && clientX <= rect.right &&
                 clientY >= rect.top && clientY <= rect.bottom) {
-                // Prendi l'evento dal suo ID
                 const [yearStr, ...titleParts] = eventId.split('_');
                 const year = parseFloat(yearStr);
                 const title = titleParts.join('_');
-                
-                // Verifica che esista in timelineData
+
                 const event = timelineData.find(e => e.year === year && e.title === title);
                 if (event && activeCategories[event.category]) {
-                    clickedEventId = eventId;
+                    clickedEvent = event;
                     clickedOnLabel = true;
                 }
             }
         });
     }
+
+    if (!clickedEvent) return null;
+    return {
+        event: clickedEvent,
+        eventId: clickedEvent.year + '_' + clickedEvent.title,
+        clickedOnLabel,
+        clickBgDots
+    };
+}
+
+function openEventGoogleSearch(event) {
+    const query = (event && event.title ? event.title : '').trim();
+    if (!query || event.category === 'oggi') return false;
+    const url = 'https://www.google.com/search?q=' + encodeURIComponent(query);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return true;
+}
+
+function handleInteraction(clientX, clientY) {
+    const hit = findEventAtPoint(clientX, clientY);
+    const clickedEventId = hit ? hit.eventId : null;
+    const clickedOnLabel = hit ? hit.clickedOnLabel : false;
+    const clickBgDots = hit ? hit.clickBgDots : timelineData;
 
     if (clickedEventId) {
         // Estrai l'anno dall'evento cliccato
