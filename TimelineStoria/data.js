@@ -1285,8 +1285,11 @@ const musicHistoryEvents = [
     { year: toNumber("01/06/1999"), title: "Lancio di Napster (rivoluzione del file sharing musicale)", category: "tecnologia", importance: 5 },
     { year: toNumber("07/10/2008"), title: "Lancio di Spotify in Europa", category: "tecnologia", importance: 4 },
     { year: toNumber("11/12/1984"), title: "Leonard Cohen pubblica il brano 'Hallelujah' all'interno del suo album 'Various Positions'", category: "cultura", importance: 4 },
-    { year: toNumber("26/06/1870"), title: "Prima assoluta della 'Cavalcata delle Valchirie' di Richard Wagner a Monaco di Baviera", category: "cultura", importance: 3 }
-
+    { year: toNumber("26/06/1870"), title: "Prima assoluta della 'Cavalcata delle Valchirie' di Richard Wagner a Monaco di Baviera", category: "cultura", importance: 3 },
+    { year: 1767, title: "Prima menzione documentata della canzone Yankee Doodle, nell'opera comica americana The Disappointment", category: "cultura", importance: 5 },
+    { year: 1842, title: "James Orchard Halliwell pubblica The Nursery Rhymes of England, prima stampa nota della strofa infantile di Yankee Doodle (pony, piuma e macaroni)", category: "cultura", importance: 5 },
+    { year: toNumber("07/11/1904"), title: "Debutto a Broadway del musical Little Johnny Jones di George M. Cohan, con la canzone The Yankee Doodle Boy", category: "cultura", importance: 4 },
+    { year: toNumber("08/10/1978"), title: "Il Connecticut adotta Yankee Doodle come canzone ufficiale dello Stato", category: "politica", importance: 6 }
 ];
 
 timelineData.push(...musicHistoryEvents);
@@ -3967,7 +3970,26 @@ const classicalMusicMasterpieces = [
   { year: toNumber("06/03/1853"), title: "Prima assoluta de 'La traviata' di Giuseppe Verdi a Venezia:  clamoroso e storico fiasco", category: "cultura", importance: 4 },
   { year: toNumber("29/05/1913"), title: "Debutto de 'La sagra della primavera' di Igor Stravinskij a Parigi, violenta rissa a teatro tra il pubblico per via dei ritmi e suoni d'avanguardia", category: "cultura", importance: 4 },
   { year: toNumber("12/02/1924"), title: "George Gershwin esegue a New York la prima assoluta di 'Rapsodia in blu', prima fusione tra struttura classica e jazz americano", category: "cultura", importance: 5 },
-  { year: toNumber("22/11/1928"), title: "Debutta all'Opéra di Parigi il 'Boléro' di Maurice Ravel", category: "cultura", importance: 3 }
+  { year: toNumber("22/11/1928"), title: "Debutta all'Opéra di Parigi il 'Boléro' di Maurice Ravel", category: "cultura", importance: 3 },
+  { year: toNumber("11/04/1727"), title: "Prima a Lipsia della 'Passione secondo Matteo' di Johann Sebastian Bach", category: "cultura", importance: 3 },
+  { year: toNumber("10/08/1787"), title: "Wolfgang Amadeus Mozart compone la 'Piccola serenata notturna', serenata per archi dal primo movimento tra i più riconoscibili della musica classica", category: "cultura", importance: 4 },
+  { year: toNumber("02/01/1793"), title: "Prima esecuzione a Vienna del 'Requiem' di Mozart, messa funebre lasciata incompiuta alla sua morte e completata dall'allievo Franz Xaver Süssmayr", category: "cultura", importance: 4 },
+  { year: 1802, title: "Ludwig van Beethoven pubblica la sonata per pianoforte op. 27 n. 2, poi chiamata 'Al chiaro di luna'", category: "cultura", importance: 4 },
+  { year: toNumber("22/12/1808"), title: "Ludwig van Beethoven dirige a Vienna la prima della 'Sinfonia n. 5', dal celebre attacco di quattro note, e nella stessa serata debutta la 'Sinfonia n. 6 Pastorale'", category: "cultura", importance: 3 },
+  { year: toNumber("27/04/1810"), title: "Ludwig van Beethoven scrive 'Per Elisa'", category: "cultura", importance: 4 },
+  { year: toNumber("03/08/1829"), title: "Prima a Parigi del 'Guglielmo Tell' di Gioachino Rossini, sua ultima opera: il galoppo finale dell'ouverture è una delle fanfare più celebri", category: "cultura", importance: 4 },
+  { year: toNumber("09/03/1842"), title: "Prima alla Scala di Milano del 'Nabucco' di Giuseppe Verdi: il coro 'Va, pensiero' diventa un inno patriottico del Risorgimento", category: "cultura", importance: 4 },
+  { year: 1851, title: "Franz Liszt pubblica a Lipsia la 'Rapsodia ungherese n. 2' per pianoforte, il suo brano più celebre", category: "cultura", importance: 4 },
+  { year: toNumber("21/10/1858"), title: "Prima a Parigi di 'Orfeo all'inferno' di Jacques Offenbach, operetta comica il cui galop finale è il can-can", category: "cultura", importance: 4 },
+  { year: 1869, title: "Johannes Brahms pubblica la 'Danza ungherese n. 5', il suo brano più celebre, poi famoso soprattutto in versione orchestrale", category: "cultura", importance: 4 },
+  { year: toNumber("24/12/1871"), title: "Prima al Cairo di 'Aida' di Giuseppe Verdi, opera sull'antico Egitto dalla celebre marcia trionfale", category: "cultura", importance: 4 },
+  { year: toNumber("03/03/1875"), title: "Prima a Parigi di 'Carmen' di Georges Bizet, opera su una donna che rifiuta di appartenere a un uomo, tra le più eseguite al mondo", category: "cultura", importance: 4 },
+  { year: toNumber("04/03/1877"), title: "Prima a Mosca del balletto 'Il lago dei cigni' di Pëtr Čajkovskij", category: "cultura", importance: 4 },
+  { year: toNumber("18/12/1892"), title: "Prima a San Pietroburgo dello 'Schiaccianoci' di Pëtr Čajkovskij", category: "cultura", importance: 4 },
+  { year: toNumber("27/11/1896"), title: "Prima a Francoforte di 'Così parlò Zarathustra' di Richard Strauss, poema sinfonico ispirato al libro di Nietzsche", category: "cultura", importance: 4 },
+  { year: 1905, title: "Claude Debussy pubblica 'Chiaro di luna', terzo movimento della 'Suite bergamasca'", category: "cultura", importance: 4 },
+  { year: toNumber("25/04/1926"), title: "Prima alla Scala di Milano di 'Turandot' di Giacomo Puccini, opera incompiuta", category: "cultura", importance: 4 },
+  { year: toNumber("08/06/1937"), title: "Prima a Francoforte dei 'Carmina Burana' di Carl Orff, cantata su poesie medievali aperta e chiusa dal coro 'O Fortuna'", category: "cultura", importance: 4 }
 ];
 
 const erroriGiudiziari = [

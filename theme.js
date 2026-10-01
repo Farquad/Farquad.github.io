@@ -6,11 +6,16 @@
   var src = (script && script.getAttribute("src")) || "";
   var isApp = src.indexOf("../") !== -1;
 
-  var dark = false;
-  var sans = true;
+  var DEFAULT_DARK = false;
+  var DEFAULT_SANS = false;
+
+  var dark = DEFAULT_DARK;
+  var sans = DEFAULT_SANS;
   try {
-    dark = localStorage.getItem(KEY) === "dark";
-    sans = localStorage.getItem(FONT_KEY) !== "serif";
+    var savedTheme = localStorage.getItem(KEY);
+    var savedFont = localStorage.getItem(FONT_KEY);
+    if (savedTheme === "dark" || savedTheme === "light") dark = savedTheme === "dark";
+    if (savedFont === "sans" || savedFont === "serif") sans = savedFont === "sans";
   } catch (e) {}
 
   if (isApp) {

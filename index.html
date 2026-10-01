@@ -47,8 +47,107 @@ $(document).ready(function(){
           }
         });
     });
-    
+
+    initTagScroller(document.querySelector(".tag-scroll"));
 });
+
+function initTagScroller(scroller) {
+    if (!scroller) return;
+    var current = scroller.scrollLeft;
+    var target = current;
+    var running = false;
+    var dragging = false;
+    var dragged = false;
+    var startX = 0;
+    var startLeft = 0;
+    var ease = 0.16;
+
+    function maxScroll() {
+        return Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+    }
+    function clamp(value) {
+        return Math.max(0, Math.min(value, maxScroll()));
+    }
+    function tick() {
+        current += (target - current) * ease;
+        if (Math.abs(target - current) < 0.4) {
+            current = target;
+            running = false;
+        } else {
+            requestAnimationFrame(tick);
+        }
+        scroller.scrollLeft = current;
+    }
+    function goTo(value) {
+        target = clamp(value);
+        if (!running) {
+            running = true;
+            requestAnimationFrame(tick);
+        }
+    }
+    function syncOverflow() {
+        if (maxScroll() > 0) scroller.classList.add("has-overflow");
+        else scroller.classList.remove("has-overflow");
+        target = clamp(target);
+        current = clamp(current);
+    }
+    syncOverflow();
+    window.addEventListener("resize", syncOverflow);
+
+    scroller.addEventListener("wheel", function (e) {
+        if (maxScroll() <= 0) return;
+        var delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+        if (e.deltaMode === 1) delta *= 16;
+        if (e.deltaMode === 2) delta *= scroller.clientWidth;
+        var next = clamp(target + delta);
+        if (next === target) return;
+        e.preventDefault();
+        goTo(next);
+    }, { passive: false });
+
+    scroller.addEventListener("pointerdown", function (e) {
+        if (e.pointerType === "touch" || maxScroll() <= 0) return;
+        dragging = true;
+        dragged = false;
+        startX = e.clientX;
+        startLeft = scroller.scrollLeft;
+        current = startLeft;
+        target = startLeft;
+        scroller.classList.add("is-dragging");
+        scroller.setPointerCapture(e.pointerId);
+    });
+
+    scroller.addEventListener("pointermove", function (e) {
+        if (!dragging) return;
+        var dx = e.clientX - startX;
+        if (Math.abs(dx) > 6) dragged = true;
+        current = clamp(startLeft - dx);
+        target = current;
+        scroller.scrollLeft = current;
+    });
+
+    function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        scroller.classList.remove("is-dragging");
+    }
+
+    scroller.addEventListener("pointerup", endDrag);
+    scroller.addEventListener("pointercancel", endDrag);
+
+    scroller.addEventListener("click", function (e) {
+        if (!dragged) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dragged = false;
+    }, true);
+
+    scroller.addEventListener("scroll", function () {
+        if (running || dragging) return;
+        current = scroller.scrollLeft;
+        target = current;
+    });
+}
 </script>
 
 
@@ -216,6 +315,62 @@ text-align: center;
     display:inline;
 }
 
+.tagBar hr {
+  margin: 10px 0 0;
+}
+
+.tagBar hr:last-child {
+  margin: 2px 0 24px;
+}
+
+.tag-scroll {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  justify-content: center;
+  justify-content: safe center;
+  box-sizing: border-box;
+  padding: 4px max(16px, calc(50vw - 50%)) 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior: contain;
+  touch-action: pan-x;
+  cursor: default;
+}
+
+.tag-scroll.has-overflow {
+  cursor: grab;
+}
+
+.tag-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.tag-scroll.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.tagBar ul.horizontal {
+  display: flex;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  align-items: center;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tagBar .horizontal li {
+  display: flex;
+  flex-shrink: 0;
+  margin: 0;
+  line-height: 1;
+}
 
 .tagbox {
   font-family: "LMcaps";
@@ -223,18 +378,22 @@ text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  float: left;
   line-height: 1;
   border-radius: 15px;
   border-style: solid;
   border-color: rgb(230,230,230);
   border-width: 1px;
-  margin: 5px;
+  margin: 0 5px;
   width: auto;
   padding: 10px;
+  white-space: nowrap;
   /* LMcaps lascia spazio vuoto sotto i maiuscoli: il padding inferiore più alto riporta il tratto al centro. */
   padding-top: calc(10px - 0.075em);
   padding-bottom: calc(10px + 0.075em);
+}
+
+body {
+  overflow-x: hidden;
 }
 
 .tagbox:hover {
@@ -367,15 +526,9 @@ text-align: center;
 		</div>
     -->
     
-    <div class="sixteen columns tagBar">		
-    
-    <div class="">
+    <div class="sixteen columns tagBar">
     <hr />
-        <div class="">
-
-    
-    <div class="centeringNO">
-    <div class="centered2">
+    <div class="tag-scroll">
 <ul class="horizontal">
 <li class="clickable showall">
 <div class="tagbox">
@@ -403,13 +556,7 @@ Algebra
 </div>
 </li>
 </ul>
-
-</div>
-</div>
-    
     </div>
-    </div>
-    
     <hr />
     </div>
     

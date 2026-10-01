@@ -52,7 +52,7 @@
   body {
 		background: var(--bg, #fff);
 		font-family: "My Custom Font", Verdana, Tahoma;
-		font-size: 18px;
+		font-size: 16px;
 		line-height: 1.65;
 		color: var(--text, #444);
 		-webkit-font-smoothing: antialiased; /* Fix for webkit rendering */
