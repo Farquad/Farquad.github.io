@@ -1,5 +1,9 @@
-Importanza 1: evento storico di importanza planetaria molto alta
+Importanza 1: picco che apre o chiude un'epoca planetaria, sopra gli eventi di importanza 1.5
+Importanza 1.5: evento di importanza planetaria, un gradino sotto i picchi già a 1 e sopra il planetario relativo degli eventi a 2
 Importanza 2: evento storico di importanza planetaria relativamente alta
+Importanza 2.5: evento più che regionale, vicino all'importanza planetaria ma non al livello degli eventi di importanza 2
 Importanza 3: evento storico di importanza prevalentemente locale a livello di singoli stati o continenti
+Importanza 3.5: evento degno di nota ma episodico o di dettaglio, sotto il livello di uno stato o di un continente. Una data incerta non è un criterio
 Importanza 4: evento storico degno di nota ma con importanza relativa, o evento culturale che ha avuto una risonanza universale
+Importanza 4.5: evento degno di nota ma più ristretto di un 4 tipico, sopra l'importanza molto ristretta del 5
 Importanza 5: evento con importanza  molto ristretta o con risonanze culturali non molto ampie
