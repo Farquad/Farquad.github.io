@@ -13,44 +13,203 @@
     <script src="../theme.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Vector Operations</title>
+    <title>Simulazione Vettori</title>
     <style>
-        body { margin: 0; padding: 0; display: flex; height: 100vh; height: 100dvh; font-family: sans-serif; overflow: hidden; }
-        #canvas-container { flex: 1; position: relative; background-color: #222; min-width: 0; min-height: 0; }
-        #overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-        #control-panel { 
-            width: 380px; 
-            background: #ffffff; 
-            padding: 20px; 
-            box-sizing: border-box; 
-            overflow-y: auto; 
-            border-left: 1px solid #ccc; 
-            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-            z-index: 10;
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            height: 100dvh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #fff;
+            overflow: hidden;
         }
-        h2 { margin-top: 0; font-size: 1.5rem; color: #333; }
-        .vector-control { border: 1px solid #e0e0e0; padding: 12px 15px; margin-bottom: 15px; border-radius: 8px; background: #fafafa; }
+        #canvas-container { flex: 1; position: relative; background-color: #0c1018; min-width: 0; min-height: 0; }
+        #overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        #control-panel {
+            width: 380px;
+            background-color: #2a2a2a;
+            color: #fff;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            border-left: 1px solid #444;
+            z-index: 10;
+            scrollbar-color: #555 #2a2a2a;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            text-align: center;
+            color: #fff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+        .env-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 6px;
+        }
+        .env-control label {
+            font-weight: 600;
+            color: #ddd;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        .env-control input[type="range"] { flex: 1; cursor: pointer; }
+        .vector-control {
+            border: 1px solid #444;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            background: #333;
+            cursor: pointer;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+        }
         .vector-control h3 { margin: 0; display: flex; flex-direction: column; font-size: 1.1rem; cursor: pointer; user-select: none; }
         .vector-control h3:hover { opacity: 0.8; }
         .vector-header-top { display: flex; align-items: center; justify-content: space-between; width: 100%; }
         .vector-header-bottom { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 5px; padding-left: 20px; box-sizing: border-box; }
         .vector-controls-container { display: none; margin-top: 15px; }
-        /* The container itself doesn't have the expanded class, the parent .vector-control does */
         .vector-control.expanded .vector-controls-container { display: block; }
         .expand-icon { font-size: 0.8rem; margin-right: 8px; display: inline-block; transition: transform 0.2s; }
         .vector-control.expanded .expand-icon { transform: rotate(90deg); }
+        .coords-readout { font-family: monospace; font-size: 0.95rem; color: #ccc; }
         .coord-input { display: flex; align-items: center; margin-bottom: 8px; }
-        .coord-input label { width: 25px; font-weight: bold; color: #555; }
+        .coord-input label { width: 25px; font-weight: bold; color: #ccc; }
         .coord-input input[type="range"] { flex: 1; margin: 0 10px; cursor: pointer; }
-        .coord-input input[type="number"] { width: 60px; text-align: right; border: 1px solid #ccc; border-radius: 4px; padding: 3px; font-family: monospace; }
-        .operations { border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; background: #fafafa; }
-        .operations h3 { margin-top: 0; font-size: 1.1rem; }
-        .op-row { display: flex; align-items: center; margin-bottom: 12px; justify-content: space-between;}
+        .coord-input input[type="number"] {
+            width: 60px;
+            text-align: right;
+            background-color: #444;
+            color: #fff;
+            border: 1px solid #666;
+            border-radius: 4px;
+            padding: 3px;
+            font-family: monospace;
+            cursor: text;
+        }
+        .operations { margin-bottom: 4px; }
+        .operations h3 { margin: 0 0 12px; font-size: 1.05rem; color: #fff; }
+        .op-row {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 12px 15px;
+            background: #333;
+            border: 1px solid #444;
+            border-left-width: 5px;
+            border-left-style: solid;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .op-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            width: 100%;
+        }
+        #panel-sum { border-left-color: #3333ff; }
+        #panel-diff { border-left-color: #ff8800; }
+        #panel-cross { border-left-color: #cc33cc; }
         .op-row label { display: flex; align-items: center; cursor: pointer; font-size: 1.05rem; }
-        .op-row input[type="checkbox"] { margin-right: 10px; transform: scale(1.2); cursor: pointer; }
-        .op-mag { font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.95rem; }
-        .result-box { margin-top: 20px; padding: 15px; background: #e8f4f8; border: 1px solid #bce8f1; border-radius: 8px; font-size: 1.1rem; color: #31708f; display: flex; justify-content: space-between; align-items: center; }
-        .result-val { font-family: monospace; font-weight: bold; font-size: 1.2rem; background: #fff; padding: 3px 8px; border-radius: 4px; border: 1px solid #bce8f1; }
+        .op-main input[type="checkbox"] { margin-right: 10px; transform: scale(1.2); cursor: pointer; }
+        .op-row label.build-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 2px 0 0;
+            padding-top: 8px;
+            border-top: 1px solid #444;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #c8c8c8;
+            cursor: pointer;
+        }
+        .build-toggle input[type="checkbox"] { margin: 0; cursor: pointer; }
+
+        input[type="range"] {
+            cursor: pointer;
+            accent-color: #b0b0b0;
+        }
+        input[type="range"]:disabled {
+            accent-color: #666;
+            cursor: not-allowed;
+        }
+        #panel-u { --accent: #cc0000; }
+        #panel-v { --accent: #009900; }
+        #panel-u input[type="range"],
+        #panel-v input[type="range"] {
+            accent-color: var(--accent);
+        }
+
+        .radio-switch {
+            display: flex;
+            position: relative;
+            width: 100%;
+            background-color: #222;
+            border: 1px solid #555;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .radio-switch input[type="radio"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        .radio-switch label {
+            flex: 1;
+            margin: 0;
+            padding: 8px 6px;
+            text-align: center;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: #d0d0d0;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            opacity: 0.9;
+            transition: background-color 0.15s, color 0.15s, opacity 0.15s;
+            user-select: none;
+        }
+        .radio-switch label:hover {
+            color: #fff;
+            opacity: 1;
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+        .radio-switch input[type="radio"]:checked + label {
+            background-color: #888;
+            color: #fff;
+            font-weight: 600;
+            opacity: 1;
+        }
+        .radio-switch label + input[type="radio"] + label {
+            border-left: 1px solid #555;
+        }
+        .view-switch { margin: 0 0 15px; }
+
+        body.is-2d #panel-u-z,
+        body.is-2d #panel-v-z { display: none; }
+        .op-mag { font-family: monospace; background: #222; color: #ddd; padding: 2px 6px; border-radius: 4px; font-size: 0.95rem; }
+        .result-box { margin-top: 8px; padding: 15px; background: #1a3040; border: 1px solid #2a6a80; border-radius: 6px; font-size: 1.05rem; color: #9fd4ea; display: flex; justify-content: space-between; align-items: center; }
+        .result-val { font-family: monospace; font-weight: bold; font-size: 1.2rem; background: #111; color: #fff; padding: 3px 8px; border-radius: 4px; border: 1px solid #2a6a80; }
         
         /* Custom styles for colors */
         .color-u { color: #cc0000; }
@@ -69,8 +228,7 @@
                 max-height: 42vh;
                 min-height: 0;
                 border-left: none;
-                border-top: 1px solid #ccc;
-                box-shadow: none;
+                border-top: 1px solid #444;
             }
         }
 
@@ -83,7 +241,7 @@
                 width: min(340px, 42vw);
                 max-height: none;
                 height: 100%;
-                border-left: 1px solid #ccc;
+                border-left: 1px solid #444;
                 border-top: none;
             }
         }
@@ -94,13 +252,16 @@
         <canvas id="overlay-canvas"></canvas>
     </div>
     <div id="control-panel">
-        <h2>Simulazione Vettori 3D</h2>
-        
-        <div style="margin-bottom: 20px; padding: 15px; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px;">
-            <div style="display: flex; align-items: center;">
-                <label for="hdri-brightness" style="font-weight: bold; color: #555; margin-right: 10px; font-size: 0.95rem;">Luminosità Ambiente:</label>
-                <input type="range" id="hdri-brightness" min="0" max="2" step="0.05" value="0.8" style="flex: 1; cursor: pointer;">
-            </div>
+        <div class="view-switch radio-switch" role="radiogroup" aria-label="Vista 2D o 3D">
+            <input type="radio" name="view-mode" id="mode-2d" value="2d">
+            <label for="mode-2d">2D</label>
+            <input type="radio" name="view-mode" id="mode-3d" value="3d" checked>
+            <label for="mode-3d">3D</label>
+        </div>
+
+        <div class="env-control">
+            <label for="hdri-brightness">Luminosità ambiente</label>
+            <input type="range" id="hdri-brightness" min="0" max="2" step="0.05" value="1">
         </div>
 
         <div class="vector-control" id="panel-u" style="border-left: 5px solid #cc0000;">
@@ -115,7 +276,7 @@
                     </span>
                 </div>
                 <div class="vector-header-bottom">
-                    <span id="coords-u" style="font-family: monospace; font-size: 0.95rem; color: #555;">u=(0; 0; 0)</span>
+                    <span id="coords-u" class="coords-readout">u=(0; 0; 0)</span>
                     <span id="mag-u" class="op-mag">|u| = 0.00</span>
                 </div>
             </h3>
@@ -138,7 +299,7 @@
                     </span>
                 </div>
                 <div class="vector-header-bottom">
-                    <span id="coords-v" style="font-family: monospace; font-size: 0.95rem; color: #555;">v=(0; 0; 0)</span>
+                    <span id="coords-v" class="coords-readout">v=(0; 0; 0)</span>
                     <span id="mag-v" class="op-mag">|v| = 0.00</span>
                 </div>
             </h3>
@@ -152,16 +313,25 @@
         <div class="operations">
             <h3>Operazioni Vettoriali</h3>
             <div class="op-row" id="panel-sum">
-                <label class="color-sum"><input type="checkbox" id="show-sum"> <b>u + v</b></label>
-                <span id="mag-sum" class="op-mag">|u+v| = 0.00</span>
+                <div class="op-main">
+                    <label class="color-sum"><input type="checkbox" id="show-sum"> <b>u + v</b></label>
+                    <span id="mag-sum" class="op-mag">|u+v| = 0.00</span>
+                </div>
+                <label class="build-toggle"><input type="checkbox" id="show-sum-build"> Visualizza costruzione</label>
             </div>
             <div class="op-row" id="panel-diff">
-                <label class="color-diff"><input type="checkbox" id="show-diff"> <b>u - v</b></label>
-                <span id="mag-diff" class="op-mag">|u-v| = 0.00</span>
+                <div class="op-main">
+                    <label class="color-diff"><input type="checkbox" id="show-diff"> <b>u - v</b></label>
+                    <span id="mag-diff" class="op-mag">|u-v| = 0.00</span>
+                </div>
+                <label class="build-toggle"><input type="checkbox" id="show-diff-build"> Visualizza costruzione</label>
             </div>
             <div class="op-row" id="panel-cross">
-                <label class="color-cross"><input type="checkbox" id="show-cross"> <b>u × v</b></label>
-                <span id="mag-cross" class="op-mag">|u×v| = 0.00</span>
+                <div class="op-main">
+                    <label class="color-cross"><input type="checkbox" id="show-cross"> <b>u × v</b></label>
+                    <span id="mag-cross" class="op-mag">|u×v| = 0.00</span>
+                </div>
+                <label class="build-toggle"><input type="checkbox" id="show-cross-build"> Visualizza costruzione</label>
             </div>
         </div>
 
@@ -185,35 +355,76 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+        // Dark equirectangular sky: deep navy above, a faint cool horizon, warm charcoal below.
+        function createDarkSkyTexture() {
+            const w = 1024;
+            const h = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+
+            const sky = ctx.createLinearGradient(0, 0, 0, h);
+            sky.addColorStop(0.00, '#070b16');
+            sky.addColorStop(0.28, '#10182c');
+            sky.addColorStop(0.46, '#1a2740');
+            sky.addColorStop(0.50, '#2c3a52');
+            sky.addColorStop(0.56, '#1a1824');
+            sky.addColorStop(0.72, '#121016');
+            sky.addColorStop(1.00, '#08060c');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, w, h);
+
+            const glows = [
+                { x: 0.18, y: 0.42, color: '80, 120, 170', alpha: 0.22, radius: 0.28 },
+                { x: 0.62, y: 0.40, color: '150, 110, 80', alpha: 0.10, radius: 0.22 },
+                { x: 0.84, y: 0.47, color: '70, 100, 150', alpha: 0.16, radius: 0.20 }
+            ];
+            glows.forEach((glow) => {
+                const cx = glow.x * w;
+                const cy = glow.y * h;
+                const radius = glow.radius * w;
+                const grd = ctx.createRadialGradient(cx, cy, radius * 0.08, cx, cy, radius);
+                grd.addColorStop(0, `rgba(${glow.color}, ${glow.alpha})`);
+                grd.addColorStop(1, `rgba(${glow.color}, 0)`);
+                ctx.fillStyle = grd;
+                ctx.fillRect(0, 0, w, h);
+            });
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            texture.colorSpace = THREE.SRGBColorSpace;
+            return texture;
+        }
 
         // 1. Scene setup
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
-        // Set a fallback background color until the HDRI loads
-        scene.background = new THREE.Color(0x222222);
-
-        // Load HDRI environment map (a simple, clean outdoor sky with soft lighting)
-        new RGBELoader()
-            .setPath('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/equirectangular/')
-            .load('venice_sunset_1k.hdr', function (texture) {
-                texture.mapping = THREE.EquirectangularReflectionMapping;
-                
-                // Adjust tone mapping and exposure for a better look
-                renderer.toneMapping = THREE.ACESFilmicToneMapping;
-                renderer.toneMappingExposure = parseFloat(document.getElementById('hdri-brightness').value);
-
-                // Slightly blur the background so it doesn't distract from the vectors
-                scene.background = texture;
-                scene.backgroundBlurriness = 0.3; // Requires three.js r144+
-                scene.environment = texture;
-            });
+        const skyTexture = createDarkSkyTexture();
+        const flatBackground = new THREE.Color(0x0c1018);
+        scene.background = skyTexture;
+        scene.backgroundBlurriness = 0.25;
+        scene.backgroundIntensity = 1;
 
         const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
         camera.position.set(15, 12, 18);
         camera.lookAt(0, 0, 0);
 
+        const orthoCamera = new THREE.OrthographicCamera(-16, 16, 16, -16, 0.1, 200);
+        orthoCamera.position.set(0, 0, 40);
+        orthoCamera.lookAt(0, 0, 0);
+
+        let viewMode = '3d';
+        let viewCamera = camera;
+        const savedView = {
+            position: new THREE.Vector3(15, 12, 18),
+            target: new THREE.Vector3(0, 0, 0)
+        };
+        const savedZ = { u: 3, v: -1 };
+
         const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.toneMapping = THREE.NoToneMapping;
         renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
@@ -221,6 +432,8 @@
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
+        controls.minZoom = 0.35;
+        controls.maxZoom = 8;
 
         // 2. Grid (Axes are now drawn in 2D overlay)
         // Adjust grid colors to be slightly more visible against the HDRI background
@@ -228,6 +441,48 @@
         gridHelper.position.y = -0.01;
         gridHelper.material.toneMapped = false;
         scene.add(gridHelper);
+
+        const planarGridGeom = new THREE.BufferGeometry();
+        const planarGrid = new THREE.LineSegments(
+            planarGridGeom,
+            new THREE.LineBasicMaterial({ color: 0x7a7a7a, toneMapped: false })
+        );
+        planarGrid.frustumCulled = false;
+        planarGrid.position.z = -1.2;
+        planarGrid.visible = false;
+        scene.add(planarGrid);
+
+        const planarFrame = { x0: -16, x1: 16, y0: -16, y1: 16 };
+        let planarGridKey = '';
+
+        function updatePlanarGrid(x0, x1, y0, y1) {
+            const span = Math.max(x1 - x0, y1 - y0);
+            let step = 1;
+            if (span > 50) step = 2;
+            if (span > 100) step = 5;
+            if (span > 200) step = 10;
+            const key = [x0, x1, y0, y1, step].map((n) => n.toFixed(2)).join('|');
+            if (key === planarGridKey) return;
+            planarGridKey = key;
+
+            const pad = step;
+            const gx0 = x0 - pad;
+            const gx1 = x1 + pad;
+            const gy0 = y0 - pad;
+            const gy1 = y1 + pad;
+            const xStart = Math.floor(gx0 / step) * step;
+            const yStart = Math.floor(gy0 / step) * step;
+            const verts = [];
+            for (let x = xStart; x <= gx1 + step * 0.01; x += step) {
+                if (Math.abs(x) < step * 0.05) continue;
+                verts.push(x, gy0, 0, x, gy1, 0);
+            }
+            for (let y = yStart; y <= gy1 + step * 0.01; y += step) {
+                if (Math.abs(y) < step * 0.05) continue;
+                verts.push(gx0, y, 0, gx1, y, 0);
+            }
+            planarGridGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+        }
 
         // 3. Vectors (Math only, rendering is done in 2D overlay)
         const origin = new THREE.Vector3(0, 0, 0);
@@ -239,7 +494,7 @@
         const vecCross = new THREE.Vector3();
 
         // 3.5 3D Arrows
-        function create3DArrow(colorHex, thickness = 0.06, headLength = 0.6, headRadius = 0.18) {
+        function create3DArrow(colorHex, thickness = 0.085, headLength = 0.82, headRadius = 0.26) {
             const group = new THREE.Group();
             const material = new THREE.MeshBasicMaterial({ color: colorHex, toneMapped: false });
             
@@ -257,34 +512,61 @@
         }
 
         const arrows3D = {
-            x: create3DArrow(0xaaaaaa, 0.03, 0.4, 0.1),
-            y: create3DArrow(0xaaaaaa, 0.03, 0.4, 0.1),
-            z: create3DArrow(0xaaaaaa, 0.03, 0.4, 0.1),
+            x: create3DArrow(0xdddddd, 0.05, 0.7, 0.16),
+            y: create3DArrow(0xdddddd, 0.05, 0.7, 0.16),
+            z: create3DArrow(0xdddddd, 0.05, 0.7, 0.16),
             u: create3DArrow(0xcc0000),
             v: create3DArrow(0x009900),
             sum: create3DArrow(0x3333ff),
             diff: create3DArrow(0xff8800),
-            cross: create3DArrow(0xcc33cc)
+            cross: create3DArrow(0xcc33cc),
+            sumBuild: create3DArrow(0x009900),
+            diffBuild: create3DArrow(0x009900),
+            crossBuildU: create3DArrow(0xcc0000),
+            crossBuildV: create3DArrow(0x009900)
         };
+
+        Object.values(arrows3D).forEach((arrow) => {
+            arrow.group.renderOrder = 3;
+            arrow.group.traverse((obj) => obj.layers.set(2));
+        });
+        ['sumBuild', 'diffBuild', 'crossBuildU', 'crossBuildV'].forEach((name) => {
+            const material = arrows3D[name].material;
+            material.polygonOffset = true;
+            material.polygonOffsetFactor = -2;
+            material.polygonOffsetUnits = -2;
+        });
 
         Object.values(arrows3D).forEach(arrow => scene.add(arrow.group));
 
-        function updateArrow(arrowObj, vEnd, visible) {
-            if (!visible || vEnd.lengthSq() < 0.000001) {
+        function updateArrow(arrowObj, vEnd, visible, alpha = 1, thicknessScale = 1, vStart = null, headWorld = null) {
+            const delta = vStart ? vEnd.clone().sub(vStart) : vEnd;
+            if (!visible || delta.lengthSq() < 0.000001) {
                 arrowObj.group.visible = false;
                 return;
             }
             arrowObj.group.visible = true;
+            if (vStart) arrowObj.group.position.copy(vStart);
+            else arrowObj.group.position.set(0, 0, 0);
             
-            const length = vEnd.length();
-            const dir = vEnd.clone().normalize();
+            const length = delta.length();
+            const dir = delta.clone().normalize();
             
-            const headLen = Math.min(arrowObj.headLength, length);
+            const headCap = headWorld == null ? arrowObj.headLength : headWorld;
+            const headLen = Math.min(headCap, length * 0.48);
             const shaftLen = Math.max(0, length - headLen);
             
-            arrowObj.cylinder.scale.set(1, shaftLen, 1);
+            arrowObj.cylinder.scale.set(thicknessScale, shaftLen, thicknessScale);
             arrowObj.cone.position.set(0, shaftLen, 0);
-            arrowObj.cone.scale.set(1, headLen / arrowObj.headLength, 1);
+            arrowObj.cone.scale.set(thicknessScale, headLen / arrowObj.headLength, thicknessScale);
+
+            const transparent = alpha < 0.999;
+            if (arrowObj.material.opacity !== alpha || arrowObj.material.transparent !== transparent) {
+                arrowObj.material.opacity = alpha;
+                arrowObj.material.transparent = transparent;
+                arrowObj.material.depthWrite = !transparent;
+                arrowObj.material.needsUpdate = true;
+            }
             
             // To prevent errors when direction is exactly down
             const axis = new THREE.Vector3(0, 1, 0);
@@ -301,24 +583,71 @@
         emojiCtx.textBaseline = 'middle';
         emojiCtx.fillText('✋', 256, 280);
         const handTexture = new THREE.CanvasTexture(emojiCanvas);
-        handTexture.minFilter = THREE.LinearMipmapLinearFilter;
+        handTexture.minFilter = THREE.LinearFilter;
         handTexture.magFilter = THREE.LinearFilter;
+        handTexture.generateMipmaps = false;
+        handTexture.wrapS = THREE.RepeatWrapping;
         
         const handMaterial = new THREE.MeshBasicMaterial({ 
             map: handTexture, 
-            transparent: true, 
-            side: THREE.DoubleSide, 
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.FrontSide, 
             depthTest: false,
+            depthWrite: false,
             toneMapped: false
         });
-        const handGeometry = new THREE.PlaneGeometry(3.5, 3.5);
+        const handPlaneSize = 3.5;
+        const handGeometry = new THREE.PlaneGeometry(handPlaneSize, handPlaneSize);
         // Translate slightly downwards so the "center of the palm" of the emoji
         // is at the origin (0,0,0) rather than the center of the square canvas
         handGeometry.translate(0, 0.4, 0); 
         const handMesh = new THREE.Mesh(handGeometry, handMaterial);
         handMesh.renderOrder = 2;
+        handMesh.layers.set(1);
         handMesh.visible = false;
         scene.add(handMesh);
+        const handNdc = new THREE.Vector3();
+        const handWorldA = new THREE.Vector3();
+        const handWorldB = new THREE.Vector3();
+        const handToCam = new THREE.Vector3();
+        const handX = new THREE.Vector3();
+        const handY = new THREE.Vector3();
+        const handZ = new THREE.Vector3();
+
+        // Face-on size in CSS pixels: a fixed fraction of the viewport, so the
+        // hand stays recognizable without covering the canvas when vectors grow or the camera zooms.
+        function handScreenScale() {
+            const height = Math.max(container.clientHeight, 1);
+            const shortSide = Math.min(container.clientWidth, height);
+            const targetPx = THREE.MathUtils.clamp(0.28 * shortSide, 160, 280);
+            viewCamera.updateMatrixWorld();
+            handNdc.set(0, 0, 0).project(viewCamera);
+            if (handNdc.z < -1 || handNdc.z > 1) return 1;
+            const dy = (targetPx / height) * 2;
+            handWorldA.set(handNdc.x, handNdc.y, handNdc.z).unproject(viewCamera);
+            handWorldB.set(handNdc.x, handNdc.y + dy, handNdc.z).unproject(viewCamera);
+            const worldSize = handWorldA.distanceTo(handWorldB);
+            if (!(worldSize > 1e-6)) return 1;
+            return worldSize / handPlaneSize;
+        }
+
+        const paraPositions = new Float32Array(18);
+        const paraGeom = new THREE.BufferGeometry();
+        paraGeom.setAttribute('position', new THREE.BufferAttribute(paraPositions, 3));
+        const paraMat = new THREE.MeshBasicMaterial({
+            color: 0xcc33cc,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.FrontSide,
+            depthTest: true,
+            depthWrite: false,
+            toneMapped: false
+        });
+        const paraMesh = new THREE.Mesh(paraGeom, paraMat);
+        paraMesh.renderOrder = 1;
+        paraMesh.visible = false;
+        scene.add(paraMesh);
 
         // 4. UI Elements, Interaction State, and Event Listeners
         const inputs = {
@@ -335,8 +664,14 @@
         };
 
         const hdriBrightnessSlider = document.getElementById('hdri-brightness');
+        function applyBrightness(value) {
+            scene.backgroundIntensity = value;
+            if (viewMode === '2d') {
+                flatBackground.setRGB((12 / 255) * value, (16 / 255) * value, (24 / 255) * value);
+            }
+        }
         hdriBrightnessSlider.addEventListener('input', (e) => {
-            renderer.toneMappingExposure = parseFloat(e.target.value);
+            applyBrightness(parseFloat(e.target.value));
         });
 
         const checks = {
@@ -345,6 +680,12 @@
             sum: document.getElementById('show-sum'),
             diff: document.getElementById('show-diff'),
             cross: document.getElementById('show-cross')
+        };
+
+        const constructionChecks = {
+            sum: document.getElementById('show-sum-build'),
+            diff: document.getElementById('show-diff-build'),
+            cross: document.getElementById('show-cross-build')
         };
 
         const labels = {
@@ -368,6 +709,112 @@
             editTimeout: null
         };
 
+        let focusedVector = null;
+
+        const focusPanels = {
+            u: { id: 'panel-u', color: '#cc0000' },
+            v: { id: 'panel-v', color: '#009900' },
+            sum: { id: 'panel-sum', color: '#3333ff' },
+            diff: { id: 'panel-diff', color: '#ff8800' },
+            cross: { id: 'panel-cross', color: '#cc33cc' }
+        };
+
+        function activeConstructions() {
+            return {
+                sum: constructionChecks.sum.checked && checks.sum.checked,
+                diff: constructionChecks.diff.checked && checks.diff.checked,
+                cross: constructionChecks.cross.checked && checks.cross.checked
+            };
+        }
+
+        function partOfActiveConstruction(name) {
+            const active = activeConstructions();
+            const any = active.sum || active.diff || active.cross;
+            if ((name === 'u' || name === 'v') && any && checks[name].checked) return true;
+            if (name === 'sum') return active.sum;
+            if (name === 'diff') return active.diff;
+            if (name === 'cross') return active.cross;
+            return false;
+        }
+
+        function vectorAlpha(name) {
+            if (partOfActiveConstruction(name)) return 1;
+            if (focusedVector == null) return 1;
+            return focusedVector === name ? 1 : 0.3;
+        }
+
+        function segmentAlreadyShown(start, delta) {
+            if (start.lengthSq() > 1e-4) return false;
+            const same = (v) => delta.distanceTo(v) < 1e-3;
+            if (checks.u.checked && same(vecU)) return true;
+            if (checks.v.checked && same(vecV)) return true;
+            if (checks.sum.checked && same(vecSum)) return true;
+            if (checks.diff.checked && same(vecDiff)) return true;
+            if (checks.cross.checked && viewMode === '3d' && same(vecCross)) return true;
+            return false;
+        }
+
+        function constructionPieces() {
+            const active = activeConstructions();
+            const drawSumGhost = active.sum && vecV.lengthSq() > 1e-6 && !segmentAlreadyShown(vecU, vecV);
+            const negV = vecV.clone().negate();
+            const drawDiffGhost = active.diff && vecV.lengthSq() > 1e-6 && !segmentAlreadyShown(vecU, negV);
+            const drawCrossU = active.cross && vecU.lengthSq() > 1e-6 && !segmentAlreadyShown(vecV, vecU);
+            const drawCrossV = active.cross && vecV.lengthSq() > 1e-6 && !drawSumGhost && !segmentAlreadyShown(vecU, vecV);
+            return { ...active, drawSumGhost, drawDiffGhost, drawCrossU, drawCrossV };
+        }
+
+        function vectorThickness(name) {
+            return focusedVector === name ? 1.35 : 1;
+        }
+
+        function updateFocusedCardStyling() {
+            Object.entries(focusPanels).forEach(([name, info]) => {
+                const card = document.getElementById(info.id);
+                if (!card) return;
+                if (focusedVector === name) {
+                    card.style.boxShadow = `0 0 10px ${info.color}`;
+                    card.style.backgroundColor = '#444';
+                } else {
+                    card.style.boxShadow = 'none';
+                    card.style.backgroundColor = '#333';
+                }
+            });
+        }
+
+        function scrollToPanel(vecName) {
+            setTimeout(() => {
+                const info = focusPanels[vecName];
+                const card = info && document.getElementById(info.id);
+                const sidebar = document.getElementById('control-panel');
+                if (!card || !sidebar) return;
+                const sidebarRect = sidebar.getBoundingClientRect();
+                const cardRect = card.getBoundingClientRect();
+                const top = cardRect.top - sidebarRect.top + sidebar.scrollTop - 12;
+                sidebar.scrollTo({
+                    top: Math.max(0, top),
+                    behavior: 'smooth'
+                });
+            }, 50);
+        }
+
+        function focusVector(vecName, { scroll = true, expand = true } = {}) {
+            if (!focusPanels[vecName]) return;
+            focusedVector = vecName;
+            if (expand && (vecName === 'u' || vecName === 'v')) {
+                const panel = document.getElementById(focusPanels[vecName].id);
+                if (panel) panel.classList.add('expanded');
+            }
+            updateFocusedCardStyling();
+            if (scroll) scrollToPanel(vecName);
+        }
+
+        function clearFocus() {
+            if (focusedVector == null) return;
+            focusedVector = null;
+            updateFocusedCardStyling();
+        }
+
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
@@ -380,7 +827,7 @@
             
             mouse.x = (clientX / rect.width) * 2 - 1;
             mouse.y = -(clientY / rect.height) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
+            raycaster.setFromCamera(mouse, viewCamera);
 
             if (interactionState.draggingVector && interactionState.draggingAxis) {
                 const axisDir = new THREE.Vector3();
@@ -414,9 +861,9 @@
             let minDist = 20;
 
             function getScreenPos(p3d) {
-                const p = p3d.clone().applyMatrix4(camera.matrixWorldInverse);
-                if (p.z > -camera.near) return { z: 2 };
-                p.applyMatrix4(camera.projectionMatrix);
+                const p = p3d.clone().applyMatrix4(viewCamera.matrixWorldInverse);
+                if (p.z > -viewCamera.near) return { z: 2 };
+                p.applyMatrix4(viewCamera.projectionMatrix);
                 return {
                     x: (p.x * 0.5 + 0.5) * rect.width,
                     y: (-(p.y) * 0.5 + 0.5) * rect.height,
@@ -441,7 +888,7 @@
                 
                 if (px.z < 1) { const d = Math.hypot(mouse2D.x - px.x, mouse2D.y - px.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'x'; } }
                 if (py.z < 1) { const d = Math.hypot(mouse2D.x - py.x, mouse2D.y - py.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'y'; } }
-                if (pz.z < 1) { const d = Math.hypot(mouse2D.x - pz.x, mouse2D.y - pz.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'z'; } }
+                if (viewMode !== '2d' && pz.z < 1) { const d = Math.hypot(mouse2D.x - pz.x, mouse2D.y - pz.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'z'; } }
                 
                 if (!foundAxis) {
                     const o2D = getScreenPos(origin);
@@ -480,28 +927,37 @@
         });
 
         renderer.domElement.addEventListener('pointerdown', (e) => {
-            if (interactionState.hoveredVector && interactionState.hoveredAxis) {
-                if (interactionState.hoveredVector === 'u' || interactionState.hoveredVector === 'v') {
+            if (interactionState.hoveredVector) {
+                focusVector(interactionState.hoveredVector);
+                const canDrag = interactionState.hoveredAxis &&
+                    (interactionState.hoveredVector === 'u' || interactionState.hoveredVector === 'v');
+                if (canDrag) {
                     interactionState.draggingVector = interactionState.hoveredVector;
                     interactionState.draggingAxis = interactionState.hoveredAxis;
-                    controls.enabled = false;
-                    e.preventDefault();
                 }
+                controls.enabled = false;
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            } else {
+                clearFocus();
             }
-        });
+        }, true);
 
         window.addEventListener('pointerup', () => {
             if (interactionState.draggingVector) {
                 interactionState.draggingVector = null;
                 interactionState.draggingAxis = null;
-                controls.enabled = true;
             }
+            controls.enabled = true;
         });
 
         // Sync inputs
         function syncInputs(source, target, vecName, axis) {
             target.value = source.value;
             
+            if (focusedVector !== vecName) {
+                focusVector(vecName, { scroll: false, expand: false });
+            }
             interactionState.editingVector = vecName;
             interactionState.editingAxis = axis;
             clearTimeout(interactionState.editTimeout);
@@ -520,8 +976,103 @@
             });
         });
 
-        Object.values(checks).forEach(check => {
-            check.addEventListener('change', updateVectors);
+        Object.entries(checks).forEach(([name, check]) => {
+            check.addEventListener('change', () => {
+                if (!check.checked && constructionChecks[name]) {
+                    constructionChecks[name].checked = false;
+                }
+                if (focusedVector !== name) {
+                    focusVector(name, { scroll: false, expand: false });
+                }
+                updateVectors();
+            });
+        });
+
+        Object.entries(constructionChecks).forEach(([name, check]) => {
+            check.addEventListener('change', () => {
+                if (check.checked && !checks[name].checked) checks[name].checked = true;
+                if (focusedVector !== name) focusVector(name, { scroll: false, expand: false });
+                updateVectors();
+            });
+        });
+
+        function resizeCamera() {
+            const w = container.clientWidth;
+            const h = Math.max(container.clientHeight, 1);
+            const aspect = w / h;
+            camera.aspect = aspect;
+            camera.updateProjectionMatrix();
+            const viewSize = 16;
+            orthoCamera.left = -viewSize * aspect;
+            orthoCamera.right = viewSize * aspect;
+            orthoCamera.top = viewSize;
+            orthoCamera.bottom = -viewSize;
+            orthoCamera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        }
+
+        function setAxisValue(vecName, axis, value) {
+            const pair = inputs[vecName][axis];
+            pair.range.value = value;
+            pair.num.value = value;
+        }
+
+        function setViewMode(mode) {
+            if (mode === viewMode) return;
+            viewMode = mode;
+            document.body.classList.toggle('is-2d', mode === '2d');
+
+            if (mode === '2d') {
+                savedZ.u = parseFloat(inputs.u.z.num.value) || 0;
+                savedZ.v = parseFloat(inputs.v.z.num.value) || 0;
+                setAxisValue('u', 'z', 0);
+                setAxisValue('v', 'z', 0);
+
+                savedView.position.copy(camera.position);
+                savedView.target.copy(controls.target);
+
+                orthoCamera.position.set(0, 0, 40);
+                orthoCamera.up.set(0, 1, 0);
+                orthoCamera.zoom = 1;
+                orthoCamera.lookAt(0, 0, 0);
+                viewCamera = orthoCamera;
+                controls.object = orthoCamera;
+                controls.target.set(0, 0, 0);
+                controls.enableRotate = false;
+                controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+                controls.touches.ONE = THREE.TOUCH.PAN;
+
+                gridHelper.rotation.set(Math.PI / 2, 0, 0);
+                gridHelper.position.set(0, 0, -0.01);
+                scene.background = flatBackground;
+            } else {
+                setAxisValue('u', 'z', savedZ.u);
+                setAxisValue('v', 'z', savedZ.v);
+
+                camera.position.copy(savedView.position);
+                viewCamera = camera;
+                controls.object = camera;
+                controls.target.copy(savedView.target);
+                controls.enableRotate = true;
+                controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+                controls.touches.ONE = THREE.TOUCH.ROTATE;
+
+                gridHelper.rotation.set(0, 0, 0);
+                gridHelper.position.set(0, -0.01, 0);
+                scene.background = skyTexture;
+                camera.lookAt(controls.target);
+            }
+
+            applyBrightness(parseFloat(hdriBrightnessSlider.value));
+            controls.update();
+            resizeCamera();
+            updateVectors();
+        }
+
+        document.querySelectorAll('input[name="view-mode"]').forEach((radio) => {
+            radio.addEventListener('change', () => {
+                if (radio.checked) setViewMode(radio.value);
+            });
         });
 
         // Setup side panel hover effects
@@ -546,6 +1097,11 @@
                         interactionState.hoveredVector = null;
                         interactionState.hoveredAxis = null;
                     }
+                });
+                el.addEventListener('click', (e) => {
+                    if (e.target.closest('input[type="range"], input[type="number"]')) return;
+                    if (focusedVector === item.vec) return;
+                    focusVector(item.vec, { scroll: false, expand: false });
                 });
             }
         });
@@ -590,20 +1146,19 @@
 
             labels.u.textContent = `|u| = ${vecU.length().toFixed(2)}`;
             labels.v.textContent = `|v| = ${vecV.length().toFixed(2)}`;
-            labels.coordsU.textContent = `u=(${vecU.x}; ${vecU.y}; ${vecU.z})`;
-            labels.coordsV.textContent = `v=(${vecV.x}; ${vecV.y}; ${vecV.z})`;
+            const formatCoords = (v) => viewMode === '2d'
+                ? `${v.x}; ${v.y}`
+                : `${v.x}; ${v.y}; ${v.z}`;
+            labels.coordsU.textContent = `u=(${formatCoords(vecU)})`;
+            labels.coordsV.textContent = `v=(${formatCoords(vecV)})`;
             labels.sum.textContent = `|u+v| = ${vecSum.length().toFixed(2)}`;
             labels.diff.textContent = `|u-v| = ${vecDiff.length().toFixed(2)}`;
             labels.cross.textContent = `|u×v| = ${vecCross.length().toFixed(2)}`;
             labels.dot.textContent = dotProduct.toFixed(2);
         }
 
-        // 5. Handle Resize
-        window.addEventListener('resize', () => {
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        });
+        window.addEventListener('resize', resizeCamera);
+        resizeCamera();
 
         // Initial update
         updateVectors();
@@ -625,12 +1180,12 @@
             
             ctx.clearRect(0, 0, width, height);
             
-            const near = camera.near;
+            const near = viewCamera.near;
 
             function drawLine3D(vStart, vEnd, color, thickness, isDashed = false) {
                 if (vStart.distanceTo(vEnd) < 0.001) return;
-                const p1 = vStart.clone().applyMatrix4(camera.matrixWorldInverse);
-                const p2 = vEnd.clone().applyMatrix4(camera.matrixWorldInverse);
+                const p1 = vStart.clone().applyMatrix4(viewCamera.matrixWorldInverse);
+                const p2 = vEnd.clone().applyMatrix4(viewCamera.matrixWorldInverse);
                 
                 if (p1.z > -near && p2.z > -near) return;
                 
@@ -643,8 +1198,8 @@
                     else clipped2 = intersection;
                 }
                 
-                const proj1 = clipped1.applyMatrix4(camera.projectionMatrix);
-                const proj2 = clipped2.applyMatrix4(camera.projectionMatrix);
+                const proj1 = clipped1.applyMatrix4(viewCamera.projectionMatrix);
+                const proj2 = clipped2.applyMatrix4(viewCamera.projectionMatrix);
                 
                 const x1 = (proj1.x * 0.5 + 0.5) * width;
                 const y1 = (-(proj1.y) * 0.5 + 0.5) * height;
@@ -656,12 +1211,13 @@
                 ctx.lineTo(x2, y2);
                 ctx.strokeStyle = color;
                 ctx.lineWidth = thickness;
-                if (isDashed) ctx.setLineDash([5, 5]);
+                if (isDashed) ctx.setLineDash([10, 6]);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
 
             function drawProjections(vecObj, color, activeAxis, hoveredAxis, isEditable = true) {
+                const planar = viewMode === '2d';
                 const { x, y, z } = vecObj;
                 const pX = new THREE.Vector3(x, 0, 0);
                 const pY = new THREE.Vector3(0, y, 0);
@@ -670,25 +1226,27 @@
                 const pXZ = new THREE.Vector3(x, 0, z);
                 const pYZ = new THREE.Vector3(0, y, z);
                 
-                ctx.globalAlpha = 0.5;
-                drawLine3D(origin, pX, color, 1, true);
-                drawLine3D(origin, pY, color, 1, true);
-                drawLine3D(origin, pZ, color, 1, true);
-                drawLine3D(pX, pXY, color, 1, true);
-                drawLine3D(pY, pXY, color, 1, true);
-                drawLine3D(pX, pXZ, color, 1, true);
-                drawLine3D(pZ, pXZ, color, 1, true);
-                drawLine3D(pY, pYZ, color, 1, true);
-                drawLine3D(pZ, pYZ, color, 1, true);
-                drawLine3D(pXY, vecObj, color, 1, true);
-                drawLine3D(pXZ, vecObj, color, 1, true);
-                drawLine3D(pYZ, vecObj, color, 1, true);
+                ctx.globalAlpha = 0.92;
+                drawLine3D(origin, pX, color, 2.6, true);
+                drawLine3D(origin, pY, color, 2.6, true);
+                drawLine3D(pX, pXY, color, 2.6, true);
+                drawLine3D(pY, pXY, color, 2.6, true);
+                drawLine3D(pXY, vecObj, color, 2.6, true);
+                if (!planar) {
+                    drawLine3D(origin, pZ, color, 2.6, true);
+                    drawLine3D(pX, pXZ, color, 2.6, true);
+                    drawLine3D(pZ, pXZ, color, 2.6, true);
+                    drawLine3D(pY, pYZ, color, 2.6, true);
+                    drawLine3D(pZ, pYZ, color, 2.6, true);
+                    drawLine3D(pXZ, vecObj, color, 2.6, true);
+                    drawLine3D(pYZ, vecObj, color, 2.6, true);
+                }
                 ctx.globalAlpha = 1.0;
                 
                 function drawHandle(p3d, axis) {
-                    const p2 = p3d.clone().applyMatrix4(camera.matrixWorldInverse);
+                    const p2 = p3d.clone().applyMatrix4(viewCamera.matrixWorldInverse);
                     if (p2.z > -near) return;
-                    p2.applyMatrix4(camera.projectionMatrix);
+                    p2.applyMatrix4(viewCamera.projectionMatrix);
                     
                     const sx = (p2.x * 0.5 + 0.5) * width;
                     const sy = (-(p2.y) * 0.5 + 0.5) * height;
@@ -721,41 +1279,44 @@
                 
                 drawHandle(pX, 'x');
                 drawHandle(pY, 'y');
-                drawHandle(pZ, 'z');
+                if (!planar) drawHandle(pZ, 'z');
             }
             
-            function drawLabel(vEnd, color, labelText, isAxis = false) {
+            function drawLabel(vEnd, color, labelText, isAxis = false, alpha = 1) {
                 if (!labelText || vEnd.lengthSq() < 0.000001) return;
                 
-                const p = vEnd.clone().applyMatrix4(camera.matrixWorldInverse);
+                const p = vEnd.clone().applyMatrix4(viewCamera.matrixWorldInverse);
                 if (p.z > -near) return; // Behind camera
                 
-                p.applyMatrix4(camera.projectionMatrix);
+                p.applyMatrix4(viewCamera.projectionMatrix);
                 
                 const x = (p.x * 0.5 + 0.5) * width;
                 const y = (-(p.y) * 0.5 + 0.5) * height;
                 
                 ctx.font = isAxis ? "bold 16px sans-serif" : "bold 16px sans-serif";
+                ctx.globalAlpha = alpha;
                 ctx.fillStyle = color;
                 ctx.shadowColor = 'rgba(34,34,34,0.8)';
                 ctx.shadowBlur = 4;
                 ctx.fillText(labelText, x + 8, y + 8);
                 ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
             }
             
-            // Draw parallelogram for cross product hover (Background layer)
-            if (interactionState.hoveredVector === 'cross' && checks.cross.checked) {
-                const p0 = origin.clone().applyMatrix4(camera.matrixWorldInverse);
-                const pu = vecU.clone().applyMatrix4(camera.matrixWorldInverse);
-                const pv = vecV.clone().applyMatrix4(camera.matrixWorldInverse);
-                const puv = new THREE.Vector3().addVectors(vecU, vecV).applyMatrix4(camera.matrixWorldInverse);
+            const pieces = constructionPieces();
+            const showCrossHover = (interactionState.hoveredVector === 'cross' || focusedVector === 'cross') && checks.cross.checked;
+            if (!pieces.cross && showCrossHover && vecU.lengthSq() > 1e-6 && vecV.lengthSq() > 1e-6) {
+                const p0 = origin.clone().applyMatrix4(viewCamera.matrixWorldInverse);
+                const pu = vecU.clone().applyMatrix4(viewCamera.matrixWorldInverse);
+                const pv = vecV.clone().applyMatrix4(viewCamera.matrixWorldInverse);
+                const puv = new THREE.Vector3().addVectors(vecU, vecV).applyMatrix4(viewCamera.matrixWorldInverse);
                 
                 // Only draw if all points are in front of camera
                 if (p0.z <= -near && pu.z <= -near && pv.z <= -near && puv.z <= -near) {
-                    p0.applyMatrix4(camera.projectionMatrix);
-                    pu.applyMatrix4(camera.projectionMatrix);
-                    pv.applyMatrix4(camera.projectionMatrix);
-                    puv.applyMatrix4(camera.projectionMatrix);
+                    p0.applyMatrix4(viewCamera.projectionMatrix);
+                    pu.applyMatrix4(viewCamera.projectionMatrix);
+                    pv.applyMatrix4(viewCamera.projectionMatrix);
+                    puv.applyMatrix4(viewCamera.projectionMatrix);
                     
                     const x0 = (p0.x * 0.5 + 0.5) * width;
                     const y0 = (-(p0.y) * 0.5 + 0.5) * height;
@@ -773,11 +1334,9 @@
                     ctx.lineTo(xv, yv);
                     ctx.closePath();
                     
-                    ctx.fillStyle = 'rgba(204, 51, 204, 0.3)'; // Semi-transparent cross product color (#cc33cc)
-                    ctx.fill();
-                    ctx.lineWidth = 1;
-                    ctx.strokeStyle = 'rgba(204, 51, 204, 0.8)';
-                    ctx.setLineDash([5, 5]);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = 'rgba(204, 51, 204, 0.85)';
+                    ctx.setLineDash([10, 6]);
                     ctx.stroke();
                     ctx.setLineDash([]);
                 }
@@ -786,7 +1345,8 @@
             // Draw projections (Background layer)
             ['u', 'v', 'sum', 'diff', 'cross'].forEach(vecName => {
                 if (checks[vecName].checked) {
-                    if (interactionState.hoveredVector === vecName || 
+                    if (focusedVector === vecName ||
+                        interactionState.hoveredVector === vecName || 
                         interactionState.draggingVector === vecName ||
                         interactionState.editingVector === vecName) {
                         
@@ -811,38 +1371,91 @@
 
             // Prepare labels for depth sorting
             const drawQueue = [];
-            const camDir = camera.position.clone().normalize();
+            const camDir = viewCamera.position.clone().normalize();
 
-            function queueLabel(vEnd, color, labelText, isAxis) {
+            function queueLabel(vEnd, color, labelText, isAxis, alpha = 1) {
                 if (vEnd.lengthSq() < 0.000001) return; // Skip very small vectors
                 
                 const dir = vEnd.clone().normalize();
                 const dot = camDir.dot(dir);
                 
                 drawQueue.push({
-                    vEnd, color, labelText, isAxis, dot
+                    vEnd, color, labelText, isAxis, dot, alpha
                 });
             }
 
-            // Queue axes
-            queueLabel(new THREE.Vector3(10, 0, 0), '#aaaaaa', 'X', true);
-            queueLabel(new THREE.Vector3(0, 10, 0), '#aaaaaa', 'Y', true);
-            queueLabel(new THREE.Vector3(0, 0, 10), '#aaaaaa', 'Z', true);
+            if (viewMode === '2d') {
+                const insetX = (planarFrame.x1 - planarFrame.x0) * 0.045;
+                const insetY = (planarFrame.y1 - planarFrame.y0) * 0.07;
+                queueLabel(new THREE.Vector3(planarFrame.x1 - insetX, 0, 0), '#eeeeee', 'X', true);
+                queueLabel(new THREE.Vector3(0, planarFrame.y1 - insetY, 0), '#eeeeee', 'Y', true);
+            } else {
+                queueLabel(new THREE.Vector3(10, 0, 0), '#aaaaaa', 'X', true);
+                queueLabel(new THREE.Vector3(0, 10, 0), '#aaaaaa', 'Y', true);
+                queueLabel(new THREE.Vector3(0, 0, 10), '#aaaaaa', 'Z', true);
+            }
 
             // Queue vectors
-            if (checks.u.checked) queueLabel(vecU, '#cc0000', 'u', false);
-            if (checks.v.checked) queueLabel(vecV, '#009900', 'v', false);
-            if (checks.sum.checked) queueLabel(vecSum, '#3333ff', 'u+v', false);
-            if (checks.diff.checked) queueLabel(vecDiff, '#ff8800', 'u-v', false);
-            if (checks.cross.checked) queueLabel(vecCross, '#cc33cc', 'u×v', false);
+            if (checks.u.checked) queueLabel(vecU, '#cc0000', 'u', false, vectorAlpha('u'));
+            if (checks.v.checked) queueLabel(vecV, '#009900', 'v', false, vectorAlpha('v'));
+            if (checks.sum.checked) queueLabel(vecSum, '#3333ff', 'u+v', false, vectorAlpha('sum'));
+            if (checks.diff.checked) queueLabel(vecDiff, '#ff8800', 'u-v', false, vectorAlpha('diff'));
+            if (checks.cross.checked && viewMode === '3d') queueLabel(vecCross, '#cc33cc', 'u×v', false, vectorAlpha('cross'));
+
+            if (pieces.drawSumGhost) {
+                queueLabel(vecU.clone().addScaledVector(vecV, 0.62), '#009900', 'v', false, 0.5);
+            }
+            if (pieces.drawDiffGhost) {
+                queueLabel(vecU.clone().addScaledVector(vecV, -0.62), '#009900', '−v', false, 0.5);
+            }
+            if (pieces.drawCrossU) queueLabel(vecV.clone().addScaledVector(vecU, 0.62), '#cc0000', 'u', false, 0.5);
+            if (pieces.drawCrossV) queueLabel(vecU.clone().addScaledVector(vecV, 0.62), '#009900', 'v', false, 0.5);
 
             // Sort so that those pointing away from camera (lower dot product) are drawn first
             drawQueue.sort((a, b) => a.dot - b.dot);
 
             // Draw sorted labels
             drawQueue.forEach(item => {
-                drawLabel(item.vEnd, item.color, item.labelText, item.isAxis);
+                drawLabel(item.vEnd, item.color, item.labelText, item.isAxis, item.alpha);
             });
+
+            if (viewMode === '2d' && checks.cross.checked && vecCross.lengthSq() > 1e-8) {
+                const p = origin.clone().applyMatrix4(viewCamera.matrixWorldInverse);
+                if (p.z <= -near) {
+                    p.applyMatrix4(viewCamera.projectionMatrix);
+                    const sx = (p.x * 0.5 + 0.5) * width;
+                    const sy = (-p.y * 0.5 + 0.5) * height;
+                    const radius = Math.max(11, Math.min(34, 7 + vecCross.length() * 0.65));
+                    ctx.save();
+                    ctx.globalAlpha = vectorAlpha('cross');
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeStyle = '#cc33cc';
+                    ctx.stroke();
+                    if (vecCross.z >= 0) {
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, Math.max(2.5, radius * 0.16), 0, Math.PI * 2);
+                        ctx.fillStyle = '#cc33cc';
+                        ctx.fill();
+                    } else {
+                        const d = radius * 0.42;
+                        ctx.beginPath();
+                        ctx.moveTo(sx - d, sy - d);
+                        ctx.lineTo(sx + d, sy + d);
+                        ctx.moveTo(sx + d, sy - d);
+                        ctx.lineTo(sx - d, sy + d);
+                        ctx.lineWidth = 2.5;
+                        ctx.stroke();
+                    }
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillStyle = '#cc33cc';
+                    ctx.shadowColor = 'rgba(34,34,34,0.8)';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText('u×v', sx + radius + 6, sy + 5);
+                    ctx.restore();
+                }
+            }
         }
 
         // 7. Animation Loop
@@ -850,28 +1463,127 @@
             requestAnimationFrame(animate);
             controls.update();
             
-            // Update 3D arrows
-            updateArrow(arrows3D.x, new THREE.Vector3(10, 0, 0), true);
-            updateArrow(arrows3D.y, new THREE.Vector3(0, 10, 0), true);
-            updateArrow(arrows3D.z, new THREE.Vector3(0, 0, 10), true);
-            updateArrow(arrows3D.u, vecU, checks.u.checked);
-            updateArrow(arrows3D.v, vecV, checks.v.checked);
-            updateArrow(arrows3D.sum, vecSum, checks.sum.checked);
-            updateArrow(arrows3D.diff, vecDiff, checks.diff.checked);
-            updateArrow(arrows3D.cross, vecCross, checks.cross.checked);
+            const pieces = constructionPieces();
+            const buildMode = pieces.sum || pieces.diff || pieces.cross;
+            const hoverCross = viewMode === '3d' && (interactionState.hoveredVector === 'cross' || focusedVector === 'cross') && checks.cross.checked;
 
-            if (interactionState.hoveredVector === 'cross' && checks.cross.checked && vecCross.lengthSq() > 0.001 && vecV.lengthSq() > 0.001) {
-                handMesh.visible = true;
-                const yAxis = vecV.clone().normalize();
-                const zAxis = vecCross.clone().normalize();
-                const xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
-                const matrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-                handMesh.quaternion.setFromRotationMatrix(matrix);
+            let axisXEnd = new THREE.Vector3(10, 0, 0);
+            let axisYEnd = new THREE.Vector3(0, 10, 0);
+            let axisXStart = null;
+            let axisYStart = null;
+            let axisThick = 1;
+            let axisHead = null;
+
+            if (viewMode === '2d') {
+                const zoom = Math.max(orthoCamera.zoom, 0.0001);
+                const halfW = (orthoCamera.right - orthoCamera.left) / (2 * zoom);
+                const halfH = (orthoCamera.top - orthoCamera.bottom) / (2 * zoom);
+                const cx = controls.target.x;
+                const cy = controls.target.y;
+                planarFrame.x0 = cx - halfW;
+                planarFrame.x1 = cx + halfW;
+                planarFrame.y0 = cy - halfH;
+                planarFrame.y1 = cy + halfH;
+                updatePlanarGrid(planarFrame.x0, planarFrame.x1, planarFrame.y0, planarFrame.y1);
+                gridHelper.visible = false;
+                planarGrid.visible = true;
+
+                const worldPerPx = (halfH * 2) / Math.max(container.clientHeight, 1);
+                axisThick = (2.4 * worldPerPx) / 0.05;
+                axisHead = 16 * worldPerPx;
+                axisXStart = new THREE.Vector3(planarFrame.x0, 0, 0);
+                axisYStart = new THREE.Vector3(0, planarFrame.y0, 0);
+                axisXEnd = new THREE.Vector3(planarFrame.x1 - axisHead * 0.15, 0, 0);
+                axisYEnd = new THREE.Vector3(0, planarFrame.y1 - axisHead * 0.15, 0);
+            } else {
+                gridHelper.visible = true;
+                planarGrid.visible = false;
+            }
+
+            updateArrow(arrows3D.x, axisXEnd, true, 1, axisThick, axisXStart, axisHead);
+            updateArrow(arrows3D.y, axisYEnd, true, 1, axisThick, axisYStart, axisHead);
+            updateArrow(arrows3D.z, new THREE.Vector3(0, 0, 10), viewMode === '3d');
+            updateArrow(arrows3D.u, vecU, checks.u.checked || buildMode, checks.u.checked ? vectorAlpha('u') : 0.5, vectorThickness('u'));
+            updateArrow(arrows3D.v, vecV, checks.v.checked || buildMode, checks.v.checked ? vectorAlpha('v') : 0.5, vectorThickness('v'));
+            updateArrow(arrows3D.sum, vecSum, checks.sum.checked, vectorAlpha('sum'), vectorThickness('sum'));
+            updateArrow(arrows3D.diff, vecDiff, checks.diff.checked, vectorAlpha('diff'), vectorThickness('diff'));
+            updateArrow(arrows3D.cross, vecCross, checks.cross.checked && viewMode === '3d', vectorAlpha('cross'), vectorThickness('cross'));
+            updateArrow(arrows3D.sumBuild, vecSum, pieces.drawSumGhost, 0.5, 1, vecU);
+            updateArrow(arrows3D.diffBuild, vecDiff, pieces.drawDiffGhost, 0.5, 1, vecU);
+            updateArrow(arrows3D.crossBuildU, vecSum, pieces.drawCrossU, 0.5, 1, vecV);
+            updateArrow(arrows3D.crossBuildV, vecSum, pieces.drawCrossV, 0.5, 1, vecU);
+
+            const showArea = (pieces.cross || hoverCross) && vecU.lengthSq() > 1e-6 && vecV.lengthSq() > 1e-6 && vecCross.lengthSq() > 1e-6;
+            paraMesh.visible = showArea;
+            if (showArea) {
+                paraMat.opacity = pieces.cross ? 0.28 : 0.22;
+                const away = viewCamera.position.clone().sub(controls.target);
+                if (away.lengthSq() < 1e-8) away.set(0, 0, 1);
+                away.normalize().multiplyScalar(-0.95);
+                const towardCam = viewCamera.position.clone().sub(controls.target);
+                let pu = vecU.clone();
+                let pv = vecV.clone();
+                if (pu.clone().cross(pv).dot(towardCam) < 0) {
+                    const swap = pu;
+                    pu = pv;
+                    pv = swap;
+                }
+                const o = away.clone();
+                const a = pu.clone().add(away);
+                const b = pv.clone().add(away);
+                const c = pu.clone().add(pv).add(away);
+                const pts = [o, a, c, o, c, b];
+                for (let i = 0; i < pts.length; i++) {
+                    paraPositions[i * 3] = pts[i].x;
+                    paraPositions[i * 3 + 1] = pts[i].y;
+                    paraPositions[i * 3 + 2] = pts[i].z;
+                }
+                paraGeom.attributes.position.needsUpdate = true;
+                paraGeom.computeBoundingSphere();
+            }
+
+            const showHand = (pieces.cross || hoverCross) && vecU.lengthSq() > 1e-4 && vecV.lengthSq() > 1e-4 && vecCross.lengthSq() > 1e-4;
+            if (showHand) {
+                handToCam.copy(viewCamera.position).sub(controls.target);
+                if (handToCam.lengthSq() < 1e-8) handToCam.set(0, 0, 1);
+                handToCam.normalize();
+                const palmTowardCamera = vecCross.dot(handToCam) >= 0;
+                handY.copy(vecV).normalize();
+                handZ.copy(vecCross).normalize();
+                if (!palmTowardCamera) handZ.negate();
+                handX.crossVectors(handY, handZ);
+                if (handX.lengthSq() > 1e-8) {
+                    handX.normalize();
+                    handTexture.repeat.x = palmTowardCamera ? 1 : -1;
+                    handTexture.offset.x = palmTowardCamera ? 0 : 1;
+                    handMesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(handX, handY, handZ));
+                    handMesh.scale.setScalar(handScreenScale());
+                    handMesh.position.set(0, 0, 0);
+                    handMesh.visible = true;
+                } else {
+                    handMesh.visible = false;
+                }
             } else {
                 handMesh.visible = false;
             }
 
-            renderer.render(scene, camera);
+            const sceneBackground = scene.background;
+            renderer.autoClear = true;
+            viewCamera.layers.set(0);
+            renderer.render(scene, viewCamera);
+            scene.background = null;
+            renderer.autoClear = false;
+            if (handMesh.visible) {
+                renderer.clearDepth();
+                viewCamera.layers.set(1);
+                renderer.render(scene, viewCamera);
+            }
+            renderer.clearDepth();
+            viewCamera.layers.set(2);
+            renderer.render(scene, viewCamera);
+            scene.background = sceneBackground;
+            renderer.autoClear = true;
+            viewCamera.layers.enableAll();
             renderOverlay();
         }
         animate();

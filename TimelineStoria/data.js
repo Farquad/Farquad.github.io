@@ -4151,7 +4151,7 @@ const storia900 = [
 { year: toNumber("04/06/1989"), title: "Morte di Khomeini: l'Assemblea degli Esperti elegge Ali Khamenei Guida Suprema", category: "politica", importance: 3.5 },
 { year: toNumber("13/06/2009"), title: "Inizio dell'Onda Verde: Khamenei reprime le massicce proteste post-elettorali", category: "politica", importance: 3 },
 { year: toNumber("16/09/2022"), title: "Morte di Mahsa Amini: esplodono in tutto l'Iran le proteste contro il regime", category: "politica", importance: 2.5 },
-{ year: toNumber("28/02/2026"), title: "USA e Israele attaccano l'Iran accusato di produrre armi atomiche, uccidono la Guida Suprema Ali Khamenei e aprono la guerra; Teheran risponde lo stesso giorno su Israele e sulle basi americane nel Golfo", category: "politica", importance: 2 },
+{ year: toNumber("28/02/2026"), title: "USA e Israele attaccano l'Iran a sorpresa con negoziati sul nucleare ancora aperti, uccidono la Guida Suprema Ali Khamenei", category: "politica", importance: 2 },
 
 { year: toNumber("17/08/1998"), title: "Clinton ammette davanti al gran giurì una relazione extra-coniugale con una stagista, precedentemente negata sotto giuramento", category: "politica", importance: 3.5 },
 { year: toNumber("19/12/1998"), title: "La Camera dei Rappresentanti USA vota l'impeachment di Clinton per spergiuro", category: "politica", importance: 2.5 },
