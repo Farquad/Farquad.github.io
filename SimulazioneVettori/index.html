@@ -26,7 +26,7 @@
             color: #fff;
             overflow: hidden;
         }
-        #canvas-container { flex: 1; position: relative; background-color: #0c1018; min-width: 0; min-height: 0; }
+        #canvas-container { flex: 1; position: relative; background-color: #030407; min-width: 0; min-height: 0; }
         #overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
         #control-panel {
             width: 380px;
@@ -402,7 +402,7 @@
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         const skyTexture = createDarkSkyTexture();
-        const flatBackground = new THREE.Color(0x0c1018);
+        const flatBackground = new THREE.Color(0x030407);
         scene.background = skyTexture;
         scene.backgroundBlurriness = 0.25;
         scene.backgroundIntensity = 1;
@@ -432,8 +432,10 @@
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        controls.minZoom = 0.35;
-        controls.maxZoom = 8;
+        const perspectiveZoom = { min: 0.35, max: 8 };
+        const planarZoom = { min: 0.05, max: 80 };
+        controls.minZoom = perspectiveZoom.min;
+        controls.maxZoom = perspectiveZoom.max;
 
         // 2. Grid (Axes are now drawn in 2D overlay)
         // Adjust grid colors to be slightly more visible against the HDRI background
@@ -445,7 +447,12 @@
         const planarGridGeom = new THREE.BufferGeometry();
         const planarGrid = new THREE.LineSegments(
             planarGridGeom,
-            new THREE.LineBasicMaterial({ color: 0x7a7a7a, toneMapped: false })
+            new THREE.LineBasicMaterial({
+                color: 0xa0a8b4,
+                transparent: true,
+                opacity: 0.18,
+                toneMapped: false
+            })
         );
         planarGrid.frustumCulled = false;
         planarGrid.position.z = -1.2;
@@ -667,7 +674,7 @@
         function applyBrightness(value) {
             scene.backgroundIntensity = value;
             if (viewMode === '2d') {
-                flatBackground.setRGB((12 / 255) * value, (16 / 255) * value, (24 / 255) * value);
+                flatBackground.setRGB((3 / 255) * value, (4 / 255) * value, (7 / 255) * value);
             }
         }
         hdriBrightnessSlider.addEventListener('input', (e) => {
@@ -740,7 +747,7 @@
         function vectorAlpha(name) {
             if (partOfActiveConstruction(name)) return 1;
             if (focusedVector == null) return 1;
-            return focusedVector === name ? 1 : 0.3;
+            return focusedVector === name ? 1 : 0.62;
         }
 
         function segmentAlreadyShown(start, delta) {
@@ -766,6 +773,18 @@
 
         function vectorThickness(name) {
             return focusedVector === name ? 1.35 : 1;
+        }
+
+        // 2D arrows stay in world units, but thicker and with larger heads than the 3D ones.
+        const PLANAR_ARROW_SCALE = 1.65;
+
+        function vectorDrawScale(name) {
+            const focusScale = vectorThickness(name);
+            return viewMode === '2d' ? focusScale * PLANAR_ARROW_SCALE : focusScale;
+        }
+
+        function vectorHeadWorld(arrowObj) {
+            return viewMode === '2d' ? arrowObj.headLength * PLANAR_ARROW_SCALE : null;
         }
 
         function updateFocusedCardStyling() {
@@ -829,7 +848,32 @@
             mouse.y = -(clientY / rect.height) * 2 + 1;
             raycaster.setFromCamera(mouse, viewCamera);
 
+            if (viewMode === '2d' && e.buttons === 1 && !interactionState.draggingVector) {
+                planarUserAdjusted = true;
+            }
+
             if (interactionState.draggingVector && interactionState.draggingAxis) {
+                const clampCoord = (value) => {
+                    const clamped = Math.max(-10, Math.min(10, value));
+                    return Math.round(clamped * 10) / 10;
+                };
+
+                if (interactionState.draggingAxis === 'tip' && viewMode === '2d') {
+                    const ray = raycaster.ray;
+                    if (Math.abs(ray.direction.z) > 1e-8) {
+                        const t = -ray.origin.z / ray.direction.z;
+                        const x = clampCoord(ray.origin.x + ray.direction.x * t);
+                        const y = clampCoord(ray.origin.y + ray.direction.y * t);
+                        const vecInputs = inputs[interactionState.draggingVector];
+                        vecInputs.x.range.value = x;
+                        vecInputs.x.num.value = x;
+                        vecInputs.y.range.value = y;
+                        vecInputs.y.num.value = y;
+                        updateVectors();
+                    }
+                    return;
+                }
+
                 const axisDir = new THREE.Vector3();
                 if (interactionState.draggingAxis === 'x') axisDir.set(1, 0, 0);
                 else if (interactionState.draggingAxis === 'y') axisDir.set(0, 1, 0);
@@ -844,9 +888,7 @@
                 const D = a * c - b * b;
                 
                 if (D > 1e-6) {
-                    let tc = (a * e - b * d) / D;
-                    tc = Math.max(-10, Math.min(10, tc));
-                    tc = Math.round(tc * 10) / 10;
+                    const tc = clampCoord((a * e - b * d) / D);
                     
                     const vecInputs = inputs[interactionState.draggingVector][interactionState.draggingAxis];
                     vecInputs.range.value = tc;
@@ -858,7 +900,15 @@
 
             let foundVector = null;
             let foundAxis = null;
-            let minDist = 20;
+            let bestDist = Infinity;
+
+            function considerHit(dist, limit, vecName, axis) {
+                if (dist <= limit && dist < bestDist) {
+                    bestDist = dist;
+                    foundVector = vecName;
+                    foundAxis = axis;
+                }
+            }
 
             function getScreenPos(p3d) {
                 const p = p3d.clone().applyMatrix4(viewCamera.matrixWorldInverse);
@@ -881,24 +931,33 @@
 
             const checkHover = (vecName, vecObj) => {
                 if (!checks[vecName].checked) return;
+                const editable = vecName === 'u' || vecName === 'v';
+
+                if (viewMode === '2d' && editable) {
+                    const tip = getScreenPos(vecObj);
+                    if (tip.z < 1) {
+                        const zoom = Math.max(orthoCamera.zoom, 0.0001);
+                        const halfH = (orthoCamera.top - orthoCamera.bottom) / (2 * zoom);
+                        const worldPerPx = (halfH * 2) / Math.max(rect.height, 1);
+                        const headRadiusPx = (0.26 * vectorDrawScale(vecName)) / worldPerPx;
+                        const tipLimit = Math.max(28, headRadiusPx);
+                        considerHit(Math.hypot(mouse2D.x - tip.x, mouse2D.y - tip.y), tipLimit, vecName, 'tip');
+                    }
+                }
                 
                 const px = getScreenPos(new THREE.Vector3(vecObj.x, 0, 0));
                 const py = getScreenPos(new THREE.Vector3(0, vecObj.y, 0));
                 const pz = getScreenPos(new THREE.Vector3(0, 0, vecObj.z));
                 
-                if (px.z < 1) { const d = Math.hypot(mouse2D.x - px.x, mouse2D.y - px.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'x'; } }
-                if (py.z < 1) { const d = Math.hypot(mouse2D.x - py.x, mouse2D.y - py.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'y'; } }
-                if (viewMode !== '2d' && pz.z < 1) { const d = Math.hypot(mouse2D.x - pz.x, mouse2D.y - pz.y); if (d < minDist) { minDist = d; foundVector = vecName; foundAxis = 'z'; } }
+                if (px.z < 1) considerHit(Math.hypot(mouse2D.x - px.x, mouse2D.y - px.y), 20, vecName, 'x');
+                if (py.z < 1) considerHit(Math.hypot(mouse2D.x - py.x, mouse2D.y - py.y), 20, vecName, 'y');
+                if (viewMode !== '2d' && pz.z < 1) considerHit(Math.hypot(mouse2D.x - pz.x, mouse2D.y - pz.y), 20, vecName, 'z');
                 
                 if (!foundAxis) {
                     const o2D = getScreenPos(origin);
                     const v2D = getScreenPos(vecObj);
                     if (o2D.z < 1 && v2D.z < 1) {
-                        const d = distToSegment(mouse2D, o2D, v2D);
-                        if (d < minDist) {
-                            minDist = d;
-                            foundVector = vecName;
-                        }
+                        considerHit(distToSegment(mouse2D, o2D, v2D), 20, vecName, null);
                     }
                 }
             };
@@ -913,8 +972,9 @@
                 interactionState.hoveredVector = foundVector;
                 interactionState.hoveredAxis = foundAxis;
                 
-                const isEditableAxis = foundAxis && (foundVector === 'u' || foundVector === 'v');
-                renderer.domElement.style.cursor = isEditableAxis ? 'pointer' : (foundVector ? 'crosshair' : 'default');
+                const isEditableAxis = foundAxis && foundAxis !== 'tip' && (foundVector === 'u' || foundVector === 'v');
+                const cursor = foundAxis === 'tip' ? 'grab' : (isEditableAxis ? 'pointer' : (foundVector ? 'crosshair' : 'default'));
+                renderer.domElement.style.cursor = cursor;
             }
         });
 
@@ -934,6 +994,12 @@
                 if (canDrag) {
                     interactionState.draggingVector = interactionState.hoveredVector;
                     interactionState.draggingAxis = interactionState.hoveredAxis;
+                    if (interactionState.draggingAxis === 'tip') {
+                        renderer.domElement.style.cursor = 'grabbing';
+                    }
+                    if (renderer.domElement.setPointerCapture) {
+                        renderer.domElement.setPointerCapture(e.pointerId);
+                    }
                 }
                 controls.enabled = false;
                 e.preventDefault();
@@ -996,19 +1062,69 @@
             });
         });
 
+        const PLANAR_VIEW_SIZE = 16;
+        let planarUserAdjusted = false;
+        const planarHome = { cx: 0, cy: 0, zoom: 1 };
+
+        function applyPlanarHome() {
+            orthoCamera.zoom = planarHome.zoom;
+            orthoCamera.position.set(planarHome.cx, planarHome.cy, 40);
+            orthoCamera.up.set(0, 1, 0);
+            orthoCamera.lookAt(planarHome.cx, planarHome.cy, 0);
+            controls.target.set(planarHome.cx, planarHome.cy, 0);
+            orthoCamera.updateProjectionMatrix();
+        }
+
         function resizeCamera() {
             const w = container.clientWidth;
             const h = Math.max(container.clientHeight, 1);
             const aspect = w / h;
             camera.aspect = aspect;
             camera.updateProjectionMatrix();
-            const viewSize = 16;
-            orthoCamera.left = -viewSize * aspect;
-            orthoCamera.right = viewSize * aspect;
-            orthoCamera.top = viewSize;
-            orthoCamera.bottom = -viewSize;
+            orthoCamera.left = -PLANAR_VIEW_SIZE * aspect;
+            orthoCamera.right = PLANAR_VIEW_SIZE * aspect;
+            orthoCamera.top = PLANAR_VIEW_SIZE;
+            orthoCamera.bottom = -PLANAR_VIEW_SIZE;
             orthoCamera.updateProjectionMatrix();
             renderer.setSize(w, h);
+        }
+
+        function fitPlanarView() {
+            resizeCamera();
+            // Room for u, v and the planar results (u+v, u-v), whether or not they are shown.
+            const pts = [origin, vecU, vecV, vecSum, vecDiff];
+
+            let x0 = Infinity;
+            let x1 = -Infinity;
+            let y0 = Infinity;
+            let y1 = -Infinity;
+            pts.forEach((p) => {
+                x0 = Math.min(x0, p.x);
+                x1 = Math.max(x1, p.x);
+                y0 = Math.min(y0, p.y);
+                y1 = Math.max(y1, p.y);
+            });
+
+            let bw = x1 - x0;
+            let bh = y1 - y0;
+            if (bw < 1e-4 && bh < 1e-4) {
+                bw = 4;
+                bh = 4;
+            }
+
+            const aspect = container.clientWidth / Math.max(container.clientHeight, 1);
+            const fill = 0.8;
+            const zoomW = bw > 1e-4 ? (fill * 2 * PLANAR_VIEW_SIZE * aspect) / bw : Infinity;
+            const zoomH = bh > 1e-4 ? (fill * 2 * PLANAR_VIEW_SIZE) / bh : Infinity;
+            let zoom = Math.min(zoomW, zoomH);
+            if (!Number.isFinite(zoom)) zoom = 1;
+            zoom = THREE.MathUtils.clamp(zoom, controls.minZoom, controls.maxZoom);
+
+            planarHome.cx = (x0 + x1) / 2;
+            planarHome.cy = (y0 + y1) / 2;
+            planarHome.zoom = zoom;
+            applyPlanarHome();
+            controls.update();
         }
 
         function setAxisValue(vecName, axis, value) {
@@ -1039,8 +1155,11 @@
                 controls.object = orthoCamera;
                 controls.target.set(0, 0, 0);
                 controls.enableRotate = false;
+                controls.minZoom = planarZoom.min;
+                controls.maxZoom = planarZoom.max;
                 controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
                 controls.touches.ONE = THREE.TOUCH.PAN;
+                planarUserAdjusted = false;
 
                 gridHelper.rotation.set(Math.PI / 2, 0, 0);
                 gridHelper.position.set(0, 0, -0.01);
@@ -1054,6 +1173,8 @@
                 controls.object = camera;
                 controls.target.copy(savedView.target);
                 controls.enableRotate = true;
+                controls.minZoom = perspectiveZoom.min;
+                controls.maxZoom = perspectiveZoom.max;
                 controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
                 controls.touches.ONE = THREE.TOUCH.ROTATE;
 
@@ -1067,6 +1188,7 @@
             controls.update();
             resizeCamera();
             updateVectors();
+            if (mode === '2d') fitPlanarView();
         }
 
         document.querySelectorAll('input[name="view-mode"]').forEach((radio) => {
@@ -1157,7 +1279,13 @@
             labels.dot.textContent = dotProduct.toFixed(2);
         }
 
-        window.addEventListener('resize', resizeCamera);
+        window.addEventListener('resize', () => {
+            if (viewMode === '2d' && !planarUserAdjusted) fitPlanarView();
+            else resizeCamera();
+        });
+        renderer.domElement.addEventListener('wheel', () => {
+            if (viewMode === '2d') planarUserAdjusted = true;
+        }, { passive: true });
         resizeCamera();
 
         // Initial update
@@ -1280,6 +1408,9 @@
                 drawHandle(pX, 'x');
                 drawHandle(pY, 'y');
                 if (!planar) drawHandle(pZ, 'z');
+                if (planar && isEditable && (activeAxis === 'tip' || hoveredAxis === 'tip')) {
+                    drawHandle(vecObj, 'tip');
+                }
             }
             
             function drawLabel(vEnd, color, labelText, isAxis = false, alpha = 1) {
@@ -1462,6 +1593,7 @@
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
+            if (viewMode === '2d' && !planarUserAdjusted) applyPlanarHome();
             
             const pieces = constructionPieces();
             const buildMode = pieces.sum || pieces.diff || pieces.cross;
@@ -1503,15 +1635,16 @@
             updateArrow(arrows3D.x, axisXEnd, true, 1, axisThick, axisXStart, axisHead);
             updateArrow(arrows3D.y, axisYEnd, true, 1, axisThick, axisYStart, axisHead);
             updateArrow(arrows3D.z, new THREE.Vector3(0, 0, 10), viewMode === '3d');
-            updateArrow(arrows3D.u, vecU, checks.u.checked || buildMode, checks.u.checked ? vectorAlpha('u') : 0.5, vectorThickness('u'));
-            updateArrow(arrows3D.v, vecV, checks.v.checked || buildMode, checks.v.checked ? vectorAlpha('v') : 0.5, vectorThickness('v'));
-            updateArrow(arrows3D.sum, vecSum, checks.sum.checked, vectorAlpha('sum'), vectorThickness('sum'));
-            updateArrow(arrows3D.diff, vecDiff, checks.diff.checked, vectorAlpha('diff'), vectorThickness('diff'));
-            updateArrow(arrows3D.cross, vecCross, checks.cross.checked && viewMode === '3d', vectorAlpha('cross'), vectorThickness('cross'));
-            updateArrow(arrows3D.sumBuild, vecSum, pieces.drawSumGhost, 0.5, 1, vecU);
-            updateArrow(arrows3D.diffBuild, vecDiff, pieces.drawDiffGhost, 0.5, 1, vecU);
-            updateArrow(arrows3D.crossBuildU, vecSum, pieces.drawCrossU, 0.5, 1, vecV);
-            updateArrow(arrows3D.crossBuildV, vecSum, pieces.drawCrossV, 0.5, 1, vecU);
+            const ghostScale = viewMode === '2d' ? PLANAR_ARROW_SCALE : 1;
+            updateArrow(arrows3D.u, vecU, checks.u.checked || buildMode, checks.u.checked ? vectorAlpha('u') : 0.5, vectorDrawScale('u'), null, vectorHeadWorld(arrows3D.u));
+            updateArrow(arrows3D.v, vecV, checks.v.checked || buildMode, checks.v.checked ? vectorAlpha('v') : 0.5, vectorDrawScale('v'), null, vectorHeadWorld(arrows3D.v));
+            updateArrow(arrows3D.sum, vecSum, checks.sum.checked, vectorAlpha('sum'), vectorDrawScale('sum'), null, vectorHeadWorld(arrows3D.sum));
+            updateArrow(arrows3D.diff, vecDiff, checks.diff.checked, vectorAlpha('diff'), vectorDrawScale('diff'), null, vectorHeadWorld(arrows3D.diff));
+            updateArrow(arrows3D.cross, vecCross, checks.cross.checked && viewMode === '3d', vectorAlpha('cross'), vectorDrawScale('cross'), null, vectorHeadWorld(arrows3D.cross));
+            updateArrow(arrows3D.sumBuild, vecSum, pieces.drawSumGhost, 0.5, ghostScale, vecU, viewMode === '2d' ? arrows3D.sumBuild.headLength * PLANAR_ARROW_SCALE : null);
+            updateArrow(arrows3D.diffBuild, vecDiff, pieces.drawDiffGhost, 0.5, ghostScale, vecU, viewMode === '2d' ? arrows3D.diffBuild.headLength * PLANAR_ARROW_SCALE : null);
+            updateArrow(arrows3D.crossBuildU, vecSum, pieces.drawCrossU, 0.5, ghostScale, vecV, viewMode === '2d' ? arrows3D.crossBuildU.headLength * PLANAR_ARROW_SCALE : null);
+            updateArrow(arrows3D.crossBuildV, vecSum, pieces.drawCrossV, 0.5, ghostScale, vecU, viewMode === '2d' ? arrows3D.crossBuildV.headLength * PLANAR_ARROW_SCALE : null);
 
             const showArea = (pieces.cross || hoverCross) && vecU.lengthSq() > 1e-6 && vecV.lengthSq() > 1e-6 && vecCross.lengthSq() > 1e-6;
             paraMesh.visible = showArea;
