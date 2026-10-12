@@ -1367,7 +1367,7 @@ function measureLabelText(textLabel, fontSize, unscaledMaxWidth, scale) {
     return entry;
 }
 
-function calculateLayout(pos, level, dir, shift, textLabel, labelDotSize, fontSize, scale, canvasCenterX, canvasCenterY, dynamicRightSpace = 50) {
+function calculateLayout(pos, level, dir, shift, textLabel, labelDotSize, fontSize, scale, canvasCenterX, canvasCenterY, dynamicRightSpace = 50, horizontalMaxWidth = LABEL_MAX_WIDTH_HORIZONTAL) {
     const gap = 8; // Spazio tra pallino finale e inizio del testo
     let offset;
     let maxWidth;
@@ -1387,7 +1387,7 @@ function calculateLayout(pos, level, dir, shift, textLabel, labelDotSize, fontSi
         } else { // Sotto
             offset = (level * 40 + 30);
         }
-        maxWidth = 250;
+        maxWidth = horizontalMaxWidth;
     }
     
     const unscaledMaxWidth = maxWidth / scale;
@@ -1548,7 +1548,7 @@ function checkCollisionGlobal(shapes, shapesArray, uiHeight) {
     return false;
 }
 
-function findValidLayoutGlobal(pos, textLabel, labelDotSize, fontSize, scale, shapesArray, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace = 50, preferredDir = 1, searchLimit = null) {
+function findValidLayoutGlobal(pos, textLabel, labelDotSize, fontSize, scale, shapesArray, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace = 50, preferredDir = 1, searchLimit = null, horizontalMaxWidth = LABEL_MAX_WIDTH_HORIZONTAL) {
     let sequence;
     if (isVertical) {
         sequence = preferredDir === 1 ? searchSequenceVerticalLeft : searchSequenceVerticalRight;
@@ -1559,7 +1559,7 @@ function findValidLayoutGlobal(pos, textLabel, labelDotSize, fontSize, scale, sh
         if (searchLimit && (config.level > searchLimit.maxLevel || Math.abs(config.shift) > searchLimit.maxShift)) {
             continue;
         }
-        const layout = calculateLayout(pos, config.level, config.dir, config.shift, textLabel, labelDotSize, fontSize, scale, canvasCenterX, canvasCenterY, dynamicRightSpace);
+        const layout = calculateLayout(pos, config.level, config.dir, config.shift, textLabel, labelDotSize, fontSize, scale, canvasCenterX, canvasCenterY, dynamicRightSpace, horizontalMaxWidth);
         if (!checkCollisionGlobal(layout.shapes, shapesArray, uiHeight)) {
             shapesArray.push(layout.shapes);
             indexLayoutShape(layout.shapes);
@@ -1645,6 +1645,9 @@ const LABEL_SLOT_PX_HORIZONTAL = 220;
 const LABEL_SLOT_PX_VERTICAL = 100;
 const SHORT_SEARCH_LIMIT = { maxLevel: 2, maxShift: 40 };
 const SPARSE_SEARCH_LIMIT = { maxLevel: 2, maxShift: 0 };
+const LABEL_MAX_WIDTH_HORIZONTAL = 250;
+const LABEL_FONT_SIZE_COMPACT = 14;
+const LABEL_MAX_WIDTH_HORIZONTAL_COMPACT = 160;
 // Il secondo giro chiude un bin dopo questi fallimenti di fila, con un tetto di tentativi.
 const BIN_CONSECUTIVE_FAILURES = 4;
 const BIN_FILL_ATTEMPT_CAP = 12;
@@ -2051,10 +2054,10 @@ function computeGlobalLayout() {
         let eventFontSize = baseFontSize;
         let layout = findValidLayoutGlobal(pos, textLabel, labelDotSize, eventFontSize, targetScale, globalLayoutShapes, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace, preferredDir, searchLimit);
         
-        // Con al massimo due eventi a schermo, un solo font più piccolo e le stesse poche posizioni.
-        if (layout === null && !keywordMatch && sparseScreen && e.year >= screenStart && e.year <= screenEnd) {
-            eventFontSize = 14;
-            layout = findValidLayoutGlobal(pos, textLabel, labelDotSize, eventFontSize, targetScale, globalLayoutShapes, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace, preferredDir, SPARSE_SEARCH_LIMIT);
+        // Il rettangolo da 250 px non entra: un solo riprovo, più stretto e con font minore.
+        if (layout === null && !keywordMatch) {
+            eventFontSize = LABEL_FONT_SIZE_COMPACT;
+            layout = findValidLayoutGlobal(pos, textLabel, labelDotSize, eventFontSize, targetScale, globalLayoutShapes, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace, preferredDir, searchLimit, LABEL_MAX_WIDTH_HORIZONTAL_COMPACT);
         }
         
         if (layout !== null) {
