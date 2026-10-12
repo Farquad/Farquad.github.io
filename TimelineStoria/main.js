@@ -782,6 +782,50 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
+// Scorrimento della fascia pulsanti: niente barra, solo trascinamento.
+const controlsBar = document.querySelector('.controls');
+if (controlsBar) {
+    let controlsDragging = false;
+    let controlsMoved = false;
+    let controlsStartX = 0;
+    let controlsStartScroll = 0;
+
+    controlsBar.addEventListener('mousedown', (e) => {
+        if (e.button !== 0 || e.target.closest('input, textarea')) return;
+        controlsDragging = true;
+        controlsMoved = false;
+        controlsStartX = e.clientX;
+        controlsStartScroll = controlsBar.scrollLeft;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!controlsDragging) return;
+        const dx = e.clientX - controlsStartX;
+        if (!controlsMoved && Math.abs(dx) <= 4) return;
+        controlsMoved = true;
+        controlsBar.classList.add('grabbing');
+        controlsBar.scrollLeft = controlsStartScroll - dx;
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (!controlsDragging) return;
+        controlsDragging = false;
+        controlsBar.classList.remove('grabbing');
+        if (!controlsMoved) return;
+        const blockClick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            controlsBar.removeEventListener('click', blockClick, true);
+        };
+        controlsBar.addEventListener('click', blockClick, true);
+        setTimeout(() => controlsBar.removeEventListener('click', blockClick, true), 0);
+    });
+
+    controlsBar.addEventListener('wheel', (e) => {
+        e.preventDefault();
+    }, { passive: false });
+}
+
 // Ricerca Anno
 let searchResult = null; // { type: 'year'|'interval'|'date', start: number, end?: number, point?: number }
 const searchToggle = document.getElementById('search-toggle');
@@ -1601,6 +1645,9 @@ const LABEL_SLOT_PX_HORIZONTAL = 220;
 const LABEL_SLOT_PX_VERTICAL = 100;
 const SHORT_SEARCH_LIMIT = { maxLevel: 2, maxShift: 40 };
 const SPARSE_SEARCH_LIMIT = { maxLevel: 2, maxShift: 0 };
+// Il secondo giro chiude un bin dopo questi fallimenti di fila, con un tetto di tentativi.
+const BIN_CONSECUTIVE_FAILURES = 4;
+const BIN_FILL_ATTEMPT_CAP = 12;
 
 function labelWindowBounds() {
     const dimension = isVertical ? height : width;
@@ -1671,11 +1718,42 @@ function shiftVisibleShapesForPan() {
 
 
 // --- CALCOLO GLOBALE DEL LAYOUT ---
+function isKeywordMatch(e) {
+    return typeof searchResult !== 'undefined' && searchResult && searchResult.type === 'keyword' && searchResult.events && searchResult.events.includes(e);
+}
+
 function getEffectiveImportance(e) {
-    if (typeof searchResult !== 'undefined' && searchResult && searchResult.type === 'keyword' && searchResult.events && searchResult.events.includes(e)) {
-        return 0;
+    // I risultati di una ricerca restano tutti sotto 1, quindi battono gli altri eventi,
+    // ma il valore originale / 100 conserva la gerarchia interna (1 è più importante di 5).
+    if (isKeywordMatch(e)) {
+        return e.importance / 100;
     }
     return e.importance;
+}
+
+// Il testo è sempre 18px. La scala storica va da 0.5 a 1, e 1 è il tetto.
+// In ricerca i risultati occupano la fascia alta, fino a quel tetto; gli altri eventi restano sotto.
+const LABEL_SCALE_MIN = 0.5;
+const LABEL_SCALE_MAX = 1;
+const KEYWORD_SCALE_MIN = 0.75;
+const OUTSIDER_SCALE_MAX = 0.68;
+
+function isKeywordSearchActive() {
+    return typeof searchResult !== 'undefined' && searchResult && searchResult.type === 'keyword' && searchResult.events;
+}
+
+function keywordMatchScale(importance) {
+    const span = globalWorstImp - globalBestImp;
+    const t = span > 0 ? (importance - globalBestImp) / span : 0;
+    const clamped = Math.max(0, Math.min(1, t));
+    return LABEL_SCALE_MAX - clamped * (LABEL_SCALE_MAX - KEYWORD_SCALE_MIN);
+}
+
+function outsiderScaleDuringSearch(finalRatio) {
+    const normal = LABEL_SCALE_MIN + finalRatio * (LABEL_SCALE_MAX - LABEL_SCALE_MIN);
+    const room = OUTSIDER_SCALE_MAX - LABEL_SCALE_MIN;
+    const full = LABEL_SCALE_MAX - LABEL_SCALE_MIN;
+    return LABEL_SCALE_MIN + (normal - LABEL_SCALE_MIN) * (room / full);
 }
 
 let globalLayoutShapes = [];
@@ -1857,15 +1935,25 @@ function computeGlobalLayout() {
     let nextPreferredDir = 1; // Iniziamo preferendo la sinistra/sopra (1)
     const saturatedBins = new Set();
     const searchedBins = new Set();
+    const attemptedIds = new Set();
     const slotPx = labelSlotPx();
     const wideView = yearsVisible >= 50;
+    const sparseScreen = activeEventsOnScreenCount <= 2;
 
-    eventsToCompute.forEach(e => {
+    function eventAxisPos(e) {
+        return isVertical
+            ? canvasCenterY + (e.year - centerYear) * pixelsPerYear
+            : canvasCenterX + (e.year - centerYear) * pixelsPerYear;
+    }
+
+    function placeEventLabel(e, searchLimit) {
         const eImp = getEffectiveImportance(e);
-        const pos = isVertical ? 
-            canvasCenterY + (e.year - centerYear) * pixelsPerYear :
-            canvasCenterX + (e.year - centerYear) * pixelsPerYear;
-        
+        const pos = eventAxisPos(e);
+        const eventId = e.year + '_' + e.title;
+        const alreadyVisible = eventStates.get(eventId);
+        if (alreadyVisible && alreadyVisible.isVisible) return true;
+        attemptedIds.add(eventId);
+
         const effImportance = Math.max(globalBestImp, eImp - importanceShift);
 
         // Calcolo ratio globale assoluto
@@ -1889,15 +1977,23 @@ function computeGlobalLayout() {
         }
         localRatio = Math.max(0.0, Math.min(1.0, localRatio));
 
-        const eventId = e.year + '_' + e.title;
-
         // L'evento riceve un upgrade (locale) ma non può scendere sotto la sua importanza assoluta
         const ratio = Math.max(globalRatio, localRatio);
         
         const isForced = (eventId === forcedEventId);
         const finalRatio = isForced ? 1.0 : ratio;
-        
-        const targetScale = 0.5 + (finalRatio * 0.5); 
+        const keywordMatch = isKeywordMatch(e);
+
+        let targetScale;
+        if (isForced) {
+            targetScale = LABEL_SCALE_MAX;
+        } else if (keywordMatch) {
+            targetScale = keywordMatchScale(e.importance);
+        } else if (isKeywordSearchActive()) {
+            targetScale = outsiderScaleDuringSearch(finalRatio);
+        } else {
+            targetScale = LABEL_SCALE_MIN + finalRatio * (LABEL_SCALE_MAX - LABEL_SCALE_MIN);
+        } 
         const targetDotSize = 3 + (finalRatio * 5); 
         const targetColorIntensity = 120 + (finalRatio * 135); 
         let state = eventStates.get(eventId);
@@ -1952,25 +2048,11 @@ function computeGlobalLayout() {
         
         const preferredDir = state.lastDir !== null ? state.lastDir : nextPreferredDir;
 
-        // Il primo evento del bin prova tutta la sequenza. A zoom ampio i successivi
-        // provano solo le posizioni vicine; se falliscono, il tratto è saturo.
-        const anchorBin = Math.floor(pos / slotPx);
-        if (saturatedBins.has(anchorBin)) {
-            state.isVisible = false;
-            state.shapes = null;
-            return;
-        }
-
-        const sparseScreen = activeEventsOnScreenCount <= 2;
-        const shortSearch = !sparseScreen && wideView && searchedBins.has(anchorBin);
-        searchedBins.add(anchorBin);
-        const searchLimit = sparseScreen ? SPARSE_SEARCH_LIMIT : (shortSearch ? SHORT_SEARCH_LIMIT : null);
-
         let eventFontSize = baseFontSize;
         let layout = findValidLayoutGlobal(pos, textLabel, labelDotSize, eventFontSize, targetScale, globalLayoutShapes, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace, preferredDir, searchLimit);
         
         // Con al massimo due eventi a schermo, un solo font più piccolo e le stesse poche posizioni.
-        if (layout === null && sparseScreen && e.year >= screenStart && e.year <= screenEnd) {
+        if (layout === null && !keywordMatch && sparseScreen && e.year >= screenStart && e.year <= screenEnd) {
             eventFontSize = 14;
             layout = findValidLayoutGlobal(pos, textLabel, labelDotSize, eventFontSize, targetScale, globalLayoutShapes, canvasCenterX, canvasCenterY, uiHeight, dynamicRightSpace, preferredDir, SPARSE_SEARCH_LIMIT);
         }
@@ -1997,9 +2079,65 @@ function computeGlobalLayout() {
         } else {
             state.isVisible = false;
             state.shapes = null; // Pulisci shapes se non visibile
-            saturatedBins.add(anchorBin);
+            return false;
         }
+        return true;
+    }
+
+    eventsToCompute.forEach(e => {
+        const anchorBin = Math.floor(eventAxisPos(e) / slotPx);
+        // Il primo evento del bin prova tutta la sequenza. A zoom ampio i successivi
+        // provano solo le posizioni vicine; se falliscono, il tratto è saturo.
+        if (saturatedBins.has(anchorBin)) {
+            const state = eventStates.get(e.year + '_' + e.title);
+            if (state) {
+                state.isVisible = false;
+                state.shapes = null;
+            }
+            return;
+        }
+
+        const shortSearch = !sparseScreen && wideView && searchedBins.has(anchorBin);
+        searchedBins.add(anchorBin);
+        const searchLimit = sparseScreen ? SPARSE_SEARCH_LIMIT : (shortSearch ? SHORT_SEARCH_LIMIT : null);
+        if (!placeEventLabel(e, searchLimit)) saturatedBins.add(anchorBin);
     });
+
+    // Secondo giro in ordine di importanza, anche nei bin che hanno già un titolo.
+    // Quattro fallimenti di fila chiudono solo quel tratto; un successo azzera il conteggio.
+    const refillEvents = [];
+    allActiveEventsInRange.forEach(e => {
+        if (attemptedIds.has(e.year + '_' + e.title)) return;
+        refillEvents.push(e);
+    });
+    refillEvents.sort((a, b) => {
+        const aOnScreen = a.year >= screenStart && a.year <= screenEnd;
+        const bOnScreen = b.year >= screenStart && b.year <= screenEnd;
+        if (aOnScreen && !bOnScreen) return -1;
+        if (!aOnScreen && bOnScreen) return 1;
+
+        const aImp = getEffectiveImportance(a);
+        const bImp = getEffectiveImportance(b);
+        if (aImp !== bImp) return aImp - bImp;
+        if (a.year !== b.year) return a.year - b.year;
+        return a.title.localeCompare(b.title);
+    });
+
+    const binFailures = new Map();
+    const binAttempts = new Map();
+    const refillSearchLimit = sparseScreen ? SPARSE_SEARCH_LIMIT : null;
+    for (let i = 0; i < refillEvents.length; i++) {
+        const e = refillEvents[i];
+        const anchorBin = Math.floor(eventAxisPos(e) / slotPx);
+        const failures = binFailures.get(anchorBin) || 0;
+        if (failures >= BIN_CONSECUTIVE_FAILURES) continue;
+        const attempts = binAttempts.get(anchorBin) || 0;
+        if (attempts >= BIN_FILL_ATTEMPT_CAP) continue;
+
+        binAttempts.set(anchorBin, attempts + 1);
+        if (placeEventLabel(e, refillSearchLimit)) binFailures.set(anchorBin, 0);
+        else binFailures.set(anchorBin, failures + 1);
+    }
 
     const placedBounds = yearRangeBounds(visibleStart, visibleEnd);
     lastLayoutSnapshot = {

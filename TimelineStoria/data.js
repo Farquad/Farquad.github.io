@@ -4221,7 +4221,7 @@ const colomboEvents = [
     { year: toNumber("17/04/1492"), title: "Capitolazioni di Santa Fe: i Re Cattolici nominano Colombo ammiraglio, viceré e governatore delle terre che scoprirà", category: "politica", importance: 3 },
     { year: toNumber("03/08/1492"), title: "Colombo salpa da Palos con Niña, Pinta e Santa María: inizia il primo viaggio", category: "cultura", importance: 2.5 },
     { year: toNumber("15/03/1493"), title: "Rientro a Palos: Colombo conclude il primo viaggio e la notizia dello sbarco si diffonde in Europa", category: "politica", importance: 3 },
-    { year: toNumber("04/05/1493"), title: "Bolla Inter caetera: Papa Alessandro VI, su richiesta dei Re Cattolici, concede alla Castiglia le terre non cristiane a ovest di una linea nell'Atlantico perché le evangelizzi; la linea sarà spostata dal Trattato di Tordesillas", category: "politica", importance: 3.5 },
+    { year: toNumber("04/05/1493"), title: "Bolla Inter caetera: Papa Alessandro VI concede alla Castiglia le terre a ovest di una linea nell'Atlantico perché le evangelizzi", category: "politica", importance: 3.5 },
     { year: toNumber("25/09/1493"), title: "Secondo viaggio di Colombo: parte da Cadice una flotta di colonizzazione verso le Antille", category: "politica", importance: 3 },
     { year: toNumber("06/01/1494"), title: "Fondazione di La Isabela a Hispaniola da parte di Colombo, primo insediamento europeo nelle Americhe (poi abbandonato)", category: "politica", importance: 3.5 },
     { year: 1495, title: "Colombo impone ai Taíno di Hispaniola un tributo in oro: inizia lo sfruttamento coloniale dei nativi", category: "politica", importance: 3.5 },
