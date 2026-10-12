@@ -1310,13 +1310,13 @@
             
             const near = viewCamera.near;
 
-            function drawLine3D(vStart, vEnd, color, thickness, isDashed = false) {
-                if (vStart.distanceTo(vEnd) < 0.001) return;
+            function projectSegment(vStart, vEnd) {
+                if (vStart.distanceTo(vEnd) < 0.001) return null;
                 const p1 = vStart.clone().applyMatrix4(viewCamera.matrixWorldInverse);
                 const p2 = vEnd.clone().applyMatrix4(viewCamera.matrixWorldInverse);
-                
-                if (p1.z > -near && p2.z > -near) return;
-                
+
+                if (p1.z > -near && p2.z > -near) return null;
+
                 let clipped1 = p1.clone();
                 let clipped2 = p2.clone();
                 if (p1.z > -near || p2.z > -near) {
@@ -1325,18 +1325,25 @@
                     if (p1.z > -near) clipped1 = intersection;
                     else clipped2 = intersection;
                 }
-                
+
                 const proj1 = clipped1.applyMatrix4(viewCamera.projectionMatrix);
                 const proj2 = clipped2.applyMatrix4(viewCamera.projectionMatrix);
-                
-                const x1 = (proj1.x * 0.5 + 0.5) * width;
-                const y1 = (-(proj1.y) * 0.5 + 0.5) * height;
-                const x2 = (proj2.x * 0.5 + 0.5) * width;
-                const y2 = (-(proj2.y) * 0.5 + 0.5) * height;
-                
+
+                return {
+                    x1: (proj1.x * 0.5 + 0.5) * width,
+                    y1: (-(proj1.y) * 0.5 + 0.5) * height,
+                    x2: (proj2.x * 0.5 + 0.5) * width,
+                    y2: (-(proj2.y) * 0.5 + 0.5) * height
+                };
+            }
+
+            function drawLine3D(vStart, vEnd, color, thickness, isDashed = false) {
+                const seg = projectSegment(vStart, vEnd);
+                if (!seg) return;
+
                 ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
+                ctx.moveTo(seg.x1, seg.y1);
+                ctx.lineTo(seg.x2, seg.y2);
                 ctx.strokeStyle = color;
                 ctx.lineWidth = thickness;
                 if (isDashed) ctx.setLineDash([10, 6]);
@@ -1344,7 +1351,43 @@
                 ctx.setLineDash([]);
             }
 
-            function drawProjections(vecObj, color, activeAxis, hoveredAxis, isEditable = true) {
+            function drawComponentArrow(vEnd, color) {
+                const seg = projectSegment(origin, vEnd);
+                if (!seg) return 0;
+                const dx = seg.x2 - seg.x1;
+                const dy = seg.y2 - seg.y1;
+                const len = Math.hypot(dx, dy);
+                if (len < 8) return 0;
+                const ux = dx / len;
+                const uy = dy / len;
+                const headLen = Math.min(20, Math.max(12, len * 0.34));
+                const shaftWidth = viewMode === '2d' ? 9 : 4;
+                const headW = Math.max(shaftWidth * 0.78, headLen * 0.46);
+                const bx = seg.x2 - ux * headLen;
+                const by = seg.y2 - uy * headLen;
+                const tuck = Math.min(shaftWidth * 0.45, headLen * 0.28);
+
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color;
+                ctx.lineWidth = shaftWidth;
+                ctx.lineCap = 'butt';
+                ctx.lineJoin = 'miter';
+                ctx.beginPath();
+                ctx.moveTo(seg.x1, seg.y1);
+                ctx.lineTo(bx + ux * tuck, by + uy * tuck);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(seg.x2, seg.y2);
+                ctx.lineTo(bx - uy * headW, by + ux * headW);
+                ctx.lineTo(bx + uy * headW, by - ux * headW);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+                return len;
+            }
+
+            function drawProjections(vecObj, color, activeAxis, hoveredAxis, isEditable = true, labelBase = '') {
                 const planar = viewMode === '2d';
                 const { x, y, z } = vecObj;
                 const pX = new THREE.Vector3(x, 0, 0);
@@ -1353,15 +1396,12 @@
                 const pXY = new THREE.Vector3(x, y, 0);
                 const pXZ = new THREE.Vector3(x, 0, z);
                 const pYZ = new THREE.Vector3(0, y, z);
-                
+
                 ctx.globalAlpha = 0.92;
-                drawLine3D(origin, pX, color, 2.6, true);
-                drawLine3D(origin, pY, color, 2.6, true);
                 drawLine3D(pX, pXY, color, 2.6, true);
                 drawLine3D(pY, pXY, color, 2.6, true);
                 drawLine3D(pXY, vecObj, color, 2.6, true);
                 if (!planar) {
-                    drawLine3D(origin, pZ, color, 2.6, true);
                     drawLine3D(pX, pXZ, color, 2.6, true);
                     drawLine3D(pZ, pXZ, color, 2.6, true);
                     drawLine3D(pY, pYZ, color, 2.6, true);
@@ -1370,8 +1410,26 @@
                     drawLine3D(pYZ, vecObj, color, 2.6, true);
                 }
                 ctx.globalAlpha = 1.0;
+
+                function showComponent(end, axisName) {
+                    const screenLen = drawComponentArrow(end, color);
+                    if (screenLen < 26 || !labelBase) return;
+                    const away = vecObj.clone().sub(end);
+                    if (away.lengthSq() < 1e-4) {
+                        if (axisName === 'x') away.set(0, 1, 0);
+                        else away.set(1, 0, 0);
+                    } else {
+                        away.negate();
+                    }
+                    queueLabel(end.clone().multiplyScalar(0.55), color, labelBase, false, 1, axisName, away);
+                }
+
+                showComponent(pX, 'x');
+                showComponent(pY, 'y');
+                if (!planar) showComponent(pZ, 'z');
                 
                 function drawHandle(p3d, axis) {
+                    if (!(isEditable && (activeAxis === axis || hoveredAxis === axis))) return;
                     const p2 = p3d.clone().applyMatrix4(viewCamera.matrixWorldInverse);
                     if (p2.z > -near) return;
                     p2.applyMatrix4(viewCamera.projectionMatrix);
@@ -1380,29 +1438,17 @@
                     const sy = (-(p2.y) * 0.5 + 0.5) * height;
                     
                     ctx.beginPath();
-                    const baseRadius = isEditable ? 6 : 4;
-                    ctx.arc(sx, sy, baseRadius, 0, Math.PI * 2);
-                    
-                    if (isEditable && (activeAxis === axis || hoveredAxis === axis)) {
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fill();
-                        ctx.lineWidth = 2;
-                        ctx.strokeStyle = color;
-                        ctx.stroke();
-                        ctx.beginPath();
-                        ctx.arc(sx, sy, 12, 0, Math.PI * 2);
-                        ctx.lineWidth = 1;
-                        ctx.strokeStyle = color;
-                        ctx.stroke();
-                    } else {
-                        ctx.fillStyle = color;
-                        ctx.fill();
-                        if (!isEditable) {
-                            ctx.lineWidth = 1;
-                            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-                            ctx.stroke();
-                        }
-                    }
+                    ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = color;
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 12, 0, Math.PI * 2);
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = color;
+                    ctx.stroke();
                 }
                 
                 drawHandle(pX, 'x');
@@ -1413,7 +1459,7 @@
                 }
             }
             
-            function drawLabel(vEnd, color, labelText, isAxis = false, alpha = 1) {
+            function drawLabel(vEnd, color, labelText, isAxis = false, alpha = 1, subscript = null, labelAway = null) {
                 if (!labelText || vEnd.lengthSq() < 0.000001) return;
                 
                 const p = vEnd.clone().applyMatrix4(viewCamera.matrixWorldInverse);
@@ -1424,12 +1470,84 @@
                 const x = (p.x * 0.5 + 0.5) * width;
                 const y = (-(p.y) * 0.5 + 0.5) * height;
                 
-                ctx.font = isAxis ? "bold 16px sans-serif" : "bold 16px sans-serif";
+                ctx.font = "bold 16px sans-serif";
                 ctx.globalAlpha = alpha;
                 ctx.fillStyle = color;
                 ctx.shadowColor = 'rgba(34,34,34,0.8)';
                 ctx.shadowBlur = 4;
-                ctx.fillText(labelText, x + 8, y + 8);
+
+                if (!subscript) {
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'alphabetic';
+                    if (viewMode === '2d' && isAxis && labelText === 'X') {
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'top';
+                        ctx.fillText(labelText, x, y + 12);
+                    } else {
+                        ctx.fillText(labelText, x + 8, y + 8);
+                    }
+                } else {
+                    const axis = subscript === 'y' ? new THREE.Vector3(0, 1, 0)
+                        : subscript === 'z' ? new THREE.Vector3(0, 0, 1)
+                        : new THREE.Vector3(1, 0, 0);
+                    const hint = (labelAway && labelAway.lengthSq() > 1e-8)
+                        ? labelAway.clone().normalize()
+                        : axis.clone();
+                    const q = vEnd.clone().add(hint).applyMatrix4(viewCamera.matrixWorldInverse);
+                    let ox = 18;
+                    let oy = -18;
+                    if (q.z <= -near) {
+                        q.applyMatrix4(viewCamera.projectionMatrix);
+                        const qx = (q.x * 0.5 + 0.5) * width;
+                        const qy = (-(q.y) * 0.5 + 0.5) * height;
+                        let dx = qx - x;
+                        let dy = qy - y;
+                        const dlen = Math.hypot(dx, dy);
+                        if (dlen > 0.5) {
+                            ox = dx / dlen * 22;
+                            oy = dy / dlen * 22;
+                        } else {
+                            const qAlt = vEnd.clone().add(axis).applyMatrix4(viewCamera.matrixWorldInverse);
+                            if (qAlt.z <= -near) {
+                                qAlt.applyMatrix4(viewCamera.projectionMatrix);
+                                const ax = (qAlt.x * 0.5 + 0.5) * width;
+                                const ay = (-(qAlt.y) * 0.5 + 0.5) * height;
+                                let adx = ax - x;
+                                let ady = ay - y;
+                                const alen = Math.hypot(adx, ady);
+                                if (alen > 0.5) {
+                                    adx /= alen;
+                                    ady /= alen;
+                                    let px = -ady;
+                                    let py = adx;
+                                    if (py > 0) {
+                                        px = -px;
+                                        py = -py;
+                                    }
+                                    ox = px * 22;
+                                    oy = py * 22;
+                                }
+                            }
+                        }
+                    }
+                    if (viewMode === '2d' && subscript === 'x') {
+                        oy = Math.abs(oy) + 10;
+                    }
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    const baseW = ctx.measureText(labelText).width;
+                    ctx.font = 'bold 11px sans-serif';
+                    const subW = ctx.measureText(subscript).width;
+                    const gap = 1;
+                    const startX = x + ox - (baseW + gap + subW) / 2;
+                    const ty = y + oy;
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText(labelText, startX, ty);
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.fillText(subscript, startX + baseW + gap, ty + 5);
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'alphabetic';
+                }
                 ctx.shadowBlur = 0;
                 ctx.globalAlpha = 1;
             }
@@ -1473,6 +1591,17 @@
                 }
             }
 
+            const drawQueue = [];
+            const camDir = viewCamera.position.clone().normalize();
+
+            const componentSymbol = {
+                u: 'u',
+                v: 'v',
+                sum: '(u+v)',
+                diff: '(u-v)',
+                cross: '(u×v)'
+            };
+
             // Draw projections (Background layer)
             ['u', 'v', 'sum', 'diff', 'cross'].forEach(vecName => {
                 if (checks[vecName].checked) {
@@ -1495,23 +1624,19 @@
                         const hoveredAxis = (interactionState.hoveredVector === vecName) ? interactionState.hoveredAxis : null;
                         const isEditable = vecName === 'u' || vecName === 'v';
                         
-                        drawProjections(vecObj, color, activeAxis, hoveredAxis, isEditable);
+                        drawProjections(vecObj, color, activeAxis, hoveredAxis, isEditable, componentSymbol[vecName]);
                     }
                 }
             });
 
-            // Prepare labels for depth sorting
-            const drawQueue = [];
-            const camDir = viewCamera.position.clone().normalize();
-
-            function queueLabel(vEnd, color, labelText, isAxis, alpha = 1) {
+            function queueLabel(vEnd, color, labelText, isAxis, alpha = 1, subscript = null, labelAway = null) {
                 if (vEnd.lengthSq() < 0.000001) return; // Skip very small vectors
                 
                 const dir = vEnd.clone().normalize();
                 const dot = camDir.dot(dir);
                 
                 drawQueue.push({
-                    vEnd, color, labelText, isAxis, dot, alpha
+                    vEnd, color, labelText, isAxis, dot, alpha, subscript, labelAway
                 });
             }
 
@@ -1547,7 +1672,7 @@
 
             // Draw sorted labels
             drawQueue.forEach(item => {
-                drawLabel(item.vEnd, item.color, item.labelText, item.isAxis, item.alpha);
+                drawLabel(item.vEnd, item.color, item.labelText, item.isAxis, item.alpha, item.subscript, item.labelAway);
             });
 
             if (viewMode === '2d' && checks.cross.checked && vecCross.lengthSq() > 1e-8) {
