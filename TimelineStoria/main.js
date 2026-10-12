@@ -121,6 +121,151 @@ let lastLayoutCenterYear = centerYear;
 // Memoria per interpolazione animazioni offset e layout
 const eventStates = new Map();
 
+// Hover: anello dei pallini e ingrandimento del titolo, senza toccare il layout del testo.
+const HOVER_DOT_RING_GROW = 5;
+const HOVER_DOT_RING_GAP = 2;
+const HOVER_LABEL_SCALE = 0.06;
+const hoverAmounts = new Map();
+const grabCursor = { canvas: false, controls: false };
+let hoverTarget = null;
+let pointerInsideCanvas = false;
+let lastPointerX = 0;
+let lastPointerY = 0;
+let appliedCanvasCursor = '';
+
+function hoverAmount(kind, eventId) {
+    return hoverAmounts.get(kind + '\0' + eventId) || 0;
+}
+
+function syncCanvasCursor() {
+    const grabbing = grabCursor.canvas || grabCursor.controls;
+    document.body.classList.toggle('is-grabbing', grabbing);
+    const next = grabbing ? 'grabbing' : (pointerInsideCanvas && hoverTarget ? 'pointer' : 'default');
+    if (next !== appliedCanvasCursor) {
+        appliedCanvasCursor = next;
+        canvas.style.cursor = next;
+    }
+}
+
+function updateHoverTarget(clientX, clientY) {
+    hoverTarget = null;
+    if (!width || !height || !pixelsPerYear) return;
+
+    // Durante il pan il rettangolo resta ancorato all'ultimo layout: lo si sposta
+    // insieme al testo disegnato, così l'hover non resta sul titolo sbagliato.
+    let labelDx = 0;
+    let labelDy = 0;
+    const layoutSnap = lastLayoutSnapshot;
+    if (layoutSnap && pixelsPerYear && layoutSnap.pixelsPerYear) {
+        const zoomRatio = layoutSnap.pixelsPerYear / pixelsPerYear;
+        if (zoomRatio > 0.999 && zoomRatio < 1.001) {
+            const delta = (layoutSnap.centerYear - centerYear) * pixelsPerYear;
+            if (isVertical) labelDy = delta;
+            else labelDx = delta;
+        }
+    }
+
+    for (const [eventId, state] of eventStates) {
+        if (!state.isVisible || !state.shapes || !state.shapes.textRect) continue;
+        const rect = state.shapes.textRect;
+        if (clientX >= rect.left + labelDx && clientX <= rect.right + labelDx &&
+            clientY >= rect.top + labelDy && clientY <= rect.bottom + labelDy) {
+            hoverTarget = { kind: 'label', eventId };
+            return;
+        }
+    }
+
+    const dimension = isVertical ? height : width;
+    const yearsVisible = dimension / pixelsPerYear;
+    const padYears = 24 / pixelsPerYear;
+    const rangeStart = centerYear - yearsVisible / 2 - padYears;
+    const rangeEnd = centerYear + yearsVisible / 2 + padYears;
+    const canvasCenterX = width / 2;
+    const canvasCenterY = height / 2;
+
+    let bestId = null;
+    let bestDist = Infinity;
+
+    const considerDot = (e) => {
+        if (!activeCategories[e.category]) return;
+        if (e.year < rangeStart || e.year > rangeEnd) return;
+        const pos = isVertical
+            ? canvasCenterY + (e.year - centerYear) * pixelsPerYear
+            : canvasCenterX + (e.year - centerYear) * pixelsPerYear;
+        const eventX = isVertical ? canvasCenterX : pos;
+        const eventY = isVertical ? pos : canvasCenterY;
+        const dx = clientX - eventX;
+        const dy = clientY - eventY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const eventId = e.year + '_' + e.title;
+        const state = eventStates.get(eventId);
+        const hasLabel = state && state.isVisible;
+        const dotSize = hasLabel ? state.currentDotSize : ((e.baseDotSize || 4) * 0.6);
+        const outer = hasLabel
+            ? dotSize + HOVER_DOT_RING_GROW
+            : dotSize + HOVER_DOT_RING_GAP + HOVER_DOT_RING_GROW;
+        const hitR = Math.max(outer + 4, 14);
+        if (dist <= hitR && dist < bestDist) {
+            bestDist = dist;
+            bestId = eventId;
+        }
+    };
+
+    const dots = eventsInYearRange(rangeStart, rangeEnd, (e) => activeCategories[e.category]);
+    for (let i = 0; i < dots.length; i++) considerDot(dots[i]);
+
+    if (activeCategories.oggi) {
+        const todayYear = todayDecimalYear();
+        considerDot({
+            year: todayYear,
+            title: 'Oggi',
+            category: 'oggi',
+            baseDotSize: 8
+        });
+    }
+
+    if (bestId) hoverTarget = { kind: 'dot', eventId: bestId };
+}
+
+function advanceHoverAmounts() {
+    if (grabCursor.canvas || grabCursor.controls) {
+        hoverTarget = null;
+    } else if (pointerInsideCanvas) {
+        updateHoverTarget(lastPointerX, lastPointerY);
+    }
+
+    const activeKey = hoverTarget ? (hoverTarget.kind + '\0' + hoverTarget.eventId) : null;
+    if (activeKey && !hoverAmounts.has(activeKey)) hoverAmounts.set(activeKey, 0);
+
+    hoverAmounts.forEach((value, key) => {
+        const target = key === activeKey ? 1 : 0;
+        const next = value + (target - value) * 0.28;
+        if (target === 0 && next < 0.02) hoverAmounts.delete(key);
+        else hoverAmounts.set(key, next);
+    });
+
+    syncCanvasCursor();
+}
+
+function scaleHoveredLabel(eventId, align, lines, fontSize) {
+    const t = hoverAmount('label', eventId);
+    if (t < 0.01 || !lines || !lines.length) return;
+    // Scala il blocco già spezzato: le righe restano quelle del layout.
+    const hoverScale = 1 + t * HOVER_LABEL_SCALE;
+    ctx.font = `bold ${fontSize}px Arial`;
+    let maxW = 0;
+    for (let i = 0; i < lines.length; i++) {
+        const w = ctx.measureText(lines[i]).width;
+        if (w > maxW) maxW = w;
+    }
+    const boxH = lines.length * fontSize * 1.2;
+    const cx = align === 'right' ? -maxW / 2 : (align === 'center' ? 0 : maxW / 2);
+    const cy = boxH / 2;
+    ctx.translate(cx, cy);
+    ctx.scale(hoverScale, hoverScale);
+    ctx.translate(-cx, -cy);
+}
+
 // Funzione helper per formattare i numeri
 function formatYearWithThousands(num) {
     if (Math.abs(num) < 10000) {
@@ -306,13 +451,22 @@ canvas.addEventListener('mousedown', (e) => {
     lastDragYear = centerYear;
 });
 window.addEventListener('mousemove', (e) => {
+    lastPointerX = e.clientX;
+    lastPointerY = e.clientY;
     if (!isDragging) return;
     
     // Controlla se si è mosso sufficientemente per non essere più un click
     if (!hasMoved) {
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-        if (Math.sqrt(dx * dx + dy * dy) > 15) {
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Il pan parte subito; la mano chiusa compare appena il trascinamento è reale.
+        if (!grabCursor.canvas && dist > 4) {
+            grabCursor.canvas = true;
+            hoverTarget = null;
+            syncCanvasCursor();
+        }
+        if (dist > 15) {
             hasMoved = true;
         }
     }
@@ -351,6 +505,12 @@ window.addEventListener('mousemove', (e) => {
 window.addEventListener('mouseup', (e) => {
     if (isDragging) {
         isDragging = false;
+        grabCursor.canvas = false;
+        lastPointerX = e.clientX;
+        lastPointerY = e.clientY;
+        if (pointerInsideCanvas) updateHoverTarget(e.clientX, e.clientY);
+        else hoverTarget = null;
+        syncCanvasCursor();
         
         if (!hasMoved) {
             handleInteraction(e.clientX, e.clientY);
@@ -408,6 +568,22 @@ canvas.addEventListener('wheel', (e) => {
         isZoomingWithWheel = false;
     }, 150); // Attende 150ms di inattività prima di ricalcolare
 }, { passive: false });
+
+canvas.addEventListener('mouseenter', () => {
+    pointerInsideCanvas = true;
+});
+canvas.addEventListener('mousemove', (e) => {
+    pointerInsideCanvas = true;
+    lastPointerX = e.clientX;
+    lastPointerY = e.clientY;
+});
+canvas.addEventListener('mouseleave', () => {
+    pointerInsideCanvas = false;
+    if (!grabCursor.canvas) {
+        hoverTarget = null;
+        syncCanvasCursor();
+    }
+});
 
 // Doppio click su un evento: ricerca Google con la descrizione esatta.
 // Sullo spazio vuoto resta lo zoom, come il pulsante zoom+.
@@ -804,6 +980,9 @@ if (controlsBar) {
         if (!controlsMoved && Math.abs(dx) <= 4) return;
         controlsMoved = true;
         controlsBar.classList.add('grabbing');
+        grabCursor.controls = true;
+        hoverTarget = null;
+        syncCanvasCursor();
         controlsBar.scrollLeft = controlsStartScroll - dx;
     });
 
@@ -811,6 +990,8 @@ if (controlsBar) {
         if (!controlsDragging) return;
         controlsDragging = false;
         controlsBar.classList.remove('grabbing');
+        grabCursor.controls = false;
+        syncCanvasCursor();
         if (!controlsMoved) return;
         const blockClick = (e) => {
             e.preventDefault();
@@ -2431,6 +2612,8 @@ function draw() {
         backgroundDots.push(todayBgEvent);
     }
 
+    advanceHoverAmounts();
+
     backgroundDots.forEach(e => {
         if (!activeCategories[e.category]) return;
         if (e.year < bgVisibleStart || e.year > bgVisibleEnd) return;
@@ -2450,18 +2633,30 @@ function draw() {
 
         const eventX = isVertical ? canvasCenterX : pos;
         const eventY = isVertical ? pos : canvasCenterY;
+        const dotHover = hoverAmount('dot', eventId);
 
         // I pallini ora sono cerchi vuoti (solo outline colorata) se hanno la label
         ctx.globalAlpha = 0.75 * window.labelsAlpha;
-        ctx.beginPath();
-        ctx.arc(eventX, eventY, Math.max(0, dotSize), 0, Math.PI * 2);
         
         if (!hasLabel) {
             // Se NON ha l'etichetta, lo riempiamo (pallino pieno più piccolo) e togliamo o cambiamo lo stroke
+            ctx.beginPath();
+            ctx.arc(eventX, eventY, Math.max(0, dotSize), 0, Math.PI * 2);
             ctx.fillStyle = color;
             ctx.fill();
+            // In hover compare l'anello, che poi si allarga
+            if (dotHover > 0.02) {
+                ctx.globalAlpha = 0.9 * window.labelsAlpha * Math.min(1, dotHover * 1.25);
+                ctx.beginPath();
+                ctx.arc(eventX, eventY, Math.max(0, dotSize) + HOVER_DOT_RING_GAP + dotHover * HOVER_DOT_RING_GROW, 0, Math.PI * 2);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
         } else {
-            // Se ha l'etichetta, usiamo il cerchio vuoto con outline
+            // Se ha l'etichetta, usiamo il cerchio vuoto con outline (più largo in hover)
+            ctx.beginPath();
+            ctx.arc(eventX, eventY, Math.max(0, dotSize + dotHover * HOVER_DOT_RING_GROW), 0, Math.PI * 2);
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
             ctx.stroke();
@@ -2501,6 +2696,8 @@ function draw() {
         const drawOffset = state.currentOffset;
         const drawShift = state.currentShift;
         const color = colors[e.category] || '#fff';
+        const eventId = e.year + '_' + e.title;
+        const lineStartRadius = drawDotSize + hoverAmount('dot', eventId) * HOVER_DOT_RING_GROW;
         
         const labelDotSize = Math.max(2, drawDotSize - 1);
         
@@ -2520,9 +2717,9 @@ function draw() {
             
             let startX = eventX;
             let startY = eventY;
-            if (dist > drawDotSize) {
-                startX += (dx / dist) * drawDotSize;
-                startY += (dy / dist) * drawDotSize;
+            if (dist > lineStartRadius) {
+                startX += (dx / dist) * lineStartRadius;
+                startY += (dy / dist) * lineStartRadius;
             } else {
                 startX = finalX;
                 startY = finalY;
@@ -2558,6 +2755,7 @@ function draw() {
             ctx.save();
             ctx.translate(finalX, bgY);
             ctx.scale(drawScale, drawScale);
+            scaleHoveredLabel(eventId, state.targetOffset < 0 ? 'right' : 'left', lines, eventFontSize);
             
             ctx.font = `bold ${eventFontSize}px Arial`;
             ctx.fillStyle = `rgb(${drawColorIntensity}, ${drawColorIntensity}, ${drawColorIntensity})`;
@@ -2591,9 +2789,9 @@ function draw() {
             
             let startX = eventX;
             let startY = eventY;
-            if (dist > drawDotSize) {
-                startX += (dx / dist) * drawDotSize;
-                startY += (dy / dist) * drawDotSize;
+            if (dist > lineStartRadius) {
+                startX += (dx / dist) * lineStartRadius;
+                startY += (dy / dist) * lineStartRadius;
             } else {
                 startX = finalX;
                 startY = finalY;
@@ -2629,6 +2827,7 @@ function draw() {
             ctx.save();
             ctx.translate(textCenterX, bgY);
             ctx.scale(drawScale, drawScale);
+            scaleHoveredLabel(eventId, 'center', lines, eventFontSize);
             
             ctx.font = `bold ${eventFontSize}px Arial`;
             ctx.fillStyle = `rgb(${drawColorIntensity}, ${drawColorIntensity}, ${drawColorIntensity})`;
