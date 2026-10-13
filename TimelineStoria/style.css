@@ -18,11 +18,13 @@ body, html {
     display: block;
     width: 100%;
     height: 100%;
-    cursor: grab;
+    cursor: default;
 }
 
-#timelineCanvas:active {
-    cursor: grabbing;
+/* Mano che trascina solo mentre un trascinamento è davvero in corso */
+body.is-grabbing,
+body.is-grabbing * {
+    cursor: grabbing !important;
 }
 
 #ui-container {
@@ -53,8 +55,13 @@ body, html {
     align-items: center;
     font-size: 14px;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, color 0.15s, text-shadow 0.15s;
     user-select: none;
+}
+
+.legend-item:hover {
+    color: #fff;
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.95), 0 0 14px rgba(255, 255, 255, 0.7);
 }
 
 .legend-item.disabled {
@@ -84,7 +91,7 @@ body, html {
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
     scrollbar-width: none;
-    cursor: grab;
+    cursor: default;
     user-select: none;
 }
 
@@ -93,7 +100,7 @@ body, html {
 }
 
 .controls button {
-    cursor: grab;
+    cursor: pointer;
 }
 
 .controls.grabbing,
