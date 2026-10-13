@@ -3134,13 +3134,13 @@ const napoleonBiographyEvents = [
 
 const conquistaCanarie = [
     { year: 1312, title: "Riscoperta delle Canarie: il genovese Lanzarotto Malocello approda a Lanzarote", category: "cultura", importance: 4 },
-    { year: toNumber("01/07/1341"), title: "Spedizione di Nicoloso da Recco: il Portogallo finanzia la prima mappatura scientifica delle Canarie", category: "tecnologia", importance: 4.5 },
+    { year: toNumber("01/07/1341"), title: "Spedizione di Nicoloso da Recco: il Portogallo finanzia la prima mappatura scientifica delle Canarie", category: "cultura", importance: 4.5 },
     { year: toNumber("04/09/1479"), title: "Trattato di Alcáçovas: il Portogallo riconosce la sovranità castigliana sulle Canarie", category: "politica", importance: 3.5 },
     { year: 1402, title: "Inizio della conquista delle Canarie: sbarco dei normanni a Lanzarote", category: "politica", importance: 4 },
     { year: 1483, title: "Resa di Gran Canaria: sottomissione definitiva dell'isola alla Corona di Castiglia", category: "politica", importance: 4.5 },
     { year: toNumber("03/05/1493"), title: "Sottomissione di La Palma: Alonso Fernández de Lugo completa la conquista dell'isola", category: "politica", importance: 4.5 },
     { year: 1496, title: "Pace de Los Realejos: fine della conquista di Tenerife e sottomissione definitiva dei Guanci", category: "politica", importance: 5 },
-    { year: toNumber("09/08/1492"), title: "Sosta di Colombo alle Canarie: rifornimento a La Gomera", category: "politica", importance: 4.5 }
+    { year: toNumber("09/08/1492"), title: "Sosta di Colombo alle Canarie: rifornimento a La Gomera", category: "cultura", importance: 4.5 }
 ];
 
 const xerxesEvents = [
