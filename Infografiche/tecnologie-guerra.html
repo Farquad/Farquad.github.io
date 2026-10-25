@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tecnologie nelle guerre</title>
+<style>
+  :root {
+    --bg: #f4f1eb;
+    --ink: #221f1c;
+    --muted: #6d665e;
+    --line: #d8d1c7;
+    --bar: #2c2825;
+    --on-bar: #f4f1eb;
+    --paper: #f4f1eb;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", Calibri, sans-serif;
+  }
+
+  header, footer {
+    max-width: 40rem;
+    padding: 1.5rem 1.4rem 0.2rem;
+  }
+
+  h1 {
+    margin: 0 0 0.35rem;
+    font-family: Palatino, "Palatino Linotype", Georgia, serif;
+    font-weight: 500;
+    font-size: 1.7rem;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  .lead {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+
+  .hint {
+    margin: 0.45rem 0 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+
+  .scroller {
+    margin-top: 1.1rem;
+    max-height: min(78vh, 940px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    overscroll-behavior: contain;
+  }
+
+  .chart {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .names {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    flex: none;
+    width: 11.6rem;
+    background: var(--paper);
+    border-right: 1px solid var(--line);
+  }
+
+  .names .spacer {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    height: 42px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .names .row {
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 0.7rem 0 0.55rem;
+    font-size: 0.8rem;
+    line-height: 1.1;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .plot {
+    flex: 1;
+    min-width: 0;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .plot.dragging { cursor: grabbing; }
+
+  .axis {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: block;
+    background: var(--paper);
+  }
+
+  svg { display: block; overflow: hidden; }
+
+  svg text { font-family: "Segoe UI", Calibri, sans-serif; }
+
+  footer {
+    padding-bottom: 2.4rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  footer p { margin: 0.65rem 0; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media print {
+    .scroller { max-height: none; overflow: visible; }
+    header, footer { max-width: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tecnologie nelle guerre</h1>
+  <p class="lead">Famiglie principali, dall’8000 a.C. a oggi. Ogni segmento dura quanto l’impiego bellico: la lunghezza è proporzionale agli anni.</p>
+  <p class="hint">Trascina le barre per spostarti nel tempo. Pizzica, oppure tieni premuto Ctrl e gira la rotella, per dilatarlo o contrarlo.</p>
+</header>
+
+<div class="scroller" id="scroller">
+  <div class="chart">
+    <div class="names" id="names"></div>
+    <div class="plot">
+      <svg class="axis" id="axis" aria-hidden="true"></svg>
+      <svg id="plot" role="img" aria-labelledby="plot-title plot-desc"></svg>
+    </div>
+  </div>
+</div>
+
+<p class="sr-only" id="plot-title">Asse temporale lineare dall’8000 a.C. al 2026 e segmenti di impiego in guerra.</p>
+
+<footer>
+  <p id="plot-desc">Date convenzionali, arrotondate: segnano l’ingresso nell’uso bellico diffuso e l’uscita da quell’uso. Non segnano l’anno di invenzione né l’uso cerimoniale.</p>
+  <p>Un episodio isolato non allunga la barra. Restano fuori la mitragliatrice Gatling (1862), il sommergibile Hunley (1864), i razzi cinesi medievali e i razzi Congreve. Le armature di bronzo non hanno una riga propria. Gli elmetti del Novecento e le corazze napoleoniche non prolungano le armature di ferro: gli elmetti stanno sulla riga delle protezioni moderne.</p>
+  <p>Sulla riga delle navi in ferro la corazzata classica esce di scena nel 1945; portaerei e sommergibili hanno righe proprie. Elica e jet sono insieme sulla riga degli aerei. I droni di sola ricognizione, prima del 2001, non aprono la riga dei droni armati. Le armi nucleari restano negli arsenali dal 1945 e in combattimento sono state usate solo in quell’anno. Le armi chimiche compaiono a Ypres (1915–1918) e poi a tratti fino alla guerra Iran-Iraq (1935–1988).</p>
+</footer>
+
+<script>
+(function () {
+  var START = -8000;
+  var END = 2026;
+  var SPAN = END - START;
+  var BASE_PX = 5200 / SPAN;
+  var MAX_PX = 36;
+  var plotW = 1;
+  var pxPerYear = BASE_PX;
+  var viewStart = START;
+  var axisH = 42;
+  var rowH = 32;
+  var barH = 14;
+  var frame = 0;
+
+  var rows = [
+    { name: "Archi", spans: [[-8000, 1700]] },
+    { name: "Fortificazioni", spans: [[-7000, END]], open: true },
+    { name: "Lance e picche", spans: [[-3000, 1700]] },
+    { name: "Scudi", spans: [[-3000, 1600]] },
+    { name: "Navi a remi e a vela", spans: [[-2500, 1860]] },
+    { name: "Carri da guerra", spans: [[-1700, -300]] },
+    { name: "Spade", spans: [[-1600, 1918]] },
+    { name: "Cavalleria", spans: [[-900, 1945]] },
+    { name: "Armature di ferro", spans: [[-800, 1700]] },
+    { name: "Balestre", spans: [[-400, 1600]] },
+    { name: "Catapulte e trabocchi", spans: [[-400, 1450]] },
+    { name: "Cannoni", spans: [[1300, END]], open: true },
+    { name: "Moschetti", spans: [[1500, 1865]] },
+    { name: "Fucili", spans: [[1840, END]], open: true },
+    { name: "Mine", spans: [[1855, END]], open: true },
+    { name: "Navi in ferro", spans: [[1860, END]], open: true },
+    { name: "Mitragliatori", spans: [[1884, END]], open: true },
+    { name: "Radio", spans: [[1904, END]], open: true },
+    { name: "Aerei", spans: [[1911, END]], open: true },
+    { name: "Sommergibili", spans: [[1914, END]], open: true },
+    { name: "Armi chimiche", spans: [[1915, 1918], [1935, 1988]] },
+    { name: "Elmetti e protezioni", spans: [[1915, END]], open: true },
+    { name: "Carri armati", spans: [[1916, END]], open: true },
+    { name: "Radar", spans: [[1940, END]], open: true },
+    { name: "Portaerei", spans: [[1940, END]], open: true },
+    { name: "Razzi e missili", spans: [[1941, END]], open: true },
+    { name: "Armi nucleari", spans: [[1945, END]], open: true, note: "in combattimento solo nel 1945" },
+    { name: "Elicotteri", spans: [[1950, END]], open: true },
+    { name: "Droni armati", spans: [[2001, END]], open: true }
+  ];
+
+  var TICK_STEPS = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000, 2000, 5000];
+
+  function minScale() {
+    return plotW / SPAN;
+  }
+
+  function clampScale(value) {
+    return Math.min(MAX_PX, Math.max(minScale(), value));
+  }
+
+  function clampView() {
+    pxPerYear = clampScale(pxPerYear);
+    var visible = plotW / pxPerYear;
+    if (visible >= SPAN - 0.5) {
+      pxPerYear = plotW / SPAN;
+      viewStart = START;
+      return;
+    }
+    if (viewStart < START) viewStart = START;
+    var maxStart = END - visible;
+    if (viewStart > maxStart) viewStart = maxStart;
+  }
+
+  function xOf(year) {
+    return (year - viewStart) * pxPerYear;
+  }
+
+  function tickStep() {
+    var i;
+    for (i = 0; i < TICK_STEPS.length; i++) {
+      if (TICK_STEPS[i] * pxPerYear >= 84) return TICK_STEPS[i];
+    }
+    return 5000;
+  }
+
+  function fmt(year) {
+    return year < 0 ? (-year) + " a.C." : String(year);
+  }
+
+  function endLabel(row, year) {
+    return row.open && year === END ? "oggi" : fmt(year);
+  }
+
+  var ns = "http://www.w3.org/2000/svg";
+
+  function el(tag, attrs) {
+    var node = document.createElementNS(ns, tag);
+    Object.keys(attrs).forEach(function (key) {
+      node.setAttribute(key, attrs[key]);
+    });
+    return node;
+  }
+
+  var axis = document.getElementById("axis");
+  var svg = document.getElementById("plot");
+  var names = document.getElementById("names");
+  var plotEl = svg.parentNode;
+  var scroller = document.getElementById("scroller");
+  var plotH = rows.length * rowH;
+
+  var spacer = document.createElement("div");
+  spacer.className = "spacer";
+  names.appendChild(spacer);
+  rows.forEach(function (row) {
+    var name = document.createElement("div");
+    name.className = "row";
+    name.textContent = row.name;
+    names.appendChild(name);
+  });
+
+  function textWidth(content, size) {
+    var node = el("text", {
+      y: "0",
+      fill: "#000",
+      "font-size": String(size)
+    });
+    node.textContent = content;
+    svg.appendChild(node);
+    var w = node.getBBox().width;
+    svg.removeChild(node);
+    return w;
+  }
+
+  function placeOnBar(content, x, y) {
+    if (x > plotW || x < -80) return;
+    var label = el("text", {
+      x: x,
+      y: y,
+      fill: "#f4f1eb",
+      "font-size": "11",
+      "dominant-baseline": "middle"
+    });
+    label.textContent = content;
+    svg.appendChild(label);
+  }
+
+  function placeLeft(content, anchor, y) {
+    var label = el("text", {
+      y: y,
+      fill: "#221f1c",
+      "font-size": "12",
+      "dominant-baseline": "middle"
+    });
+    label.textContent = content;
+    svg.appendChild(label);
+    var w = label.getBBox().width;
+    var x = anchor - 10 - w;
+    if (anchor >= 0 && x < 2) x = 2;
+    if (x + w < 0 || x > plotW) {
+      svg.removeChild(label);
+      return;
+    }
+    label.setAttribute("x", String(x));
+    var b = label.getBBox();
+    var bg = el("rect", {
+      x: b.x - 4,
+      y: b.y - 1,
+      width: b.width + 8,
+      height: b.height + 2,
+      fill: "#f4f1eb"
+    });
+    svg.insertBefore(bg, label);
+  }
+
+  function render() {
+    axis.replaceChildren();
+    svg.replaceChildren();
+    axis.setAttribute("width", String(plotW));
+    axis.setAttribute("height", String(axisH));
+    axis.setAttribute("viewBox", "0 0 " + plotW + " " + axisH);
+    svg.setAttribute("width", String(plotW));
+    svg.setAttribute("height", String(plotH));
+    svg.setAttribute("viewBox", "0 0 " + plotW + " " + plotH);
+
+    var step = tickStep();
+    var year = Math.round(Math.ceil((viewStart - 1e-6) / step) * step);
+    var viewEnd = viewStart + plotW / pxPerYear;
+    var lastLabelRight = -Infinity;
+    var guard = 0;
+    while (year <= viewEnd + step && guard < 80) {
+      guard += 1;
+      var x = xOf(year);
+      if (x >= -40 && x <= plotW + 40) {
+        svg.appendChild(el("line", {
+          x1: x, x2: x, y1: 0, y2: plotH,
+          stroke: "#e3dcd3", "stroke-width": "1"
+        }));
+        axis.appendChild(el("line", {
+          x1: x, x2: x, y1: 30, y2: 40,
+          stroke: "#8a8178", "stroke-width": "1"
+        }));
+        var label = el("text", {
+          y: "20",
+          fill: "#6d665e",
+          "font-size": "11"
+        });
+        label.textContent = fmt(year);
+        axis.appendChild(label);
+        var w = label.getBBox().width;
+        var left = x - w / 2;
+        if (left < 0) left = 0;
+        if (left + w > plotW - 2) left = plotW - 2 - w;
+        if (left < lastLabelRight + 8) {
+          axis.removeChild(label);
+        } else {
+          label.setAttribute("x", String(left));
+          lastLabelRight = left + w;
+        }
+      }
+      year += step;
+    }
+
+    axis.appendChild(el("line", {
+      x1: 0, x2: plotW, y1: 40.5, y2: 40.5,
+      stroke: "#cfc6bb", "stroke-width": "1"
+    }));
+
+    rows.forEach(function (row, i) {
+      var top = i * rowH;
+      var mid = top + rowH / 2;
+      var barY = mid - barH / 2;
+      svg.appendChild(el("rect", {
+        x: 0, y: barY, width: plotW, height: barH,
+        fill: "#2c2825", "fill-opacity": "0.1"
+      }));
+      row.spans.forEach(function (span) {
+        var x = xOf(span[0]);
+        var w = Math.max(xOf(span[1]) - x, 2);
+        if (x + w < 0 || x > plotW) return;
+        svg.appendChild(el("rect", {
+          x: x, y: barY, width: w, height: barH, fill: "#2c2825"
+        }));
+      });
+
+      var first = row.spans[0];
+      var last = row.spans[row.spans.length - 1];
+      var barStart = xOf(first[0]);
+      var barEnd = xOf(last[1]);
+      var startText = fmt(first[0]);
+      var finishText = endLabel(row, last[1]);
+
+      if (row.spans.length > 1) {
+        placeLeft(row.spans.map(function (span) {
+          return fmt(span[0]) + "–" + fmt(span[1]);
+        }).join("  ·  "), barStart, mid);
+        return;
+      }
+
+      var startW = textWidth(startText, 11);
+      var endW = textWidth(finishText, 11);
+      var barW = Math.max(barEnd - barStart, 2);
+      if (barW >= 120 && barW >= startW + endW + 36) {
+        placeOnBar(startText, barStart + 8, mid);
+        placeOnBar(finishText, barStart + barW - 8 - endW, mid);
+        return;
+      }
+
+      var combined = startText + "–" + finishText;
+      if (row.note) combined += "  ·  " + row.note;
+      placeLeft(combined, barStart, mid);
+    });
+  }
+
+  function requestRender() {
+    if (frame) return;
+    frame = requestAnimationFrame(function () {
+      frame = 0;
+      render();
+    });
+  }
+
+  function zoomAt(focalX, factor) {
+    if (!isFinite(factor) || factor <= 0) return;
+    var year = viewStart + focalX / pxPerYear;
+    pxPerYear = clampScale(pxPerYear * factor);
+    viewStart = year - focalX / pxPerYear;
+    clampView();
+    requestRender();
+  }
+
+  var pointers = new Map();
+  var pinch = null;
+
+  function pinchSnapshot() {
+    var pts = Array.from(pointers.values());
+    return {
+      dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y),
+      midX: (pts[0].x + pts[1].x) / 2,
+      midY: (pts[0].y + pts[1].y) / 2
+    };
+  }
+
+  plotEl.addEventListener("pointerdown", function (e) {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { plotEl.setPointerCapture(e.pointerId); } catch (err) {}
+    if (pointers.size >= 2) pinch = pinchSnapshot();
+    if (pointers.size === 1) plotEl.classList.add("dragging");
+  });
+
+  plotEl.addEventListener("pointermove", function (e) {
+    if (!pointers.has(e.pointerId)) return;
+    var prev = pointers.get(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size >= 2 && pinch) {
+      var next = pinchSnapshot();
+      if (pinch.dist > 0 && next.dist > 0) {
+        viewStart -= (next.midX - pinch.midX) / pxPerYear;
+        var rect = plotEl.getBoundingClientRect();
+        var focalX = next.midX - rect.left;
+        var focalYear = viewStart + focalX / pxPerYear;
+        pxPerYear = clampScale(pxPerYear * (next.dist / pinch.dist));
+        viewStart = focalYear - focalX / pxPerYear;
+        clampView();
+        requestRender();
+      }
+      scroller.scrollTop -= next.midY - pinch.midY;
+      pinch = next;
+      e.preventDefault();
+      return;
+    }
+    if (pointers.size === 1) {
+      var dx = e.clientX - prev.x;
+      var dy = e.clientY - prev.y;
+      viewStart -= dx / pxPerYear;
+      clampView();
+      scroller.scrollTop -= dy;
+      requestRender();
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (pointers.size === 1) pinch = null;
+    if (pointers.size === 0) plotEl.classList.remove("dragging");
+  }
+
+  plotEl.addEventListener("pointerup", endPointer);
+  plotEl.addEventListener("pointercancel", endPointer);
+
+  plotEl.addEventListener("wheel", function (e) {
+    var rect = plotEl.getBoundingClientRect();
+    if (e.ctrlKey) {
+      e.preventDefault();
+      var dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      zoomAt(e.clientX - rect.left, Math.exp(-dy * 0.0016));
+      return;
+    }
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      e.preventDefault();
+      var dx = e.deltaMode === 1 ? e.deltaX * 16 : e.deltaX;
+      viewStart += dx / pxPerYear;
+      clampView();
+      requestRender();
+    }
+  }, { passive: false });
+
+  plotEl.addEventListener("gesturestart", function (e) {
+    e.preventDefault();
+  });
+
+  plotW = Math.max(1, plotEl.clientWidth);
+  pxPerYear = clampScale(BASE_PX);
+  viewStart = START;
+  clampView();
+  render();
+
+  if (typeof ResizeObserver === "function") {
+    new ResizeObserver(function () {
+      var next = Math.max(1, plotEl.clientWidth);
+      if (Math.abs(next - plotW) < 1) return;
+      var center = viewStart + (plotW / 2) / pxPerYear;
+      plotW = next;
+      pxPerYear = clampScale(pxPerYear);
+      viewStart = center - (plotW / 2) / pxPerYear;
+      clampView();
+      render();
+    }).observe(plotEl);
+  }
+})();
+</script>
+</body>
+</html>

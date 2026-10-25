@@ -1542,7 +1542,7 @@ const wikiTechEvents = [
     { year: 1733, title: "Invenzione della spoletta volante (John Kay)", category: "tecnologia", importance: 3 },
     { year: toNumber("17/07/1761"), title: "Apertura del Bridgewater Canal (inizio dell'era dei canali in Inghilterra)", category: "tecnologia", importance: 3 },
     { year: 1764, title: "Invenzione del filatoio meccanico Spinning Jenny (James Hargreaves)", category: "tecnologia", importance: 2.5 },
-    { year: toNumber("02/07/1779"), title: "Completamento dell'Iron Bridge (primo ponte in ghisa al mondo)", category: "tecnologia", importance: 3 },
+    { year: toNumber("02/07/1779"), title: "Completamento dell'Iron Bridge in Inghilterra, primo ponte in ghisa al mondo", category: "tecnologia", importance: 3 },
     { year: 1787, title: "Invenzione del telaio meccanico (Edmund Cartwright)", category: "tecnologia", importance: 3 },
     { year: toNumber("17/08/1807"), title: "Il battello a vapore 'Clermont' di Robert Fulton inizia il servizio commerciale", category: "tecnologia", importance: 2.5 },
     { year: toNumber("21/06/1834"), title: "Cyrus McCormick brevetta la mietitrice meccanica (rivoluzione agricola industriale)", category: "tecnologia", importance: 2.5 },

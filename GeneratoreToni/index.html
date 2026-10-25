@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="../theme.js"></script>
+  <title>Generatore di toni</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #f0883e;
+      --accent-dim: #9e4c16;
+      --danger: #f85149;
+      --input: #21262d;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      height: 100%;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      background: var(--bg);
+      min-width: 0;
+      min-height: 0;
+      overscroll-behavior: none;
+    }
+
+    #simCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px 14px 28px;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      min-height: 0;
+      overflow-x: clip;
+      overflow-y: auto;
+    }
+
+    .sidebar h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .section {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #1a2129;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .section.objects-section {
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .section-header:hover { background: rgba(255,255,255,0.03); }
+
+    .section-body {
+      padding: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .section.collapsed .section-body { display: none; }
+    .section.collapsed .collapse-btn { transform: rotate(-90deg); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--input);
+      color: var(--text);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn:hover {
+      background: #2a3139;
+      border-color: var(--muted);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover { background: #b85a1c; }
+    .btn-primary:disabled:hover { background: var(--accent-dim); }
+
+    .transport {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .btn-icon {
+      width: 38px;
+      flex: 0 0 38px;
+      height: 38px;
+      padding: 0;
+    }
+
+    .btn-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+      display: block;
+    }
+
+    .btn-icon .icon-play { display: none; }
+    .btn-icon .icon-pause { display: block; }
+    .btn-icon:not([aria-pressed="true"]) .icon-play { display: block; }
+    .btn-icon:not([aria-pressed="true"]) .icon-pause { display: none; }
+
+    .transport .btn-icon[aria-pressed="true"] {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .transport-speed {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .transport-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .transport-speed input[type="range"] {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .transport-speed .value {
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      font-size: 0.85rem;
+      min-width: 3.2em;
+      text-align: right;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .control:last-child { margin-bottom: 0; }
+
+    .control.control-switch {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .control.control-switch > label {
+      flex-shrink: 0;
+      font-size: 0.85rem;
+    }
+
+    .control.control-switch .segmented {
+      width: 70%;
+      flex: 0 0 70%;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .control-row .value {
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+    }
+
+    .freq-readout {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .freq-readout input[type="number"] {
+      width: 5.4em;
+      background: var(--bg);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.85rem;
+    }
+
+    .note-name { color: var(--text); }
+
+    .segmented {
+      display: flex;
+      align-items: stretch;
+      position: relative;
+      isolation: isolate;
+      width: 100%;
+      min-height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--bg);
+      cursor: pointer;
+      flex-shrink: 0;
+      touch-action: manipulation;
+    }
+
+    .segmented label {
+      position: relative;
+      z-index: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1 1 0;
+      align-self: stretch;
+      min-height: 32px;
+      text-align: center;
+      font-size: 0.8rem;
+      padding: 6px 4px;
+      cursor: pointer;
+      user-select: none;
+      color: var(--muted);
+      border-right: 1px solid var(--border);
+      transition: background 0.15s, color 0.15s;
+      pointer-events: none;
+    }
+
+    .segmented label:last-child { border-right: none; }
+
+    .segmented input {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .segmented span { pointer-events: none; }
+
+    .segmented label:has(input:checked) {
+      background: var(--accent-dim);
+      color: var(--text);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .beats {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      margin-top: 8px;
+    }
+
+    .empty-hint {
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 8px 2px;
+    }
+
+    .object-boxes {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      padding-bottom: 12px;
+    }
+
+    .obj-box {
+      border: 1px solid var(--border);
+      border-left-width: 4px;
+      border-left-color: var(--box-color, var(--accent));
+      border-radius: 8px;
+      background: var(--input);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .obj-box-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .obj-box-header:hover { background: rgba(255,255,255,0.03); }
+
+    .collapse-btn {
+      width: 22px;
+      height: 22px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.7rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .collapse-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+    .obj-box.collapsed .collapse-btn { transform: rotate(-90deg); }
+
+    .obj-title {
+      flex: 1;
+      font-size: 0.88rem;
+      font-weight: 600;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .remove {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.15rem;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .remove:hover {
+      background: rgba(248, 81, 73, 0.2);
+      color: var(--danger);
+    }
+
+    .obj-box-body {
+      padding: 10px 10px 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .obj-box.collapsed .obj-box-body { display: none; }
+
+    .obj-box .control.control-switch > label {
+      max-width: 48%;
+      line-height: 1.25;
+    }
+
+    .obj-box .control.control-switch .segmented {
+      width: 46%;
+      flex: 0 0 46%;
+    }
+
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    @media (max-width: 820px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(140px, 1fr) minmax(160px, 42vh);
+      }
+      .sidebar {
+        border-left: none;
+        border-top: 1px solid var(--border);
+      }
+    }
+
+    @media (max-width: 820px) and (orientation: landscape) {
+      .app {
+        grid-template-columns: minmax(0, 1fr) min(320px, 42vw);
+        grid-template-rows: 1fr;
+      }
+      .sidebar {
+        border-left: 1px solid var(--border);
+        border-top: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="canvas-wrap">
+      <canvas id="simCanvas"></canvas>
+    </div>
+    <aside class="sidebar">
+      <div class="section" id="simSection">
+        <div class="section-header" role="button" tabindex="0" aria-expanded="true" aria-controls="simSectionBody">
+          <button type="button" class="collapse-btn" title="Espandi / comprimi" tabindex="-1" aria-hidden="true">▼</button>
+          <h2>Riproduzione</h2>
+        </div>
+        <div class="section-body" id="simSectionBody">
+          <div class="transport" role="group" aria-label="Riproduzione">
+            <button type="button" class="btn btn-icon" id="playPauseBtn" aria-pressed="false" title="Play" aria-label="Play">
+              <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+            </button>
+            <div class="transport-speed">
+              <span class="transport-label">Volume</span>
+              <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.3" aria-label="Volume" />
+              <span class="value" id="volumeValue">30%</span>
+            </div>
+          </div>
+          <div class="control control-switch">
+            <label>Onde singole</label>
+            <div class="segmented" role="radiogroup" aria-label="Onde singole">
+              <label>
+                <input type="radio" name="parts" value="on" checked />
+                <span>Sì</span>
+              </label>
+              <label>
+                <input type="radio" name="parts" value="off" />
+                <span>No</span>
+              </label>
+            </div>
+          </div>
+          <p class="hint beats" id="beats" hidden></p>
+          <p class="hint">Il grafico è la somma delle onde che stanno suonando, su quattro periodi del tono più grave. La pausa ferma insieme suono e immagine.</p>
+        </div>
+      </div>
+
+      <div class="section objects-section" id="objectsSection">
+        <div class="section-header" role="button" tabindex="0" aria-expanded="true" aria-controls="objectsSectionBody">
+          <button type="button" class="collapse-btn" title="Espandi / comprimi" tabindex="-1" aria-hidden="true">▼</button>
+          <h2>Toni</h2>
+        </div>
+        <div class="section-body" id="objectsSectionBody">
+          <button type="button" class="btn btn-primary" id="addBtn">+ Aggiungi tono</button>
+          <p class="hint" style="margin-top:8px">Massimo 8 toni. Il ritardo è contato dall’inizio della riproduzione: un tono entra quando il tempo di play raggiunge quel valore.</p>
+          <div class="object-boxes" id="objectBoxes"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+(() => {
+  "use strict";
+
+  const F_MIN = 20;
+  const F_MAX = 4000;
+  const MAX_TONES = 8;
+  const ACCENT = "#f0883e";
+  const MUTED = "#8b949e";
+  const PALETTE = [
+    "#4c6ef5", "#f08c00", "#37b24d", "#e64980", "#15aabf",
+    "#ae3ec9", "#fab005", "#fd7e14"
+  ];
+  const NOTE_NAMES = ["Do", "Do♯", "Re", "Re♯", "Mi", "Fa", "Fa♯", "Sol", "Sol♯", "La", "La♯", "Si"];
+
+  const canvas = document.getElementById("simCanvas");
+  const ctx2d = canvas.getContext("2d");
+  const boxesEl = document.getElementById("objectBoxes");
+  const addBtn = document.getElementById("addBtn");
+  const playPauseBtn = document.getElementById("playPauseBtn");
+  const volumeSlider = document.getElementById("volumeSlider");
+  const volumeValue = document.getElementById("volumeValue");
+  const beatsEl = document.getElementById("beats");
+
+  let audioCtx = null;
+  let master = null;
+  let origin = 0;
+  let playing = false;
+  let audioBusy = false;
+  let showParts = true;
+  let masterVol = 0.3;
+  let nextId = 1;
+  const tones = [];
+
+  function clamp(v, a, b) {
+    if (!Number.isFinite(v)) return a;
+    return Math.min(b, Math.max(a, v));
+  }
+
+  function now() {
+    return audioCtx ? audioCtx.currentTime : 0;
+  }
+
+  function elapsedAt(t) {
+    return audioCtx ? t - origin : t;
+  }
+
+  function argAt(tone, t) {
+    return 2 * Math.PI * tone.f * (t - tone.tRef) + tone.phaseAtRef;
+  }
+
+  function isSounding(tone, t) {
+    return tone.enabled && tone.amp > 0 && elapsedAt(t) >= tone.delay;
+  }
+
+  function noteLabel(freq) {
+    const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+    const n = Math.max(0, Math.min(127, midi));
+    const name = NOTE_NAMES[((n % 12) + 12) % 12];
+    const octave = Math.floor(n / 12) - 1;
+    return name + octave;
+  }
+
+  function formatFreq(f) {
+    return (Math.round(f * 100) / 100).toFixed(2);
+  }
+
+  function freqToSlider(f) {
+    const t = Math.log(clamp(f, F_MIN, F_MAX) / F_MIN) / Math.log(F_MAX / F_MIN);
+    return t * 1000;
+  }
+
+  function sliderToFreq(v) {
+    const t = clamp(v, 0, 1000) / 1000;
+    return F_MIN * Math.pow(F_MAX / F_MIN, t);
+  }
+
+  function unusedColor() {
+    const used = new Set(tones.map((tone) => tone.color));
+    for (const color of PALETTE) {
+      if (!used.has(color)) return color;
+    }
+    return PALETTE[tones.length % PALETTE.length];
+  }
+
+  function waveForPhase(phase) {
+    const real = new Float32Array(2);
+    const imag = new Float32Array(2);
+    real[1] = Math.sin(phase);
+    imag[1] = Math.cos(phase);
+    return audioCtx.createPeriodicWave(real, imag, { disableNormalization: true });
+  }
+
+  function scheduleGain(tone) {
+    if (!audioCtx || !tone.gain) return;
+    const t = audioCtx.currentTime;
+    const g = tone.gain.gain;
+    const startAt = origin + tone.delay;
+    g.cancelScheduledValues(t);
+    if (!tone.enabled || tone.amp <= 0) {
+      g.setValueAtTime(g.value, t);
+      g.linearRampToValueAtTime(0, t + 0.02);
+      return;
+    }
+    if (t + 0.02 >= startAt) {
+      g.setValueAtTime(g.value, t);
+      g.linearRampToValueAtTime(tone.amp, t + 0.02);
+      return;
+    }
+    g.setValueAtTime(0, t);
+    g.setValueAtTime(0, startAt);
+    g.linearRampToValueAtTime(tone.amp, startAt + 0.015);
+  }
+
+  function attachAudio(tone) {
+    const t = audioCtx.currentTime;
+    const arg = argAt(tone, t);
+    tone.tRef = t;
+    tone.phaseAtRef = arg;
+    tone.gain = audioCtx.createGain();
+    tone.gain.gain.value = 0;
+    tone.gain.connect(master);
+    const osc = audioCtx.createOscillator();
+    osc.frequency.setValueAtTime(tone.f, t);
+    osc.setPeriodicWave(waveForPhase(arg));
+    osc.connect(tone.gain);
+    osc.start(t);
+    tone.osc = osc;
+    scheduleGain(tone);
+  }
+
+  function rebuildOsc(tone) {
+    if (!audioCtx || !tone.gain) return;
+    const t = audioCtx.currentTime;
+    const arg = argAt(tone, t);
+    tone.tRef = t;
+    tone.phaseAtRef = arg;
+    if (tone.osc) {
+      try { tone.osc.stop(t); } catch (e) {}
+      try { tone.osc.disconnect(); } catch (e) {}
+    }
+    const osc = audioCtx.createOscillator();
+    osc.frequency.setValueAtTime(tone.f, t);
+    osc.setPeriodicWave(waveForPhase(arg));
+    osc.connect(tone.gain);
+    osc.start(t);
+    tone.osc = osc;
+  }
+
+  function detachAudio(tone) {
+    if (!tone.osc && !tone.gain) return;
+    const t = audioCtx ? audioCtx.currentTime : 0;
+    if (tone.osc) {
+      try { tone.osc.stop(t); } catch (e) {}
+      try { tone.osc.disconnect(); } catch (e) {}
+      tone.osc = null;
+    }
+    if (tone.gain) {
+      try { tone.gain.disconnect(); } catch (e) {}
+      tone.gain = null;
+    }
+  }
+
+  function createContext() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    origin = audioCtx.currentTime;
+    master = audioCtx.createGain();
+    master.gain.value = masterVol;
+    master.connect(audioCtx.destination);
+    for (const tone of tones) {
+      const arg = argAt(tone, 0);
+      tone.tRef = origin;
+      tone.phaseAtRef = arg;
+      attachAudio(tone);
+    }
+  }
+
+  async function startAudio() {
+    if (!audioCtx) createContext();
+    else if (audioCtx.state !== "running") await audioCtx.resume();
+    if (master) master.gain.setValueAtTime(masterVol, audioCtx.currentTime);
+    for (const tone of tones) scheduleGain(tone);
+  }
+
+  function syncTransport() {
+    playPauseBtn.setAttribute("aria-pressed", playing ? "true" : "false");
+    const label = playing ? "Pausa" : "Play";
+    playPauseBtn.title = label;
+    playPauseBtn.setAttribute("aria-label", label);
+  }
+
+  function updateAddBtn() {
+    const full = tones.length >= MAX_TONES;
+    addBtn.disabled = full;
+    addBtn.title = full ? "Massimo 8 toni" : "Aggiungi tono";
+  }
+
+  function updateBeats() {
+    const active = tones.filter((tone) => tone.enabled);
+    if (active.length !== 2) {
+      beatsEl.hidden = true;
+      beatsEl.textContent = "";
+      return;
+    }
+    const df = Math.abs(active[0].f - active[1].f);
+    beatsEl.hidden = false;
+    beatsEl.textContent = "Battimenti: " + df.toFixed(2) + " Hz";
+  }
+
+  function updateToneLabels(tone) {
+    const box = boxesEl.querySelector('.obj-box[data-id="' + tone.id + '"]');
+    if (!box) return;
+    const note = noteLabel(tone.f);
+    box.querySelector(".obj-title").textContent = "Tono " + tone.id + " · " + note;
+    box.querySelector("[data-val=note]").textContent = note;
+    const num = box.querySelector("[data-prop=f-num]");
+    if (document.activeElement !== num) num.value = formatFreq(tone.f);
+    const slider = box.querySelector("[data-prop=f-slider]");
+    if (document.activeElement !== slider) slider.value = String(freqToSlider(tone.f));
+    box.querySelector("[data-val=amp]").textContent = tone.amp.toFixed(2);
+    box.querySelector("[data-val=phase]").textContent = Math.round(tone.userPhase * 180 / Math.PI) + "°";
+    box.querySelector("[data-val=delay]").textContent = tone.delay.toFixed(1) + " s";
+  }
+
+  function setFreq(tone, f) {
+    const t = now();
+    const arg = argAt(tone, t);
+    tone.f = clamp(f, F_MIN, F_MAX);
+    tone.tRef = t;
+    tone.phaseAtRef = arg;
+    if (tone.osc) tone.osc.frequency.setValueAtTime(tone.f, audioCtx.currentTime);
+    updateToneLabels(tone);
+    updateBeats();
+  }
+
+  function setAmp(tone, amp) {
+    tone.amp = clamp(amp, 0, 1);
+    scheduleGain(tone);
+    updateToneLabels(tone);
+  }
+
+  function setDelay(tone, delay) {
+    tone.delay = clamp(delay, 0, 60);
+    scheduleGain(tone);
+    updateToneLabels(tone);
+  }
+
+  function setEnabled(tone, on) {
+    tone.enabled = on;
+    scheduleGain(tone);
+    updateBeats();
+  }
+
+  function setPhase(tone, deg) {
+    const next = clamp(deg, 0, 360) * Math.PI / 180;
+    const delta = next - tone.userPhase;
+    tone.userPhase = next;
+    tone.phaseAtRef += delta;
+    if (tone.osc) rebuildOsc(tone);
+    updateToneLabels(tone);
+  }
+
+  function toneCardHtml(tone) {
+    const col = tone.collapsed ? " collapsed" : "";
+    const note = noteLabel(tone.f);
+    return `
+      <div class="obj-box${col}" data-id="${tone.id}" style="--box-color:${tone.color}">
+        <div class="obj-box-header">
+          <button type="button" class="collapse-btn" title="Espandi / comprimi" tabindex="-1" aria-hidden="true">▼</button>
+          <span class="obj-title">Tono ${tone.id} · ${note}</span>
+          <button type="button" class="remove" title="Rimuovi">×</button>
+        </div>
+        <div class="obj-box-body">
+          <div class="control control-switch">
+            <label>Suona</label>
+            <div class="segmented" role="radiogroup" aria-label="Suona">
+              <label>
+                <input type="radio" name="suona-${tone.id}" value="on" data-flag="enabled" ${tone.enabled ? "checked" : ""} />
+                <span>Sì</span>
+              </label>
+              <label>
+                <input type="radio" name="suona-${tone.id}" value="off" data-flag="enabled" ${tone.enabled ? "" : "checked"} />
+                <span>No</span>
+              </label>
+            </div>
+          </div>
+          <div class="control">
+            <div class="control-row">
+              <label for="delay-${tone.id}">Entra dopo</label>
+              <span class="value" data-val="delay">${tone.delay.toFixed(1)} s</span>
+            </div>
+            <input type="range" id="delay-${tone.id}" data-prop="delay" min="0" max="60" step="0.1" value="${tone.delay}" aria-label="Entra dopo" />
+          </div>
+          <div class="control">
+            <div class="control-row">
+              <label for="f-${tone.id}">Frequenza</label>
+              <span class="value freq-readout">
+                <input type="number" id="f-${tone.id}" data-prop="f-num" min="${F_MIN}" max="${F_MAX}" step="0.01" value="${formatFreq(tone.f)}" inputmode="decimal" autocomplete="off" aria-label="Frequenza in hertz" />
+                <span>Hz</span>
+                <span class="note-name" data-val="note">${note}</span>
+              </span>
+            </div>
+            <input type="range" data-prop="f-slider" min="0" max="1000" step="any" value="${freqToSlider(tone.f)}" aria-label="Frequenza" />
+          </div>
+          <div class="control">
+            <div class="control-row">
+              <label for="amp-${tone.id}">Ampiezza</label>
+              <span class="value" data-val="amp">${tone.amp.toFixed(2)}</span>
+            </div>
+            <input type="range" id="amp-${tone.id}" data-prop="amp" min="0" max="1" step="0.01" value="${tone.amp}" aria-label="Ampiezza" />
+          </div>
+          <div class="control">
+            <div class="control-row">
+              <label for="phase-${tone.id}">Fase</label>
+              <span class="value" data-val="phase">${Math.round(tone.userPhase * 180 / Math.PI)}°</span>
+            </div>
+            <input type="range" id="phase-${tone.id}" data-prop="phase" min="0" max="360" step="1" value="${Math.round(tone.userPhase * 180 / Math.PI)}" aria-label="Fase" />
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderBoxes() {
+    if (!tones.length) {
+      boxesEl.innerHTML = '<p class="empty-hint">Nessun tono.</p>';
+      return;
+    }
+    boxesEl.innerHTML = tones.map(toneCardHtml).join("");
+  }
+
+  function addTone() {
+    if (tones.length >= MAX_TONES) return;
+    const prev = tones[tones.length - 1];
+    const tone = {
+      id: nextId++,
+      f: prev ? clamp(prev.f + 2, F_MIN, F_MAX) : 440,
+      amp: 0.5,
+      userPhase: 0,
+      phaseAtRef: 0,
+      tRef: now(),
+      delay: 0,
+      enabled: true,
+      collapsed: false,
+      color: unusedColor(),
+      osc: null,
+      gain: null
+    };
+    tones.push(tone);
+    if (audioCtx) {
+      tone.tRef = origin;
+      tone.phaseAtRef = tone.userPhase;
+      attachAudio(tone);
+    }
+    renderBoxes();
+    updateAddBtn();
+    updateBeats();
+  }
+
+  function removeTone(id) {
+    const index = tones.findIndex((tone) => tone.id === id);
+    if (index < 0) return;
+    detachAudio(tones[index]);
+    tones.splice(index, 1);
+    renderBoxes();
+    updateAddBtn();
+    updateBeats();
+  }
+
+  function toneFromBox(node) {
+    const box = node.closest(".obj-box");
+    if (!box) return null;
+    return tones.find((tone) => tone.id === Number(box.dataset.id)) || null;
+  }
+
+  function draw() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w < 2 || h < 2) return;
+    const pxW = Math.round(w * dpr);
+    const pxH = Math.round(h * dpr);
+    if (canvas.width !== pxW || canvas.height !== pxH) {
+      canvas.width = pxW;
+      canvas.height = pxH;
+    }
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx2d.clearRect(0, 0, w, h);
+    ctx2d.fillStyle = "#0d1117";
+    ctx2d.fillRect(0, 0, w, h);
+
+    const tNow = now();
+    const active = tones.filter((tone) => isSounding(tone, tNow));
+    const fLow = active.length ? Math.min(...active.map((tone) => tone.f)) : 440;
+    const win = active.length ? 4 / fLow : 0.02;
+    const sumA = active.reduce((sum, tone) => sum + tone.amp, 0);
+    const yDenom = sumA > 1e-6 ? sumA : 1;
+    const yScale = (h * 0.42) / yDenom;
+    const cy = h * 0.5;
+
+    ctx2d.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx2d.lineWidth = 1;
+    ctx2d.beginPath();
+    for (let k = 1; k <= 4; k++) {
+      const x = (w - 1) * (k / 4);
+      ctx2d.moveTo(x, 28);
+      ctx2d.lineTo(x, h - 36);
+    }
+    ctx2d.stroke();
+
+    if (sumA > 1e-6) {
+      const yTop = cy - sumA * yScale;
+      const yBot = cy + sumA * yScale;
+      ctx2d.setLineDash([4, 5]);
+      ctx2d.strokeStyle = "rgba(255,255,255,0.14)";
+      ctx2d.beginPath();
+      ctx2d.moveTo(12, yTop);
+      ctx2d.lineTo(w - 12, yTop);
+      ctx2d.moveTo(12, yBot);
+      ctx2d.lineTo(w - 12, yBot);
+      ctx2d.stroke();
+      ctx2d.setLineDash([]);
+    }
+
+    ctx2d.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx2d.beginPath();
+    ctx2d.moveTo(12, cy);
+    ctx2d.lineTo(w - 12, cy);
+    ctx2d.stroke();
+
+    function sampleSum(list, t) {
+      let y = 0;
+      for (const tone of list) y += tone.amp * Math.sin(argAt(tone, t));
+      return y;
+    }
+
+    function strokeSeries(list, color, width) {
+      if (!list.length) return;
+      ctx2d.beginPath();
+      const steps = Math.max(2, Math.round(w));
+      for (let i = 0; i < steps; i++) {
+        const x = (w - 1) * (i / (steps - 1));
+        const t = tNow - win * (1 - i / (steps - 1));
+        const y = cy - sampleSum(list, t) * yScale;
+        if (i === 0) ctx2d.moveTo(x, y);
+        else ctx2d.lineTo(x, y);
+      }
+      ctx2d.strokeStyle = color;
+      ctx2d.lineWidth = width;
+      ctx2d.lineJoin = "round";
+      ctx2d.lineCap = "round";
+      ctx2d.stroke();
+    }
+
+    if (showParts) {
+      for (const tone of active) strokeSeries([tone], tone.color, 1.25);
+    }
+    strokeSeries(active, ACCENT, 2.4);
+
+    ctx2d.font = "12px Segoe UI, system-ui, sans-serif";
+    ctx2d.textBaseline = "top";
+    ctx2d.fillStyle = MUTED;
+    ctx2d.textAlign = "left";
+    const elapsed = audioCtx ? Math.max(0, tNow - origin) : 0;
+    ctx2d.fillText("t = " + elapsed.toFixed(2) + " s" + (playing ? "" : "  ·  in pausa"), 12, 12);
+    ctx2d.textAlign = "right";
+    const winLabel = active.length
+      ? "4 periodi · " + (win * 1000).toFixed(1) + " ms"
+      : "nessun tono in suono";
+    ctx2d.fillText(winLabel, w - 12, 12);
+
+    ctx2d.textBaseline = "middle";
+    ctx2d.textAlign = "left";
+    ctx2d.font = "12px Segoe UI, system-ui, sans-serif";
+    let lx = 12;
+    const legend = [];
+    if (showParts) {
+      for (const tone of active) legend.push({ color: tone.color, text: "Tono " + tone.id, sw: 10 });
+    }
+    legend.push({ color: ACCENT, text: "somma", sw: 16 });
+    for (const item of legend) {
+      const tw = ctx2d.measureText(item.text).width;
+      if (lx + item.sw + 8 + tw > w - 12) break;
+      ctx2d.fillStyle = item.color;
+      ctx2d.fillRect(lx, h - 22, item.sw, 3);
+      ctx2d.fillStyle = item.text === "somma" ? "#e6edf3" : MUTED;
+      ctx2d.fillText(item.text, lx + item.sw + 6, h - 20);
+      lx += item.sw + 6 + tw + 14;
+    }
+  }
+
+  function frame() {
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  function toggleSegmented(segmented) {
+    if (!segmented) return;
+    const radios = [...segmented.querySelectorAll("input[type=radio]")];
+    if (radios.length < 2) return;
+    const idx = radios.findIndex((radio) => radio.checked);
+    const next = radios[(idx < 0 ? 0 : idx + 1) % radios.length];
+    if (next.checked) return;
+    next.checked = true;
+    next.dispatchEvent(new Event("input", { bubbles: true }));
+    next.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  document.addEventListener("pointerdown", (ev) => {
+    if (ev.button !== 0) return;
+    const segmented = ev.target.closest(".segmented");
+    if (!segmented) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    toggleSegmented(segmented);
+  }, true);
+
+  document.querySelectorAll(".section-header").forEach((header) => {
+    header.addEventListener("click", () => {
+      header.parentElement.classList.toggle("collapsed");
+      header.setAttribute(
+        "aria-expanded",
+        header.parentElement.classList.contains("collapsed") ? "false" : "true"
+      );
+    });
+    header.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter" && ev.key !== " ") return;
+      ev.preventDefault();
+      header.click();
+    });
+  });
+
+  document.querySelectorAll('input[name="parts"]').forEach((el) => {
+    el.addEventListener("change", () => {
+      if (el.checked) showParts = el.value === "on";
+    });
+  });
+
+  playPauseBtn.addEventListener("click", async () => {
+    if (audioBusy) return;
+    audioBusy = true;
+    try {
+      if (!audioCtx || audioCtx.state !== "running") await startAudio();
+      else await audioCtx.suspend();
+    } catch (e) {}
+    playing = !!(audioCtx && audioCtx.state === "running");
+    syncTransport();
+    audioBusy = false;
+  });
+
+  volumeSlider.addEventListener("input", () => {
+    masterVol = clamp(parseFloat(volumeSlider.value), 0, 1);
+    volumeValue.textContent = Math.round(masterVol * 100) + "%";
+    if (master) master.gain.setValueAtTime(masterVol, audioCtx.currentTime);
+  });
+
+  addBtn.addEventListener("click", addTone);
+
+  boxesEl.addEventListener("click", (ev) => {
+    const box = ev.target.closest(".obj-box");
+    if (!box) return;
+    const tone = tones.find((item) => item.id === Number(box.dataset.id));
+    if (!tone) return;
+    if (ev.target.closest(".remove")) {
+      ev.stopPropagation();
+      removeTone(tone.id);
+      return;
+    }
+    if (ev.target.closest(".obj-box-header")) {
+      tone.collapsed = !tone.collapsed;
+      box.classList.toggle("collapsed", tone.collapsed);
+    }
+  });
+
+  boxesEl.addEventListener("input", (ev) => {
+    const tone = toneFromBox(ev.target);
+    if (!tone) return;
+    const prop = ev.target.dataset.prop;
+    if (prop === "f-slider") setFreq(tone, sliderToFreq(parseFloat(ev.target.value)));
+    else if (prop === "f-num") {
+      const v = parseFloat(ev.target.value);
+      if (Number.isFinite(v) && v >= F_MIN && v <= F_MAX) setFreq(tone, v);
+    } else if (prop === "amp") setAmp(tone, parseFloat(ev.target.value));
+    else if (prop === "phase") setPhase(tone, parseFloat(ev.target.value));
+    else if (prop === "delay") setDelay(tone, parseFloat(ev.target.value));
+  });
+
+  boxesEl.addEventListener("change", (ev) => {
+    const tone = toneFromBox(ev.target);
+    if (!tone) return;
+    if (ev.target.dataset.prop === "f-num") {
+      setFreq(tone, parseFloat(ev.target.value));
+      ev.target.value = formatFreq(tone.f);
+      return;
+    }
+    if (ev.target.dataset.flag === "enabled" && ev.target.checked) {
+      setEnabled(tone, ev.target.value === "on");
+    }
+  });
+
+  addTone();
+  syncTransport();
+  updateAddBtn();
+  updateBeats();
+  requestAnimationFrame(frame);
+})();
+  </script>
+</body>
+</html>
