@@ -59,7 +59,8 @@
     overflow-y: auto;
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
-    overscroll-behavior: contain;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
   }
 
   .chart {
@@ -169,8 +170,8 @@
 
 <footer>
   <p id="plot-desc">Date convenzionali, arrotondate: segnano l’ingresso nell’uso bellico diffuso e l’uscita da quell’uso. Non segnano l’anno di invenzione né l’uso cerimoniale.</p>
-  <p>Un episodio isolato non allunga la barra. Restano fuori la mitragliatrice Gatling (1862), il sommergibile Hunley (1864), i razzi cinesi medievali e i razzi Congreve. Le armature di bronzo non hanno una riga propria. Gli elmetti del Novecento e le corazze napoleoniche non prolungano le armature di ferro: gli elmetti stanno sulla riga delle protezioni moderne. La picca non ha una riga propria: è la lancia lunga da formazione e scompare con la baionetta intorno al 1700. Lo scudo entra nel 3000 a.C., quando gli eserciti lo documentano; gli scudi di cuoio più antichi non hanno una data sicura.</p>
-  <p>Sulla riga delle navi in ferro la corazzata classica esce di scena nel 1945; portaerei e sommergibili hanno righe proprie. La galea cessa di essere decisiva dopo Lepanto (1571); la riga delle navi a remi e a vela prosegue con la vela fino al 1860. Elica e jet sono insieme sulla riga degli aerei. I droni di sola ricognizione, prima del 2001, non aprono la riga dei droni armati. Le armi nucleari restano negli arsenali dal 1945 e in combattimento sono state usate solo in quell’anno. La balestra è militare in Cina dal 400 a.C. e in Europa dal Mille circa. Le mine del 1855 sono navali (Crimea); quelle terrestri si diffondono dal 1914. Le portaerei sono in servizio dagli anni Venti e diventano decisive nel 1940: la barra si apre allora, allo stesso modo dei sommergibili, che partono nel 1914. Le armi chimiche compaiono a Ypres (1915–1918), poi in Etiopia e in Cina (1935–1945), nella guerra Iran-Iraq (1980–1988) e in Siria (2013–2018). Nel 1939–1945 non risultano usate sul fronte europeo.</p>
+  <p>Un episodio isolato non allunga la barra. Restano fuori la mitragliatrice Gatling (1862), il sommergibile Hunley (1864), i razzi cinesi medievali e i razzi Congreve. Le armature di bronzo non hanno una riga propria. La picca non ha una riga propria: è la lancia lunga da formazione e scompare con la baionetta intorno al 1700. Lo scudo entra nel 3000 a.C., quando gli eserciti lo documentano; gli scudi di cuoio più antichi non hanno una data sicura.</p>
+  <p>Sulla riga delle navi in ferro la corazzata classica esce di scena nel 1945; portaerei e sommergibili hanno righe proprie. La galea cessa di essere decisiva dopo Lepanto (1571); la riga delle navi a remi e a vela prosegue con la vela fino al 1860. Elica e jet sono insieme sulla riga degli aerei. I droni di sola ricognizione, prima del 2001, non aprono la riga dei droni armati. Le armi nucleari restano negli arsenali dal 1945 e in combattimento sono state usate solo in quell’anno. La balestra è militare in Cina dal 400 a.C. e in Europa dal Mille circa. Le portaerei sono in servizio dagli anni Venti e diventano decisive nel 1940: la barra si apre allora, allo stesso modo dei sommergibili, che partono nel 1914. Le armi chimiche compaiono a Ypres (1915–1918), poi in Etiopia e in Cina (1935–1945), nella guerra Iran-Iraq (1980–1988) e in Siria (2013–2018). Nel 1939–1945 non risultano usate sul fronte europeo.</p>
 </footer>
 
 <script>
@@ -197,20 +198,21 @@
     { name: "Carri da guerra", spans: [[-1700, -300]] },
     { name: "Spade", spans: [[-1600, 1918]] },
     { name: "Cavalleria", spans: [[-900, 1945]] },
-    { name: "Armature di ferro", spans: [[-800, 1700]] },
+    { name: "Armature ed elmi", spans: [[-800, 1700]] },
     { name: "Balestre", spans: [[-400, 1600]] },
     { name: "Catapulte e trabocchi", spans: [[-400, 1450]] },
     { name: "Cannoni", spans: [[1300, END]], open: true },
     { name: "Moschetti", spans: [[1500, 1865]] },
     { name: "Fucili", spans: [[1840, END]], open: true },
-    { name: "Mine", spans: [[1855, END]], open: true },
+    { name: "Mine navali", spans: [[1855, END]], open: true },
     { name: "Navi in ferro", spans: [[1860, END]], open: true },
     { name: "Mitragliatori", spans: [[1884, END]], open: true },
     { name: "Radio", spans: [[1904, END]], open: true },
     { name: "Aerei", spans: [[1911, END]], open: true },
     { name: "Sommergibili", spans: [[1914, END]], open: true },
+    { name: "Mine terrestri", spans: [[1914, END]], open: true },
     { name: "Armi chimiche", spans: [[1915, 1918], [1935, 1945], [1980, 1988], [2013, 2018]] },
-    { name: "Elmetti e protezioni", spans: [[1915, END]], open: true },
+    { name: "Elmetti e giubbotti", spans: [[1915, END]], open: true },
     { name: "Carri armati", spans: [[1916, END]], open: true },
     { name: "Radar", spans: [[1940, END]], open: true },
     { name: "Portaerei", spans: [[1940, END]], open: true },
@@ -279,6 +281,25 @@
   var plotEl = svg.parentNode;
   var scroller = document.getElementById("scroller");
   var plotH = rows.length * rowH;
+
+  function wheelPixels(delta, mode, page) {
+    if (mode === 1) return delta * 16;
+    if (mode === 2) return delta * page;
+    return delta;
+  }
+
+  function scrollBy(dy) {
+    if (!dy) return;
+    var maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    var before = scroller.scrollTop;
+    var next = before + dy;
+    if (next < 0) next = 0;
+    else if (next > maxTop) next = maxTop;
+    scroller.scrollTop = next;
+    var leftover = dy - (next - before);
+    if (Math.abs(leftover) < 0.5) return;
+    window.scrollBy(0, leftover);
+  }
 
   var spacer = document.createElement("div");
   spacer.className = "spacer";
@@ -498,7 +519,7 @@
         clampView();
         requestRender();
       }
-      scroller.scrollTop -= next.midY - pinch.midY;
+      scrollBy(-(next.midY - pinch.midY));
       pinch = next;
       e.preventDefault();
       return;
@@ -508,7 +529,7 @@
       var dy = e.clientY - prev.y;
       viewStart -= dx / pxPerYear;
       clampView();
-      scroller.scrollTop -= dy;
+      scrollBy(-dy);
       requestRender();
       e.preventDefault();
     }
@@ -525,20 +546,28 @@
   plotEl.addEventListener("pointercancel", endPointer);
 
   plotEl.addEventListener("wheel", function (e) {
-    var rect = plotEl.getBoundingClientRect();
     if (e.ctrlKey) {
       e.preventDefault();
-      var dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-      zoomAt(e.clientX - rect.left, Math.exp(-dy * 0.0016));
+      var dy = wheelPixels(e.deltaY, e.deltaMode, plotEl.clientHeight);
+      zoomAt(e.clientX - plotEl.getBoundingClientRect().left, Math.exp(-dy * 0.0016));
       return;
     }
-    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-      e.preventDefault();
-      var dx = e.deltaMode === 1 ? e.deltaX * 16 : e.deltaX;
-      viewStart += dx / pxPerYear;
-      clampView();
-      requestRender();
-    }
+    var dx = wheelPixels(e.deltaX, e.deltaMode, plotEl.clientWidth);
+    var dy = wheelPixels(e.deltaY, e.deltaMode, plotEl.clientHeight);
+    if (Math.abs(dx) <= Math.abs(dy)) return;
+    e.preventDefault();
+    viewStart += dx / pxPerYear;
+    clampView();
+    requestRender();
+  }, { passive: false });
+
+  scroller.addEventListener("wheel", function (e) {
+    if (e.ctrlKey || e.defaultPrevented) return;
+    var dx = wheelPixels(e.deltaX, e.deltaMode, scroller.clientWidth);
+    var dy = wheelPixels(e.deltaY, e.deltaMode, scroller.clientHeight);
+    if (Math.abs(dx) > Math.abs(dy) || !dy) return;
+    e.preventDefault();
+    scrollBy(dy);
   }, { passive: false });
 
   plotEl.addEventListener("gesturestart", function (e) {
