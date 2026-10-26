@@ -75,6 +75,8 @@
     z-index: 3;
     flex: none;
     width: max-content;
+    max-width: 25%;
+    overflow-x: hidden;
     background: var(--paper);
     border-right: 1px solid var(--line);
   }
@@ -92,11 +94,20 @@
     height: 32px;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
     padding: 0 0.7rem 0 0.55rem;
     font-size: 0.8rem;
     line-height: 1.1;
-    text-align: right;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .names .row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .names .row-text {
+    margin-left: auto;
     white-space: nowrap;
   }
 
@@ -179,7 +190,7 @@
   var START = -8000;
   var END = 2026;
   var SPAN = END - START;
-  var BASE_PX = 5200 / SPAN;
+  var BASE_PX = 0.5;
   var MAX_PX = 36;
   var plotW = 1;
   var pxPerYear = BASE_PX;
@@ -319,7 +330,10 @@
   rows.forEach(function (row) {
     var name = document.createElement("div");
     name.className = "row";
-    name.textContent = row.name;
+    var text = document.createElement("span");
+    text.className = "row-text";
+    text.textContent = row.name;
+    name.appendChild(text);
     names.appendChild(name);
   });
 
@@ -587,7 +601,7 @@
   });
 
   plotW = Math.max(1, plotEl.clientWidth);
-  pxPerYear = clampScale(BASE_PX);
+  pxPerYear = minScale();
   viewStart = START;
   clampView();
   render();
@@ -596,10 +610,11 @@
     new ResizeObserver(function () {
       var next = Math.max(1, plotEl.clientWidth);
       if (Math.abs(next - plotW) < 1) return;
+      var isAtMin = Math.abs(pxPerYear - minScale()) < 1e-6;
       var center = viewStart + (plotW / 2) / pxPerYear;
       plotW = next;
-      pxPerYear = clampScale(pxPerYear);
-      viewStart = center - (plotW / 2) / pxPerYear;
+      pxPerYear = isAtMin ? minScale() : clampScale(pxPerYear);
+      viewStart = isAtMin ? START : center - (plotW / 2) / pxPerYear;
       clampView();
       render();
     }).observe(plotEl);
