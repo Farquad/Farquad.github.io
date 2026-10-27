@@ -611,36 +611,9 @@
           <h2>Ancoraggio</h2>
         </div>
         <div class="section-body" id="anchorSectionBody">
-          <div class="control control-switch">
-            <label>Motore</label>
-            <div class="segmented" role="radiogroup" aria-label="Motore">
-              <label>
-                <input type="radio" name="motorMode" id="motorOff" value="off" checked />
-                <span>Spento</span>
-              </label>
-              <label>
-                <input type="radio" name="motorMode" id="motorOn" value="on" />
-                <span>Acceso</span>
-              </label>
-            </div>
-          </div>
-          <div class="motor-sliders" id="motorSliders" data-disabled="true">
-            <div class="control">
-              <div class="control-row">
-                <label for="freqSlider">Frequenza</label>
-                <span class="value" id="freqValue">1.00 Hz</span>
-              </div>
-              <input type="range" id="freqSlider" min="0.1" max="4" step="0.05" value="1" />
-            </div>
-            <div class="control">
-              <div class="control-row">
-                <label for="ampSlider">Ampiezza</label>
-                <span class="value" id="ampValue">0.08 m</span>
-              </div>
-              <input type="range" id="ampSlider" min="0" max="0.35" step="0.01" value="0.08" />
-            </div>
-          </div>
-          <p class="hint" style="margin-top:8px">Trascina il muro (vista H) o il pavimento (vista V). Con il motore acceso il drag sposta il centro di oscillazione.</p>
+          <button type="button" class="btn btn-primary" id="addMotorBtn">+ Aggiungi motore</button>
+          <div class="object-boxes" id="motorBoxes"></div>
+          <p class="hint" style="margin-top:8px">Trascina il muro (vista H) o il pavimento (vista V). Con un motore acceso il drag sposta il centro di oscillazione. I motori accesi si sommano.</p>
         </div>
       </div>
 
@@ -690,19 +663,16 @@
   const canvas = document.getElementById("simCanvas");
   const ctx = canvas.getContext("2d");
   const boxesEl = document.getElementById("objectBoxes");
+  const motorBoxesEl = document.getElementById("motorBoxes");
   const cViscSlider = document.getElementById("cViscSlider");
   const cViscValue = document.getElementById("cViscValue");
-  const motorSliders = document.getElementById("motorSliders");
-  const freqSlider = document.getElementById("freqSlider");
-  const freqValue = document.getElementById("freqValue");
-  const ampSlider = document.getElementById("ampSlider");
-  const ampValue = document.getElementById("ampValue");
   const playPauseBtn = document.getElementById("playPauseBtn");
   const resetBtn = document.getElementById("resetBtn");
   const timeScaleSlider = document.getElementById("timeScaleSlider");
   const timeScaleValue = document.getElementById("timeScaleValue");
 
   let nextId = 1;
+  let nextMotorId = 1;
   const state = {
     view: "horizontal",
     running: true,
@@ -712,9 +682,10 @@
     cVisc: 0.2,
     sAnchor: 0,
     vAnchor: 0,
+    anchorCenter: 0,
     simTime: 0,
     selectedId: null,
-    motor: { on: false, f: 1, A: 0.08, s0: 0, t0: 0 },
+    motors: [],
     oscillators: []
   };
 
@@ -856,11 +827,16 @@
   function platformLedIntensity(osc) {
     if (osc.broken) return 0;
     if (drag.kind === "anchor") return 0;
-    if (!state.motor.on || state.motor.A < 0.005) return 0;
     const f0 = naturalFreqHz(osc);
     const sigma = 0.16 + 0.06 * f0;
-    const detune = (state.motor.f - f0) / sigma;
-    return 1 / (1 + detune * detune);
+    let best = 0;
+    for (const motor of state.motors) {
+      if (!motor.on || motor.A < 0.005) continue;
+      const detune = (motor.f - f0) / sigma;
+      const intensity = 1 / (1 + detune * detune);
+      if (intensity > best) best = intensity;
+    }
+    return best;
   }
 
   function makeOscillator(opts) {
@@ -1089,10 +1065,7 @@
     const g = pinchGeometry();
     if (!g) return;
     if (drag.kind === "mass" || drag.kind === "anchor") {
-      if (drag.kind === "anchor" && state.motor.on) {
-        state.motor.s0 = state.sAnchor;
-        state.motor.t0 = state.simTime;
-      }
+      if (drag.kind === "anchor") grabAnchorCenter();
     }
     drag.kind = null;
     drag.id = null;
@@ -1143,13 +1116,91 @@
     appEl.dataset.friction = on ? "true" : "false";
   }
 
-  function setMotor(on) {
-    if (on && !state.motor.on) {
-      state.motor.s0 = state.sAnchor;
-      state.motor.t0 = state.simTime;
+  function anyMotorOn() {
+    return state.motors.some((m) => m.on);
+  }
+
+  function anchorBounds() {
+    let amp = 0;
+    for (const motor of state.motors) amp += motor.A;
+    return {
+      min: Math.min(-0.45, -amp - 0.08),
+      max: Math.max(1.15, amp + 0.2)
+    };
+  }
+
+  function grabAnchorCenter() {
+    if (!anyMotorOn()) return;
+    state.anchorCenter = state.sAnchor;
+    const t = state.simTime;
+    for (const motor of state.motors) {
+      if (motor.on) motor.t0 = t;
     }
-    state.motor.on = on;
-    motorSliders.dataset.disabled = on ? "false" : "true";
+  }
+
+  function anchorKinematics() {
+    let s = state.anchorCenter;
+    let v = 0;
+    const t = state.simTime;
+    let any = false;
+    for (const motor of state.motors) {
+      if (!motor.on) continue;
+      any = true;
+      const w = 2 * Math.PI * motor.f;
+      const ph = w * (t - motor.t0);
+      s += motor.A * Math.sin(ph);
+      v += motor.A * w * Math.cos(ph);
+    }
+    return { s, v, any };
+  }
+
+  function motorPhase(motor, t) {
+    return 2 * Math.PI * motor.f * (t - motor.t0);
+  }
+
+  function releaseMotor(motor) {
+    if (!motor.on) return;
+    state.anchorCenter += motor.A * Math.sin(motorPhase(motor, state.simTime));
+    motor.on = false;
+    if (!anyMotorOn()) {
+      state.anchorCenter = state.sAnchor;
+      state.vAnchor = 0;
+    }
+  }
+
+  function setMotorEnabled(motor, on) {
+    if (on === motor.on) return;
+    if (!on) {
+      releaseMotor(motor);
+    } else {
+      const others = anyMotorOn();
+      motor.on = true;
+      motor.t0 = state.simTime;
+      if (!others) state.anchorCenter = state.sAnchor;
+    }
+    const box = motorBoxesEl.querySelector(`.motor-box[data-id="${motor.id}"]`);
+    const sliders = box && box.querySelector(".motor-sliders");
+    if (sliders) sliders.dataset.disabled = motor.on ? "false" : "true";
+  }
+
+  function setMotorFreq(motor, f) {
+    const next = clamp(f, 0.1, 4);
+    if (motor.on) {
+      const phase = motorPhase(motor, state.simTime);
+      motor.f = next;
+      motor.t0 = state.simTime - phase / (2 * Math.PI * next);
+    } else {
+      motor.f = next;
+    }
+  }
+
+  function setMotorAmp(motor, A) {
+    const next = clamp(A, 0, 0.35);
+    if (motor.on) {
+      const ph = motorPhase(motor, state.simTime);
+      state.anchorCenter += motor.A * Math.sin(ph) - next * Math.sin(ph);
+    }
+    motor.A = next;
   }
 
   function updateTransportUi() {
@@ -1176,9 +1227,12 @@
     pointers.clear();
     pinch = null;
     state.vAnchor = 0;
-    if (state.motor.on) {
-      state.sAnchor = state.motor.s0;
-      state.motor.t0 = state.simTime;
+    if (anyMotorOn()) {
+      state.sAnchor = state.anchorCenter;
+      const t = state.simTime;
+      for (const motor of state.motors) {
+        if (motor.on) motor.t0 = t;
+      }
     }
     for (const osc of state.oscillators) {
       osc.broken = false;
@@ -1191,15 +1245,15 @@
 
   function updateAnchor(dt) {
     if (drag.kind === "anchor") return;
-    if (state.motor.on) {
-      const t = state.simTime - state.motor.t0;
-      const w = 2 * Math.PI * state.motor.f;
-      state.sAnchor = state.motor.s0 + state.motor.A * Math.sin(w * t);
-      state.vAnchor = state.motor.A * w * Math.cos(w * t);
+    const kin = anchorKinematics();
+    if (kin.any) {
+      state.sAnchor = kin.s;
+      state.vAnchor = kin.v;
     } else {
       state.vAnchor = 0;
     }
-    state.sAnchor = clamp(state.sAnchor, -0.45, 1.15);
+    const bounds = anchorBounds();
+    state.sAnchor = clamp(state.sAnchor, bounds.min, bounds.max);
   }
 
   function springLength(osc) {
@@ -2034,6 +2088,123 @@
       </div>`;
   }
 
+  function findMotor(id) {
+    return state.motors.find((m) => m.id === id) || null;
+  }
+
+  function makeMotor(opts) {
+    const id = opts && opts.id != null ? opts.id : nextMotorId++;
+    if (id >= nextMotorId) nextMotorId = id + 1;
+    const fRaw = Number(opts && opts.f);
+    const aRaw = opts && opts.A != null ? Number(opts.A) : 0.08;
+    return {
+      id,
+      on: !!(opts && opts.on),
+      f: clamp(Number.isFinite(fRaw) ? fRaw : 1, 0.1, 4),
+      A: clamp(Number.isFinite(aRaw) ? aRaw : 0.08, 0, 0.35),
+      t0: Number.isFinite(opts && opts.t0) ? opts.t0 : state.simTime,
+      collapsed: !!(opts && opts.collapsed),
+      color: typeof (opts && opts.color) === "string" ? opts.color : PALETTE[(id - 1) % PALETTE.length]
+    };
+  }
+
+  function motorCardHtml(motor) {
+    const col = motor.collapsed ? " collapsed" : "";
+    return `
+      <div class="obj-box motor-box${col}" data-id="${motor.id}" style="--box-color:${motor.color}">
+        <div class="obj-box-header">
+          <button type="button" class="collapse-btn" title="Espandi / comprimi" tabindex="-1" aria-hidden="true">▼</button>
+          <span class="obj-title">Motore ${motor.id}</span>
+          <button type="button" class="remove" title="Rimuovi">×</button>
+        </div>
+        <div class="obj-box-body">
+          <div class="control control-switch">
+            <label>Stato</label>
+            <div class="segmented" role="radiogroup" aria-label="Motore ${motor.id}">
+              <label>
+                <input type="radio" name="motorMode-${motor.id}" value="off" data-flag="motorOn" ${motor.on ? "" : "checked"} />
+                <span>Spento</span>
+              </label>
+              <label>
+                <input type="radio" name="motorMode-${motor.id}" value="on" data-flag="motorOn" ${motor.on ? "checked" : ""} />
+                <span>Acceso</span>
+              </label>
+            </div>
+          </div>
+          <div class="motor-sliders" data-disabled="${motor.on ? "false" : "true"}">
+            <div class="control">
+              <div class="control-row">
+                <label for="motorFreq-${motor.id}">Frequenza</label>
+                <span class="value" data-val="f">${motor.f.toFixed(2)} Hz</span>
+              </div>
+              <input type="range" id="motorFreq-${motor.id}" data-prop="f" min="0.1" max="4" step="0.05" value="${motor.f}" />
+            </div>
+            <div class="control">
+              <div class="control-row">
+                <label for="motorAmp-${motor.id}">Ampiezza</label>
+                <span class="value" data-val="A">${motor.A.toFixed(2)} m</span>
+              </div>
+              <input type="range" id="motorAmp-${motor.id}" data-prop="A" min="0" max="0.35" step="0.01" value="${motor.A}" />
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderMotorCards() {
+    if (!state.motors.length) {
+      motorBoxesEl.innerHTML = `<p class="empty-hint">Nessun motore.</p>`;
+      return;
+    }
+    motorBoxesEl.innerHTML = state.motors.map(motorCardHtml).join("");
+  }
+
+  function addMotor() {
+    const motor = makeMotor({
+      f: clamp(1 + 0.35 * state.motors.length, 0.1, 4),
+      A: 0.08,
+      on: false
+    });
+    state.motors.push(motor);
+    renderMotorCards();
+    const section = document.getElementById("anchorSection");
+    if (section && section.classList.contains("collapsed")) {
+      section.classList.remove("collapsed");
+      const header = section.querySelector(".section-header");
+      if (header) header.setAttribute("aria-expanded", "true");
+    }
+    setTimeout(() => {
+      const sidebar = document.querySelector(".sidebar");
+      const card = motorBoxesEl.querySelector(`.motor-box[data-id="${motor.id}"]`);
+      if (!sidebar || !card) return;
+      const top = sidebar.scrollTop + (card.getBoundingClientRect().top - sidebar.getBoundingClientRect().top) - 12;
+      sidebar.scrollTo({ top, behavior: "smooth" });
+    }, 50);
+  }
+
+  function removeMotor(id) {
+    const motor = findMotor(id);
+    if (!motor) return;
+    releaseMotor(motor);
+    state.motors = state.motors.filter((m) => m.id !== id);
+    renderMotorCards();
+  }
+
+  function motorsFromSnapshot(data) {
+    if (Array.isArray(data.motors)) {
+      return data.motors.map((raw) => makeMotor(raw || {}));
+    }
+    if (data.motor && typeof data.motor === "object") {
+      return [makeMotor({
+        on: data.motor.on,
+        f: data.motor.f,
+        A: data.motor.A,
+        t0: data.motor.t0
+      })];
+    }
+    return [makeMotor({})];
+  }
+
   function renderOscCards() {
     if (!state.oscillators.length) {
       boxesEl.innerHTML = `<p class="empty-hint">Nessun oscillatore.</p>`;
@@ -2061,7 +2232,7 @@
 
   function exportSnapshot() {
     return {
-      version: 2,
+      version: 3,
       view: state.view,
       running: state.running,
       timeScale: state.timeScale,
@@ -2070,15 +2241,18 @@
       cVisc: state.cVisc,
       sAnchor: state.sAnchor,
       vAnchor: state.vAnchor,
+      anchorCenter: state.anchorCenter,
       simTime: state.simTime,
       selectedId: state.selectedId,
-      motor: {
-        on: state.motor.on,
-        f: state.motor.f,
-        A: state.motor.A,
-        s0: state.motor.s0,
-        t0: state.motor.t0
-      },
+      motors: state.motors.map((m) => ({
+        id: m.id,
+        on: m.on,
+        f: m.f,
+        A: m.A,
+        t0: m.t0,
+        collapsed: m.collapsed,
+        color: m.color
+      })),
       oscillators: state.oscillators.map((o) => ({
         id: o.id,
         m: o.m,
@@ -2104,41 +2278,36 @@
     document.getElementById("gravityOff").checked = !state.gravity;
     document.getElementById("frictionOn").checked = state.friction;
     document.getElementById("frictionOff").checked = !state.friction;
-    document.getElementById("motorOn").checked = state.motor.on;
-    document.getElementById("motorOff").checked = !state.motor.on;
-    motorSliders.dataset.disabled = state.motor.on ? "false" : "true";
     cViscSlider.value = String(state.cVisc);
     cViscValue.textContent = formatC(state.cVisc);
-    freqSlider.value = String(state.motor.f);
-    freqValue.textContent = state.motor.f.toFixed(2) + " Hz";
-    ampSlider.value = String(state.motor.A);
-    ampValue.textContent = state.motor.A.toFixed(2) + " m";
     updateTransportUi();
+    renderMotorCards();
     renderOscCards();
   }
 
   function applySnapshot(data) {
     if (!data || typeof data !== "object") throw new Error("invalid");
     const oscillators = Array.isArray(data.oscillators) ? data.oscillators : [];
-    const motor = data.motor && typeof data.motor === "object" ? data.motor : {};
+    const legacyMotor = data.motor && typeof data.motor === "object" ? data.motor : {};
     drag.kind = null;
     drag.id = null;
     drag.pointerId = null;
     nextId = 1;
+    nextMotorId = 1;
     state.view = data.view === "vertical" ? "vertical" : "horizontal";
     state.running = data.running !== false;
     state.timeScale = clamp(Number(data.timeScale) || 1, 0.25, 4);
     state.gravity = data.gravity !== false;
     state.friction = data.friction !== false;
     state.cVisc = clamp(Number(data.cVisc) || 0, 0, 8);
-    state.sAnchor = clamp(Number.isFinite(data.sAnchor) ? data.sAnchor : 0, -0.45, 1.15);
     state.vAnchor = Number.isFinite(data.vAnchor) ? data.vAnchor : 0;
     state.simTime = Number.isFinite(data.simTime) ? data.simTime : 0;
-    state.motor.on = !!motor.on;
-    state.motor.f = clamp(Number(motor.f) || 1, 0.1, 4);
-    state.motor.A = clamp(Number(motor.A) || 0, 0, 0.35);
-    state.motor.s0 = Number.isFinite(motor.s0) ? motor.s0 : state.sAnchor;
-    state.motor.t0 = Number.isFinite(motor.t0) ? motor.t0 : state.simTime;
+    state.motors = motorsFromSnapshot(data);
+    state.anchorCenter = Number.isFinite(data.anchorCenter)
+      ? data.anchorCenter
+      : (Number.isFinite(legacyMotor.s0) ? legacyMotor.s0 : (Number.isFinite(data.sAnchor) ? data.sAnchor : 0));
+    const bounds = anchorBounds();
+    state.sAnchor = clamp(Number.isFinite(data.sAnchor) ? data.sAnchor : 0, bounds.min, bounds.max);
     state.oscillators = oscillators.map((raw) => makeOscillator(raw || {}));
     const ids = state.oscillators.map((o) => o.id);
     state.selectedId = ids.includes(data.selectedId)
@@ -2161,9 +2330,12 @@
     nextId = 1;
     state.sAnchor = 0;
     state.vAnchor = 0;
-    if (state.motor.on) {
-      state.motor.s0 = 0;
-      state.motor.t0 = state.simTime;
+    if (anyMotorOn()) {
+      state.anchorCenter = 0;
+      const t = state.simTime;
+      for (const motor of state.motors) {
+        if (motor.on) motor.t0 = t;
+      }
     }
     const n = 10;
     state.oscillators = [];
@@ -2257,10 +2429,7 @@
       drag.lastT = now;
       drag.pointerId = ev.pointerId;
       state.vAnchor = 0;
-      if (state.motor.on) {
-        state.motor.s0 = state.sAnchor;
-        state.motor.t0 = state.simTime;
-      }
+      grabAnchorCenter();
       canvas.style.cursor = "grabbing";
       return;
     }
@@ -2304,12 +2473,10 @@
         applySpringLimits(osc);
       }
     } else if (drag.kind === "anchor") {
-      state.sAnchor = clamp(worldS + drag.offsetS, -0.45, 1.15);
+      const bounds = anchorBounds();
+      state.sAnchor = clamp(worldS + drag.offsetS, bounds.min, bounds.max);
       state.vAnchor = vPtr;
-      if (state.motor.on) {
-        state.motor.s0 = state.sAnchor;
-        state.motor.t0 = state.simTime;
-      }
+      grabAnchorCenter();
     }
     drag.lastS = worldS;
     drag.lastT = now;
@@ -2340,10 +2507,7 @@
     }
 
     pinch = null;
-    if (drag.kind === "anchor" && state.motor.on) {
-      state.motor.s0 = state.sAnchor;
-      state.motor.t0 = state.simTime;
-    }
+    if (drag.kind === "anchor") grabAnchorCenter();
     drag.kind = null;
     drag.id = null;
     drag.pointerId = null;
@@ -2424,28 +2588,57 @@
     });
   });
 
-  document.querySelectorAll("input[name=motorMode]").forEach((el) => {
-    el.addEventListener("change", () => {
-      if (el.checked) setMotor(el.value === "on");
-    });
-  });
-
   cViscSlider.addEventListener("input", () => {
     state.cVisc = parseFloat(cViscSlider.value);
     cViscValue.textContent = formatC(state.cVisc);
   });
 
-  freqSlider.addEventListener("input", () => {
-    state.motor.f = parseFloat(freqSlider.value);
-    freqValue.textContent = state.motor.f.toFixed(2) + " Hz";
-  });
-
-  ampSlider.addEventListener("input", () => {
-    state.motor.A = parseFloat(ampSlider.value);
-    ampValue.textContent = state.motor.A.toFixed(2) + " m";
-  });
-
   document.getElementById("addBtn").addEventListener("click", () => addOscillator(true));
+  document.getElementById("addMotorBtn").addEventListener("click", () => addMotor());
+
+  motorBoxesEl.addEventListener("click", (ev) => {
+    const remove = ev.target.closest(".remove");
+    const header = ev.target.closest(".obj-box-header");
+    const box = ev.target.closest(".motor-box");
+    if (!box) return;
+    const id = parseInt(box.dataset.id, 10);
+    if (remove) {
+      ev.stopPropagation();
+      removeMotor(id);
+      return;
+    }
+    if (header) {
+      const motor = findMotor(id);
+      if (!motor) return;
+      motor.collapsed = !motor.collapsed;
+      box.classList.toggle("collapsed", motor.collapsed);
+    }
+  });
+
+  motorBoxesEl.addEventListener("input", (ev) => {
+    const input = ev.target;
+    if (input.tagName !== "INPUT" || !input.dataset.prop) return;
+    const box = input.closest(".motor-box");
+    if (!box) return;
+    const motor = findMotor(parseInt(box.dataset.id, 10));
+    if (!motor) return;
+    const prop = input.dataset.prop;
+    const val = parseFloat(input.value);
+    if (prop === "f") setMotorFreq(motor, val);
+    else if (prop === "A") setMotorAmp(motor, val);
+    const span = box.querySelector(`[data-val="${prop}"]`);
+    if (span) span.textContent = prop === "f" ? motor.f.toFixed(2) + " Hz" : motor.A.toFixed(2) + " m";
+  });
+
+  motorBoxesEl.addEventListener("change", (ev) => {
+    const input = ev.target;
+    if (!input || input.dataset.flag !== "motorOn") return;
+    const box = input.closest(".motor-box");
+    if (!box) return;
+    const motor = findMotor(parseInt(box.dataset.id, 10));
+    if (!motor) return;
+    setMotorEnabled(motor, input.value === "on");
+  });
 
   const loadDropdown = document.getElementById("loadDropdown");
   const loadMenuBtn = document.getElementById("loadMenuBtn");
@@ -2597,6 +2790,7 @@
 
   window.addEventListener("resize", resizeCanvas);
 
+  addMotor();
   addOscillator(false);
   resizeCanvas();
   requestAnimationFrame(loop);
