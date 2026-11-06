@@ -3,7 +3,7 @@ const ctx = canvas.getContext('2d');
 
 let width, height;
 
-// Configurazione Iniziale
+// Configurazione Iniziale:
 const minYear = -Infinity; // Nessun limite verso il passato
 const maxYear = Infinity; // Nessun limite verso il futuro
 let pixelsPerYear = 10; // Livello di zoom iniziale (più ampio per mostrare più secoli)
