@@ -1181,7 +1181,7 @@ const philosophyHistoryEvents = [
     { year: toNumber("01/10/1974"), title: "Thomas Nagel pubblica 'Cosa si prova a essere un pipistrello?', ponendo il problema della soggettività della coscienza", category: "cultura", importance: 3 },
     { year: toNumber("01/04/1982"), title: "Frank Jackson propone l'esperimento mentale della 'Stanza di Mary' a sostegno dell'esistenza dei qualia", category: "cultura", importance: 3 },
     { year: toNumber("01/06/1980"), title: "Il filosofo John Searle propone l'esperimento mentale della 'Stanza Cinese' contro l'Intelligenza Artificiale forte", category: "cultura", importance: 2.5 },
-    { year: toNumber("26/04/1979"), title: "Pubblicazione di 'Gödel, Escher, Bach' di Douglas Hofstadter (vincitore del Premio Pulitzer 1980)", category: "cultura", importance: 3 },
+    { year: toNumber("26/04/1979"), title: "Pubblicazione di 'Gödel, Escher, Bach' di Douglas Hofstadter (Premio Pulitzer 1980)", category: "cultura", importance: 3 },
     { year: -550, title: "Anassimandro scrive il trattato 'Sulla natura', introducendo l'apeiron come principio originario della cosmologia razionale", category: "cultura", importance: 3.5 },
     { year: -500, title: "Eraclito compone il trattato 'Sulla natura': dottrina del divenire e del logos (nella tradizione scolastica, 'panta rei')", category: "cultura", importance: 3.5 },
     { year: -445, title: "Empedocle compone il poema 'Sulla natura', proponendo i quattro elementi e le forze di Amore e Odio", category: "cultura", importance: 3.5 },
