@@ -2565,19 +2565,21 @@ function draw() {
     // (L'ombra è pesante, la disattiviamo mentre si muove per i 60fps lisci)
     const isInteracting = isDragging || isPinching || motionIsEvident() || isZoomingWithWheel || isButtonAnimating || performance.now() < buttonGhostingUntil;
     
-    // Animazione dell'effetto fantasma
-    let targetAlpha = 1.0;
-    if (isInteracting) {
-        // Oscilla tra 0.1 e 0.6 usando il tempo
-        const time = performance.now() / 200; // Regola la velocità di pulsazione
-        targetAlpha = 0.35 + Math.sin(time) * 0.25;
-    }
-    
-    if (typeof window.labelsAlpha === 'undefined') window.labelsAlpha = 1.0;
-    
-    // Interpolazione più veloce per seguire la pulsazione o normale se non sta interagendo
-    const lerpSpeed = isInteracting ? 0.5 : 0.15;
-    window.labelsAlpha += (targetAlpha - window.labelsAlpha) * lerpSpeed;
+    // Effetto fantasma disattivato: etichette e pallini restano opachi anche in attesa del ricalcolo.
+    // Per riattivare fade e pulsazione, togliere il commento e questa assegnazione fissa.
+    // let targetAlpha = 1.0;
+    // if (isInteracting) {
+    //     // Oscilla tra 0.1 e 0.6 usando il tempo
+    //     const time = performance.now() / 200; // Regola la velocità di pulsazione
+    //     targetAlpha = 0.35 + Math.sin(time) * 0.25;
+    // }
+    //
+    // if (typeof window.labelsAlpha === 'undefined') window.labelsAlpha = 1.0;
+    //
+    // // Interpolazione più veloce per seguire la pulsazione o normale se non sta interagendo
+    // const lerpSpeed = isInteracting ? 0.5 : 0.15;
+    // window.labelsAlpha += (targetAlpha - window.labelsAlpha) * lerpSpeed;
+    window.labelsAlpha = 1;
 
 
     // Rendering degli eventi memorizzati in eventStates

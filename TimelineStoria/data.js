@@ -1177,7 +1177,7 @@ const philosophyHistoryEvents = [
     { year: toNumber("23/11/1654"), title: "Pascal vive una travolgente conversione mistica e si ritira a vita spirituale a Port-Royal", category: "cultura", importance: 4.5 },
     { year: 1670, title: "Pubblicazione postuma dei 'Pensieri' di Pascal, contiene la celebre 'Scommessa su Dio'", category: "cultura", importance: 3 },
     { year: toNumber("01/06/1963"), title: "Edmund Gettier pubblica 'Is Justified True Belief Knowledge?', rivoluzionando l'epistemologia con i suoi controesempi", category: "cultura", importance: 2.5 },
-    { year: toNumber("15/04/1994"), title: "David Chalmers formula la distinzione tra problemi 'hard' e 'soft' della coscienza, rivoluzionando la filosofia della mente", category: "cultura", importance: 3 },
+    { year: toNumber("15/04/1994"), title: "David Chalmers formula la distinzione tra problemi 'hard' e 'easy' della coscienza, rivoluzionando la filosofia della mente", category: "cultura", importance: 3 },
     { year: toNumber("01/10/1974"), title: "Thomas Nagel pubblica 'Cosa si prova a essere un pipistrello?', ponendo il problema della soggettività della coscienza", category: "cultura", importance: 3 },
     { year: toNumber("01/04/1982"), title: "Frank Jackson propone l'esperimento mentale della 'Stanza di Mary' a sostegno dell'esistenza dei qualia", category: "cultura", importance: 3 },
     { year: toNumber("01/06/1980"), title: "Il filosofo John Searle propone l'esperimento mentale della 'Stanza Cinese' contro l'Intelligenza Artificiale forte", category: "cultura", importance: 2.5 },
