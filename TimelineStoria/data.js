@@ -25,6 +25,16 @@ function toNumber(dateString) {
         return Math.round(decimalYear * 1000) / 1000;
     }
 
+    // Solo il mese: "m/anno". Il punto cade al 15, l'etichetta omette il giorno se precision è "month".
+    const monthOnly = dateString.match(/^(\d{1,2})\/(-?)0*(\d+)$/);
+    if (monthOnly) {
+        const month = parseInt(monthOnly[1], 10);
+        const year = parseInt(monthOnly[2] + monthOnly[3], 10);
+        if (month >= 1 && month <= 12) {
+            return toNumber(`15/${month}/${year}`);
+        }
+    }
+
     // Fallback per anni semplici passando un solo numero
     const parts = dateString.split("/");
     if (parts.length === 1) {
@@ -166,7 +176,8 @@ const timelineData = [
     { year: -1336, title: "Tutankhamon diventa Faraone", category: "politica", importance: 3.5 },
     { year: -1300, title: "Sviluppo della scrittura sulle ossa oracolari in Cina", category: "cultura", importance: 2 },
     { year: -1279, title: "Inizio del regno di Ramses II in Egitto (promotore di grandi opere come Abu Simbel)", category: "politica", importance: 2.5 },
-    { year: -1274, title: "Battaglia di Qadesh (Egizi contro Ittiti) e primo trattato di pace noto", category: "politica", importance: 2 },
+    { year: toNumber("5/-1274"), precision: "month", title: "Battaglia di Qadesh: Egizi e Ittiti si scontrano nel mese egiziano che corrisponde al maggio", category: "politica", importance: 2 },
+    { year: -1259, title: "Trattato di pace tra Egizi e Ittiti, il primo trattato scritto giunto fino a noi", category: "politica", importance: 2 },
     { year: -1250, title: "Datazione tradizionale dell'Esodo biblico", category: "cultura", importance: 3 },
     { year: -1200, title: "Collasso dell'Età del Bronzo (Invasioni dei Popoli del Mare)", category: "politica", importance: 1.5 },
     { year: -1200, title: "Nascita dello Zoroastrismo (Zarathustra), tra le prime religioni monoteistiche", category: "cultura", importance: 2 },
@@ -181,7 +192,7 @@ const timelineData = [
     { year: -814, title: "Fondazione di Cartagine da parte dei Fenici", category: "politica", importance: 2 },
     { year: -800, title: "Poemi omerici (Iliade e Odissea)", category: "cultura", importance: 1 },
     { year: -776, title: "Si disputano a Olimpia i primi Giochi Olimpici antichi in onore di Zeus, tregua tra le poleis greche", category: "cultura", importance: 1.5 },
-    { year: -753, title: "Fondazione di Roma da parte di Romolo secondo la leggenda", category: "politica", importance: 1.5 },
+    { year: toNumber("21/04/-753"), title: "Fondazione tradizionale di Roma da parte di Romolo, nel giorno delle Parilia", category: "politica", importance: 1.5 },
     { year: -722, title: "Caduta del Regno di Israele", category: "politica", importance: 2 },
     { year: -722, title: "Inizio periodo delle Primavere e Autunni in Cina", category: "politica", importance: 2 },
     { year: -660, title: "Fondazione tradizionale del Giappone (Imperatore Jimmu)", category: "politica", importance: 3 },
@@ -252,7 +263,7 @@ const timelineData = [
     { year: -4, title: "Nascita di Gesù di Nazareth (data stimata)", category: "cultura", importance: 1.5 },
 
     // I Millennio d.C. (1 - 1000)
-    { year: 9, title: "Battaglia della foresta di Teutoburgo (i Germani fermano l'espansione romana)", category: "politica", importance: 2 },
+    { year: toNumber("9/9"), precision: "month", title: "I Germani fermano l'espansione romana nella foresta di Teutoburgo (battaglia di più giorni)", category: "politica", importance: 2 },
     // CORRETTO: Augusto si spense a Nola il 19 agosto del 14 d.C.
     { year: toNumber("19/08/14"), title: "Morte di Augusto e successione di Tiberio (consolidamento del sistema imperiale romano)", category: "politica", importance: 2.5 },
     { year: 25, title: "Restaurazione della Dinastia Han in Cina (Han Orientali)", category: "politica", importance: 2.5 },
@@ -307,7 +318,8 @@ const timelineData = [
     { year: toNumber("01/04/271"), title: "Aureliano avvia la costruzione delle Mura Aureliane per difendere Roma dalle incursioni barbare", category: "tecnologia", importance: 2.5 },
     // CORRETTO: La caduta di Jianye e la resa di Sun Hao avvennero il 1° maggio 280 d.C.
     { year: toNumber("01/05/280"), title: "La dinastia Jin conquista il regno di Wu, fine del periodo dei Tre Regni", category: "politica", importance: 2 },
-    { year: 284, title: "Diocleziano imperatore (fine della Crisi del III secolo e istituzione della Tetrarchia)", category: "politica", importance: 2 },
+    { year: toNumber("20/11/284"), title: "Diocleziano è acclamato imperatore (a Nicomedia, dopo la morte di Numeriano)", category: "politica", importance: 2 },
+    { year: toNumber("01/03/293"), title: "Nasce la Tetrarchia: Diocleziano nomina Cesari Costanzo Cloro e Galerio", category: "politica", importance: 2 },
     { year: 301, title: "L'Armenia è la prima nazione ad adottare il Cristianesimo come religione di Stato", category: "politica", importance: 2.5 },
     // CORRETTO: Lo scontro celebre avvenne il 28 ottobre 312
     { year: toNumber("28/10/312"), title: "Battaglia di Ponte Milvio (Costantino sconfigge Massenzio)", category: "politica", importance: 2 },
@@ -441,7 +453,7 @@ const timelineData = [
 // 1600s
     { year: toNumber("17/02/1600"), title: "Rogo di Giordano Bruno", category: "cultura", importance: 3.5 },
     { year: toNumber("20/03/1602"), title: "Fondazione della Compagnia Olandese delle Indie Orientali (VOC)", category: "politica", importance: 2.5 },
-    { year: 1605, title: "Pubblicazione del 'Don Chisciotte' di Cervantes (prima parte)", category: "cultura", importance: 2.5 },
+    { year: toNumber("16/01/1605"), title: "Pubblicazione della prima parte del 'Don Chisciotte' di Cervantes (Madrid, editore Francisco de Robles)", category: "cultura", importance: 2.5 },
     { year: toNumber("25/08/1609"), title: "Prime osservazioni col telescopio (Galileo)", category: "scienza", importance: 1.5 },
     { year: toNumber("05/04/1614"), title: "Matrimonio di Pocahontas con John Rolfe: inizio di un periodo di pace tra coloni e nativi", category: "politica", importance: 3.5 },
     { year: toNumber("23/04/1616"), title: "Morte di William Shakespeare e di Cervantes", category: "cultura", importance: 3.5 },
@@ -457,7 +469,7 @@ const timelineData = [
     { year: toNumber("24/10/1648"), title: "Pace di Vestfalia", category: "politica", importance: 1 },
     { year: toNumber("30/01/1649"), title: "Esecuzione di Re Carlo I d'Inghilterra", category: "politica", importance: 3 },
     { year: 1650, title: "James Ussher calcola la data della creazione al 23 ottobre 4004 a.C. contando genealogie e regni della Bibbia negli 'Annales Veteris Testamenti'", category: "cultura", importance: 4 },
-    { year: 1651, title: "'Leviatano' (Thomas Hobbes)", category: "cultura", importance: 2.5 },
+    { year: toNumber("4/1651"), precision: "month", title: "Pubblicazione del 'Leviatano' di Thomas Hobbes (Londra)", category: "cultura", importance: 2.5 },
     { year: 1653, title: "Completamento del Taj Mahal in India", category: "cultura", importance: 2.5 },
     { year: toNumber("02/09/1666"), title: "Grande incendio di Londra", category: "politica", importance: 3.5 },
     { year: toNumber("12/09/1683"), title: "Battaglia di Vienna (fermata l'avanzata dell'Impero Ottomano)", category: "politica", importance: 2.5 },
@@ -606,16 +618,17 @@ const timelineData = [
     { year: toNumber("15/08/1914"), title: "Apertura del Canale di Panama", category: "tecnologia", importance: 3.5 },
     { year: toNumber("24/04/1915"), title: "Inizio del genocidio armeno: deportazioni e massacri sistematici della popolazione armena nell'Impero Ottomano", category: "politica", importance: 2 },
     { year: 1916, title: "Pubblicazione de 'I fondamenti della teoria della relatività generale' di Albert Einstein", category: "scienza", importance: 1 },
-    { year: 1915, title: "'La metamorfosi' (Franz Kafka)", category: "cultura", importance: 3 },
+    { year: toNumber("10/1915"), precision: "month", title: "Pubblicazione de 'La metamorfosi' di Kafka (sulla rivista 'Die Weißen Blätter'; il volume è di dicembre)", category: "cultura", importance: 3 },
     { year: toNumber("26/01/1917"), title: "'Mattina' (Giuseppe Ungaretti)", category: "cultura", importance: 4 },
     { year: toNumber("11/11/1918"), title: "Armistizio di Compiègne (fine Prima Guerra Mondiale)", category: "politica", importance: 1.5 },
-    { year: 1918, title: "Picco dell'influenza Spagnola", category: "scienza", importance: 1 },
+    { year: toNumber("10/1918"), precision: "month", title: "Picco della seconda ondata dell'influenza spagnola, il mese più letale della pandemia", category: "scienza", importance: 1 },
     { year: toNumber("11/08/1919"), title: "Costituzione di Weimar (nascita della Repubblica in Germania)", category: "politica", importance: 3 },
     
     // 1920s
     { year: toNumber("10/01/1920"), title: "Fondazione della Società delle Nazioni", category: "politica", importance: 2.5 },
     { year: toNumber("18/08/1920"), title: "Suffragio femminile negli USA", category: "politica", importance: 2.5 },
-    { year: 1922, title: "Pubblicazione di 'Ulisse' (Joyce) e 'La terra desolata' (Eliot)", category: "cultura", importance: 4 },
+    { year: toNumber("02/02/1922"), title: "Pubblicazione dell''Ulisse' di Joyce (Parigi, nel giorno del suo quarantesimo compleanno)", category: "cultura", importance: 4 },
+    { year: toNumber("10/1922"), precision: "month", title: "Pubblicazione de 'La terra desolata' di T. S. Eliot (sulla rivista 'The Criterion'; il volume americano è di dicembre)", category: "cultura", importance: 4 },
     { year: 1922, title: "Pubblicazione di 'Siddharta' (Hermann Hesse)", category: "cultura", importance: 4 },
     { year: toNumber("06/10/1927"), title: "Primo film sonoro ('Il cantante di jazz')", category: "cultura", importance: 2.5 },
     { year: toNumber("03/09/1928"), title: "Scoperta della Penicillina (Fleming)", category: "scienza", importance: 1 },
@@ -627,10 +640,11 @@ const timelineData = [
     { year: toNumber("01/05/1931"), title: "Inaugurazione dell'Empire State Building (New York)", category: "cultura", importance: 3.5 },
     { year: toNumber("12/10/1931"), title: "Inaugurazione del Cristo Redentore (Rio de Janeiro)", category: "cultura", importance: 3.5 },
     { year: toNumber("30/01/1933"), title: "Hitler diventa Cancelliere in Germania", category: "politica", importance: 1.5 },
-    { year: 1933, title: "Inizio del New Deal (Roosevelt) e sospensione del Gold Standard negli USA", category: "politica", importance: 2 },
+    { year: toNumber("04/03/1933"), title: "Inizia il New Deal: Roosevelt presta giuramento e apre i cento giorni", category: "politica", importance: 2 },
+    { year: toNumber("19/04/1933"), title: "Gli Stati Uniti abbandonano il Gold Standard (annuncio di Roosevelt)", category: "politica", importance: 2 },
     { year: toNumber("17/07/1936"), title: "Inizio della Guerra Civile Spagnola", category: "politica", importance: 3 },
-    { year: 1936, title: "'Teoria generale dell'occupazione, dell'interesse e della moneta' (John Maynard Keynes)", category: "scienza", importance: 2.5 },
-    { year: 1937, title: "Guernica di Picasso", category: "cultura", importance: 3 },
+    { year: toNumber("04/02/1936"), title: "Pubblicazione della 'Teoria generale dell'occupazione, dell'interesse e della moneta' di John Maynard Keynes (Macmillan, Londra)", category: "scienza", importance: 2.5 },
+    { year: toNumber("04/06/1937"), title: "'Guernica' di Picasso è completato; il bombardamento della città era stato il 26 aprile", category: "cultura", importance: 3 },
     { year: toNumber("27/05/1937"), title: "Inaugurazione del Golden Gate Bridge a San Francisco", category: "tecnologia", importance: 2.5 },
     { year: toNumber("21/12/1937"), title: "Esce al cinema 'Biancaneve e i sette nani' (Disney)", category: "cultura", importance: 5 },
     { year: toNumber("01/09/1939"), title: "Hitler invade la Polonia, inizia la Seconda Guerra Mondiale", category: "politica", importance: 1 },
@@ -669,7 +683,7 @@ const timelineData = [
 
     // 1960s
     { year: toNumber("09/05/1960"), title: "La FDA approva la prima pillola anticoncezionale (Enovid) per uso commerciale", category: "scienza", importance: 2 },
-    { year: 1960, title: "'Anno dell'Africa': inizia l'indipendenza di 17 nazioni africane (prima il Camerun)", category: "politica", importance: 1.5 },
+    { year: toNumber("01/01/1960"), title: "Il Camerun francese diventa indipendente: è il primo dei 17 Stati dell'Anno dell'Africa", category: "politica", importance: 1.5 },
     { year: toNumber("12/04/1961"), title: "Yuri Gagarin nello spazio: primo uomo in orbita terrestre sulla Vostok 1", category: "tecnologia", importance: 1.5 },
     { year: toNumber("16/10/1962"), title: "Crisi dei missili di Cuba: inizio dei tredici giorni che portarono il mondo sull'orlo nucleare", category: "politica", importance: 2.5 },
     { year: toNumber("05/07/1962"), title: "Indipendenza dell'Algeria: fine della guerra contro la Francia e degli accordi di Evian", category: "politica", importance: 3 },
@@ -1783,7 +1797,7 @@ const culturalGapsEvents = [
     { year: -400, title: "Fase principale di composizione del Mahabharata e del Ramayana in India", category: "cultura", importance: 2.5 },
     { year: 1180, title: "Averroè completa i commentari ad Aristotele (ponte tra mondo arabo ed europeo)", category: "cultura", importance: 3 },
     { year: 1377, title: "Ibn Khaldun termina la 'Muqaddimah' (fondamento della storiografia e sociologia)", category: "cultura", importance: 2.5 },
-    { year: 1792, title: "Mary Wollstonecraft pubblica 'A Vindication of the Rights of Woman'", category: "cultura", importance: 2.5 },
+    { year: toNumber("1/1792"), precision: "month", title: "Pubblicazione di 'A Vindication of the Rights of Woman' di Mary Wollstonecraft (Londra, editore Joseph Johnson)", category: "cultura", importance: 2.5 },
     { year: toNumber("12/04/1919"), title: "Fondazione del Bauhaus a Weimar da parte di Walter Gropius", category: "cultura", importance: 3.5 },
     { year: 1949, title: "Pubblicazione de 'Il secondo sesso' di Simone de Beauvoir", category: "cultura", importance: 3.5 },
     { year: toNumber("10/09/1951"), title: "Akira Kurosawa vince il Leone d'Oro con 'Rashomon' (il cinema asiatico si svela all'Occidente)", category: "cultura", importance: 4 },
@@ -1848,7 +1862,7 @@ const scienceGapsEvents = [
     { year: 1021, title: "Ibn al-Haytham pubblica il 'Libro dell'ottica' (nascita del metodo scientifico sperimentale)", category: "scienza", importance: 2 },
     { year: toNumber("07/09/1674"), title: "Anton van Leeuwenhoek osserva i batteri (nascita della microbiologia)", category: "scienza", importance: 2 },
     { year: 1783, title: "Antoine Lavoisier enuncia la legge di conservazione della massa", category: "scienza", importance: 1 },
-    { year: 1803, title: "John Dalton formula la teoria atomica moderna", category: "scienza", importance: 1 },
+    { year: toNumber("21/10/1803"), title: "Prima tavola dei pesi atomici e formulazione della teoria atomica moderna (John Dalton la legge a Manchester)", category: "scienza", importance: 1 },
     { year: toNumber("23/09/1846"), title: "Scoperta del pianeta Nettuno (Urbain Le Verrier e Johann Galle)", category: "scienza", importance: 2.5 },
     { year: toNumber("24/03/1882"), title: "Robert Koch scopre il bacillo della tubercolosi", category: "scienza", importance: 2.5 },
     { year: 1915, title: "Alfred Wegener pubblica 'La formazione dei continenti e degli oceani', la sua teoria viene rifiutata dalla comunità scientifica per 50 anni", category: "scienza", importance: 1.5 },
@@ -1860,7 +1874,7 @@ const scienceGapsEvents = [
     { year: 1965, title: "Accettazione della Tettonica delle Placche come paradigma geologico", category: "scienza", importance: 2.5 },
     { year: 1970, title: "Vera Rubin fornisce prove osservative dell'esistenza della materia oscura", category: "scienza", importance: 1.5 },
     { year: toNumber("01/03/1974"), title: "Stephen Hawking pubblica la teoria sulla radiazione dei buchi neri", category: "scienza", importance: 2 },
-    { year: 1983, title: "Invenzione della PCR (Reazione a Catena della Polimerasi) da parte di Kary Mullis", category: "scienza", importance: 2 },
+    { year: toNumber("4/1983"), precision: "month", title: "Nasce l'idea della PCR, la Reazione a Catena della Polimerasi (Kary Mullis, durante un viaggio in auto)", category: "scienza", importance: 2 },
     { year: toNumber("11/08/2006"), title: "Shinya Yamanaka annuncia la creazione delle cellule staminali iPSC", category: "scienza", importance: 1.5 },
     { year: toNumber("1785"), title: "Charles-Augustin de Coulomb pubblica il 'Premier Mémoire' in cui ricava la legge della forza tra cariche con la bilancia di torsione", category: "scienza", importance: 1.5 },
     { year: toNumber("18/09/1820"), title: "André-Marie Ampère legge all'Académie des Sciences le 'Notes' in cui presenta l'equivalenza tra bobine e magneti", category: "scienza", importance: 3 },
@@ -1959,7 +1973,7 @@ const germanHistoryEvents = [
     { year: toNumber("29/08/1756"), title: "Inizio della Guerra dei Sette Anni (ascesa della Prussia come grande potenza)", category: "politica", importance: 2.5 },
     { year: toNumber("06/08/1806"), title: "Scioglimento del Sacro Romano Impero", category: "politica", importance: 2.5 },
     { year: toNumber("18/10/1817"), title: "Festa della Wartburg (proteste studentesche e nazionalismo tedesco)", category: "politica", importance: 4 },
-    { year: 1834, title: "Zollverein: entra in vigore l'Unione Doganale Tedesca", category: "politica", importance: 3.5 },
+    { year: toNumber("01/01/1834"), title: "Entra in vigore l'Unione doganale tedesca (Zollverein)", category: "politica", importance: 3.5 },
     { year: toNumber("18/05/1848"), title: "Parlamento di Francoforte (tentativo liberale di unificazione)", category: "politica", importance: 3 },
     { year: toNumber("14/06/1866"), title: "Guerra Austro-Prussiana (vittoria di Sadowa ed egemonia prussiana)", category: "politica", importance: 3 },
     { year: toNumber("18/01/1871"), title: "Unificazione della Germania (Proclamazione dell'Impero Tedesco a Versailles)", category: "politica", importance: 2.5 },
@@ -2185,7 +2199,7 @@ const missing4thCenturyEvents = [
     { year: toNumber("03/11/361"), title: "Regno di Giuliano l'Apostata (ultimo tentativo di restaurare il paganesimo nell'Impero Romano)", category: "politica", importance: 3 },
     { year: 375, title: "Gli Unni superano il Volga ed entrano in Europa (innesco delle Invasioni Barbariche)", category: "politica", importance: 2 },
     { year: toNumber("15/01/378"), title: "Intervento e conquista di Teotihuacan a Tikal (stravolgimento politico della civiltà Maya)", category: "politica", importance: 3 },
-    { year: 383, title: "Battaglia del fiume Fei (il Sud della Cina respinge l'invasione, preservando la cultura Han)", category: "politica", importance: 3 },
+    { year: toNumber("11/383"), precision: "month", title: "Battaglia del fiume Fei: il Sud della Cina respinge l'invasione e preserva la cultura Han", category: "politica", importance: 3 },
     { year: 393, title: "Teodosio I abolisce le Olimpiadi antiche (repressione definitiva dei culti pagani)", category: "cultura", importance: 2.5 }
 ];
 
@@ -2318,7 +2332,7 @@ const missingScienceMilestones = [
     { year: toNumber("14/11/1901"), title: "'Sui fenomeni di agglutinazione del sangue umano normale' (Landsteiner, scoperta dei gruppi sanguigni)", category: "scienza", importance: 1.5 },
     { year: toNumber("03/07/1909"), title: "Fritz Haber brevetta il processo di sintesi dell'ammoniaca (base per la produzione industriale di fertilizzanti)", category: "tecnologia", importance: 1.5 },
     { year: toNumber("24/02/1968"), title: "Pubblicazione su Nature di 'Osservazione di una sorgente radio a pulsazione rapida' (scoperta delle Pulsar)", category: "scienza", importance: 3 },
-    { year: 1847, title: "Ignaz Semmelweis scopre il lavaggio delle mani con cloruro di calce a Vienna come rimedio per abbattere la febbre puerperale, la teoria viene rifiutata dalla comunità medica per 20 anni", category: "scienza", importance: 2.5 },
+    { year: toNumber("5/1847"), precision: "month", title: "Il lavaggio delle mani con cloruro di calce abbatte la febbre puerperale (Semmelweis, clinica di Vienna); la teoria resta rifiutata per vent'anni", category: "scienza", importance: 2.5 },
     { year: 1878, title: "Louis Pasteur formula la teoria dei germi, dimostrando che i microrganismi sono responsabili delle malattie infettive", category: "scienza", importance: 2.5 }
 
 ];
@@ -2621,8 +2635,8 @@ const late18thCenturyWikiEvents = [
     { year: toNumber("21/04/1782"), title: "Rama I fonda la città di Bangkok e diventa re del Siam (Thailandia)", category: "politica", importance: 3 },
     { year: toNumber("08/06/1783"), title: "Eruzione del vulcano Laki in Islanda: gravi CONSEQUENZE climatiche in Europa", category: "scienza", importance: 2 },
     { year: toNumber("01/01/1785"), title: "Fondazione del quotidiano britannico 'The Times'", category: "cultura", importance: 4 },
-    { year: 1790, title: "Francia: l'Assemblea Costituente crea gli 83 dipartimenti originali", category: "politica", importance: 3 },
-    { year: 1792, title: "Claude Joseph Rouget de Lisle compone 'La Marsigliese'", category: "cultura", importance: 3 },
+    { year: toNumber("26/02/1790"), title: "Nascono gli 83 dipartimenti originali della Francia (decreto della Costituente che ne fissa i confini)", category: "politica", importance: 3 },
+    { year: toNumber("25/04/1792"), title: "Composizione de 'La Marsigliese' (Rouget de Lisle, a Strasburgo, col titolo 'Chant de guerre pour l'armée du Rhin')", category: "cultura", importance: 3 },
     { year: toNumber("21/09/1792"), title: "Proclamazione della Prima Repubblica Francese e abolizione della monarchia", category: "politica", importance: 1.5 },
     { year: toNumber("13/07/1793"), title: "Assassinio di Jean-Paul Marat da parte di Charlotte Corday", category: "politica", importance: 3 },
     { year: toNumber("28/07/1794"), title: "Caduta ed esecuzione di Robespierre (Reazione termidoriana) e fine del Terrore in Francia", category: "politica", importance: 2.5 },
@@ -2877,7 +2891,7 @@ const proposte_1250_1290 = [
     { year: toNumber("18/05/1268"), title: "Caduta del Principato di Antiochia per mano dei Mamelucchi del sultano Baibars", category: "politica", importance: 3 },
     { year: toNumber("06/08/1284"), title: "Battaglia della Meloria: la flotta genovese distrugge quella pisana, segnando il declino di Pisa", category: "politica", importance: 3 },
     { year: toNumber("18/07/1290"), title: "Editto di Espulsione: re Edoardo I bandisce tutti gli ebrei dall'Inghilterra", category: "politica", importance: 3 },
-    { year: 1291, title: "Firma del Patto federale svizzero (inizio agosto), documento fondativo della Vecchia Confederazione", category: "politica", importance: 3 },
+    { year: toNumber("8/1291"), precision: "month", title: "Firma del Patto federale svizzero (inizio agosto), documento fondativo della Vecchia Confederazione", category: "politica", importance: 3 },
     { year: toNumber("24/12/1294"), title: "Elezione di Papa Bonifacio VIII a seguito dell'abdicazione di Celestino V", category: "politica", importance: 3 },
     { year: toNumber("11/09/1297"), title: "Battaglia di Stirling Bridge: gli scozzesi guidati da William Wallace sconfiggono gli inglesi", category: "politica", importance: 3 }
 ];
@@ -3075,7 +3089,7 @@ const missingLiteratureEvents = [
     // --- OTTOCENTO ---
     { year: 1802, title: "Prima edizione completa e 'vera' delle 'Ultime lettere di Jacopo Ortis' (Ugo Foscolo)", category: "cultura", importance: 5 },
     { year: 1831, title: "Prima edizione fiorentina dei 'Canti' (Giacomo Leopardi)", category: "cultura", importance: 4 },
-    { year: 1841, title: "Pubblicazione de 'I delitti della Rue Morgue' di Edgar Allan Poe, il primo racconto poliziesco", category: "cultura", importance: 4 },
+    { year: toNumber("4/1841"), precision: "month", title: "Pubblicazione de 'I delitti della Rue Morgue' di Edgar Allan Poe, il primo racconto poliziesco (sulla rivista Graham's Magazine)", category: "cultura", importance: 4 },
     { year: toNumber("16/10/1847"), title: "Pubblicazione del romanzo 'Jane Eyre' (Charlotte Brontë)", category: "cultura", importance: 4 },
     { year: toNumber("16/03/1850"), title: "Pubblicazione de 'La lettera scarlatta' (Nathaniel Hawthorne)", category: "cultura", importance: 5 },
     { year: toNumber("14/11/1850"), title: "Pubblicazione in unico volume di 'David Copperfield' (Charles Dickens)", category: "cultura", importance: 4 },
@@ -3483,7 +3497,7 @@ const nuoviEventiAntichi = [
     { year: -86, title: "Silla saccheggia Atene e sottomette la Grecia definitivamente a Roma", category: "politica", importance: 2.5 },
     { year: -63, title: "Pompeo conquista Gerusalemme: la Giudea diventa uno stato protetto da Roma", category: "politica", importance: 2.5 },
     { year: -53, title: "Disastrosa Battaglia di Carre: Crasso viene ucciso dai Parti", category: "politica", importance: 2 },
-    { year: -45, title: "Entra in vigore il Calendario Giuliano, antenato del nostro calendario", category: "tecnologia", importance: 2 },
+    { year: toNumber("01/01/-45"), title: "Entra in vigore il calendario giuliano: il 1° gennaio diventa l'inizio dell'anno civile", category: "tecnologia", importance: 2 },
     { year: toNumber("23/10/-42"), title: "Battaglia di Filippi: Bruto e Cassio vengono sconfitti da Antonio e Ottaviano", category: "politica", importance: 2 },
     { year: -20, title: "Introduzione del Buddismo in Sri Lanka e prima scrittura del Canone Pali", category: "cultura", importance: 2.5 },
     { year: -12, title: "Inizio della costruzione della città maya di Teotihuacan in Messico", category: "cultura", importance: 2.5 },
@@ -3822,7 +3836,7 @@ const psychologyHistoryEvents = [
     { year: 1879, title: "Wilhelm Wundt fonda il primo laboratorio di psicologia sperimentale a Lipsia, sancendo la nascita della psicologia come scienza autonoma", category: "scienza", importance: 2.5 },
     
     // Il Comportamentismo
-    { year: 1904, title: "Ivan Pavlov riceve il Premio Nobel: le sue ricerche sui riflessi condizionati nei cani gettano le basi del comportamentismo", category: "scienza", importance: 3 },
+    { year: toNumber("10/12/1904"), title: "Ivan Pavlov riceve il Nobel per la medicina, per gli studi sui riflessi condizionati (cerimonia a Stoccolma)", category: "scienza", importance: 3 },
     { year: toNumber("01/03/1913"), title: "John B. Watson pubblica il manifesto del comportamentismo, definendo la psicologia come pura scienza del comportamento osservabile", category: "scienza", importance: 3.5 },
     
     // La Psicologia della Gestalt

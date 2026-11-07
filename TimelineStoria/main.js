@@ -295,8 +295,10 @@ function hasThreeDecimals(year) {
 // Funzione per decodificare la parte decimale dell'anno in giorno e mese
 function decodeDateFromDecimal(year) {
     const isBC = year < 0;
-    const absYear = Math.abs(Math.floor(year));
-    const decimalPart = Math.abs(year) - Math.floor(Math.abs(year));
+    // Per un anno negativo toNumber somma la frazione (verso lo zero): la distanza dall'inizio dell'anno è year - floor(year).
+    const yearStart = Math.floor(year);
+    const absYear = Math.abs(yearStart);
+    const decimalPart = year - yearStart;
     
     // Verifica se è un anno bisestile per decodificare correttamente
     const isLeapYear = (absYear % 4 === 0 && (absYear % 100 !== 0 || absYear % 400 === 0));
@@ -350,6 +352,16 @@ function formatFullDate(year) {
         const yearStr = formatYearWithThousands(date.year);
         const suffix = date.isBC ? ' a.C.' : '';
         return `${date.day} ${date.monthName} ${yearStr}${suffix}`;
+    }
+    return null;
+}
+
+function formatMonthDate(year) {
+    if (year > -5000 && hasThreeDecimals(year)) {
+        const date = decodeDateFromDecimal(year);
+        const yearStr = formatYearWithThousands(date.year);
+        const suffix = date.isBC ? ' a.C.' : '';
+        return `${date.monthName} ${yearStr}${suffix}`;
     }
     return null;
 }
@@ -2223,7 +2235,7 @@ function computeGlobalLayout() {
             textLabel = e.title;
         } else if (isForcedAndHasFullDate) {
             // Mostra la data completa se l'evento è cliccato e ha 3 decimali dopo il 5000 a.C.
-            const fullDate = formatFullDate(e.year);
+            const fullDate = e.precision === "month" ? formatMonthDate(e.year) : formatFullDate(e.year);
             textLabel = `${fullDate} - ${e.title}`;
         } else {
             textLabel = `${displayYear} - ${e.title}`;
@@ -2565,8 +2577,8 @@ function draw() {
     // (L'ombra è pesante, la disattiviamo mentre si muove per i 60fps lisci)
     const isInteracting = isDragging || isPinching || motionIsEvident() || isZoomingWithWheel || isButtonAnimating || performance.now() < buttonGhostingUntil;
     
-    // Effetto fantasma disattivato: etichette e pallini restano opachi anche in attesa del ricalcolo.
-    // Per riattivare fade e pulsazione, togliere il commento e questa assegnazione fissa.
+    // Effetto fantasma disattivato: niente pulsazione. Opacità al 66% finché
+    // la vista è cambiata dall'utente e il layout non è ancora ricalcolato.
     // let targetAlpha = 1.0;
     // if (isInteracting) {
     //     // Oscilla tra 0.1 e 0.6 usando il tempo
@@ -2579,7 +2591,8 @@ function draw() {
     // // Interpolazione più veloce per seguire la pulsazione o normale se non sta interagendo
     // const lerpSpeed = isInteracting ? 0.5 : 0.15;
     // window.labelsAlpha += (targetAlpha - window.labelsAlpha) * lerpSpeed;
-    window.labelsAlpha = 1;
+    const layoutIsStale = isDragging || isPinching || isZoomingWithWheel || isButtonAnimating || !inertiaHasStopped();
+    window.labelsAlpha = layoutIsStale ? 0.66 : 1;
 
 
     // Rendering degli eventi memorizzati in eventStates

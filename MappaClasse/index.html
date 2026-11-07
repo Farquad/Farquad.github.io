@@ -1,0 +1,2383 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9E9VXEBNX9"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-9E9VXEBNX9');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mappa Classe - Layout Immagine</title>
+    <!-- Icona Sito -->
+    <link rel="icon" type="image/svg+xml" href="iconaClasse.svg">
+    <!-- Libreria per salvare lo screenshot -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- Libreria per PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Database Nomi e Prefissi -->
+    <script src="nomi.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0; /* Reset margin */
+            display: flex;
+            flex-direction: row; /* Layout orizzontale */
+            height: 100vh;
+            overflow: hidden; /* Gestiamo lo scroll internamente */
+        }
+
+        /* Sidebar sinistra */
+        #sidebar {
+            width: 220px; /* Ridotta larghezza di default */
+            min-width: 180px;
+            max-width: 600px;
+            background-color: white;
+            border-right: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Scroll su tutta la sidebar */
+            z-index: 10;
+        }
+
+        /* Maniglia di ridimensionamento sidebar */
+        #sidebar-resizer-handle {
+            width: 5px;
+            cursor: col-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #sidebar-resizer-handle:hover, 
+        #sidebar-resizer-handle.active {
+            background: #e0e0e0;
+        }
+
+        #student-list-container {
+            margin-bottom: 20px;
+        }
+
+        .sidebar-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: auto; /* Se la lista è corta, i bottoni vanno in fondo? No, utente vuole "solo quando scorre tutto" */
+            /* Quindi margin-top: auto non serve se vogliamo che seguano il flusso. 
+               Ma se la lista è corta, vogliamo che stiano subito sotto o in fondo alla pagina?
+               "i tasti... devono arrivare solo quando si scorre tutta la lista" 
+               interpreto come: sono in fondo al contenuto scrollabile. */
+            padding-bottom: 20px;
+        }
+
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        h1 { color: #333; margin-bottom: 5px; text-align: center; }
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover { background-color: #45a049; }
+        
+        button.delete-btn { 
+            background-color: transparent; 
+            color: #ef5350; 
+            padding: 2px 6px; 
+            margin-left: 2px; 
+            font-size: 16px;
+            line-height: 1;
+        }
+        button.delete-btn:hover { background-color: #ffebee; color: #c62828; }
+        
+        button.add-btn { background-color: #2196F3; width: 100%; margin: 10px 0; }
+        button.add-btn:hover { background-color: #1976D2; }
+
+        button.clear-btn {
+            background-color: #fff;
+            color: #333;
+            border: 1px solid #ccc;
+            width: 100%;
+            margin: 0;
+            padding: 8px;
+        }
+        button.clear-btn:hover {
+            background-color: #f5f5f5;
+            border-color: #bbb;
+        }
+
+        /* Container nascosto per studenti non assegnati */
+        #unseated-container { display: none; }
+
+        /* Modifiche allo stile della lista */
+        .student-list-item {
+            display: grid;
+            grid-template-columns: 25px 30px 1fr 30px 25px; /* Colonne definite */
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+            gap: 5px;
+            background: #fff;
+        }
+
+        /* Checkmark */
+        .seat-check {
+            font-size: 16px;
+            color: #ddd; /* Default grigio */
+            text-align: center;
+        }
+        .seat-check.placed {
+            color: #4CAF50; /* Verde se piazzato */
+        }
+
+        /* Card studente nella sidebar (simile a .student ma adattato) */
+        .student-card-sidebar {
+            /* flex: 1; Rimuoviamo flex perché grid gestisce la larghezza */
+            width: auto; /* Lasciamo che grid controlli */
+            height: 100%; /* Altezza piena */
+            padding: 5px 2px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* Allinea contenuto a sinistra */
+            border: 1px solid transparent;
+            position: relative;
+            min-height: 30px;
+            overflow: hidden; /* Per evitare che testi lunghi rompano il layout */
+            white-space: nowrap;
+            /* Stessa struttura visiva degli studenti */
+        }
+        
+        .student-card-sidebar.male {
+            background-color: #dbeafe; 
+            color: #0d47a1;
+            border-color: #90caf9;
+        }
+        
+        .student-card-sidebar.female {
+            background-color: #fce4ec; 
+            color: #880e4f;
+            border-color: #f48fb1;
+        }
+
+        /* Input dentro la card */
+        .student-card-sidebar input {
+            background: transparent;
+            border: none;
+            text-align: center;
+            width: 100%;
+            font-weight: bold;
+            color: inherit;
+            outline: none;
+            font-family: inherit;
+            text-transform: uppercase;
+        }
+        
+        .student-card-sidebar input:focus {
+            border-bottom: 1px dashed currentColor;
+        }
+        
+        /* Controlli Banchi Separati */
+        .desk-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .distribute-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 10px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .gender-switch {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%; /* Cerchio */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            user-select: none;
+            transition: all 0.2s;
+        }
+        
+        /* Default trasparente con bordo trasparente per evitare saltelli */
+        .gender-switch.male { background-color: transparent; color: #0d47a1; border: 1px solid transparent; }
+        .gender-switch.female { background-color: transparent; color: #880e4f; border: 1px solid transparent; }
+
+        /* Hover effect: compare cerchietto colorato */
+        .gender-switch.male:hover { background-color: #dbeafe; border-color: #90caf9; }
+        .gender-switch.female:hover { background-color: #fce4ec; border-color: #f48fb1; }
+
+        /* Stili per la selezione */
+        .desk.selected {
+            box-shadow: 0 0 0 3px #ff9800 !important; /* Bordo arancione esterno */
+            border-color: #f57c00;
+        }
+
+        .student.selected {
+            box-shadow: 0 0 0 3px #ff9800 !important;
+            z-index: 10;
+        }
+
+        .student-card-sidebar.selected {
+            background-color: #fff3e0 !important;
+            border: 2px solid #ff9800;
+        }
+
+        .student-number {
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+            margin-right: 5px;
+            overflow: hidden; /* Per sicurezza */
+        }
+
+        /* Modal per inserimento massivo */
+        #bulk-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .modal-textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .btn-cancel { background-color: #999; }
+        .btn-confirm { background-color: #4CAF50; }
+
+        /* Area catturabile per lo screenshot */
+        #capture-area {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 50px;
+        }
+
+        /* Container della classe */
+        .classroom {
+            min-height: 200px;
+            /* min-width rimosso per adattarsi al contenuto */
+            position: relative;
+            margin-top: 20px;
+            /* Layout flessibile inizialmente necessario per il calcolo delle posizioni */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            /* Un po' di "respiro" dai bordi */
+            padding-top: 40px;
+            padding-left: 40px;
+            padding-right: 40px;
+            padding-bottom: 120px; /* Spazio per cattedra */
+            background-color: #f9f9f9; 
+            border: 2px solid #ccc; /* Bordo più solido */
+            box-sizing: content-box; /* Assicura che il bordo non mangi spazio se usiamo sizing strani */
+        }
+
+        /* Resize handles - Aree di interazione sui bordi */
+        .resizer {
+            position: absolute;
+            z-index: 100; /* Sopra a tutto */
+            /* background-color: rgba(0, 0, 255, 0.1); Debug: rendi visibile per capire l'area */
+        }
+        
+        /* Spessore area attiva */
+        .resizer-r {
+            top: 0; bottom: 0; right: -5px; width: 10px;
+            cursor: e-resize;
+        }
+        .resizer-b {
+            bottom: -5px; left: 0; right: 0; height: 10px;
+            cursor: s-resize;
+        }
+        .resizer-t {
+            top: -5px; left: 0; right: 0; height: 10px;
+            cursor: n-resize;
+        }
+        .resizer-l {
+            top: 0; bottom: 0; left: -5px; width: 10px;
+            cursor: w-resize;
+        }
+
+        /* Una volta inizializzato JS, aggiungeremo una classe per fixare dimensions */
+        .classroom.initialized {
+            display: block; /* Disattiva flex */
+        }
+
+        /* I banchi */
+        .desk {
+            display: flex;
+            background-color: #e0e0e0;
+            border: 2px solid #bbb;
+            border-radius: 8px;
+            padding: 4px;
+            width: 210px;
+            height: 50px;
+            box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
+            position: relative; /* Inizialmente relativo */
+            transition: box-shadow 0.2s;
+            z-index: 1;
+        }
+
+        .row {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .desk:hover {
+            cursor: move; /* Icona sposta */
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+            z-index: 5;
+        }
+
+        /* Tasto elimina banco */
+        .desk-close {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 20px;
+            height: 20px;
+            background-color: #fff; /* Bianco di default (quando hover sul banco) */
+            color: #ef5350; /* X rossa */
+            border: 1px solid #ef5350; /* Bordino rosso per visibilità su bianco */
+            border-radius: 50%;
+            text-align: center;
+            line-height: 18px; /* Compensiamo bordo */
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: none; /* Nascosto di default */
+            z-index: 10;
+            transition: all 0.2s;
+        }
+
+        .desk-close:hover {
+            background-color: #ef5350; /* Rosso su hover */
+            color: white; /* X bianca */
+            transform: scale(1.1);
+        }
+
+        .desk:hover .desk-close {
+            display: block; /* Mostra su hover */
+        }
+        
+        .desk:hover .desk-close:hover {
+            background-color: #d32f2f;
+            transform: scale(1.1);
+        }
+
+        /* Il posto singolo */
+        .seat {
+            flex: 1;
+            margin: 1px;
+            border-radius: 4px;
+            background-color: #f4f4f4;
+            border: 1px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .seat.drag-over {
+            background-color: #fff9c4;
+            border-style: solid;
+            border-color: #fbc02d;
+        }
+
+        /* Lo studente */
+        .student {
+            width: 96%;
+            height: 90%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: grab;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            overflow: hidden; /* Importante per il fit text */
+            white-space: nowrap;
+        }
+
+        .student:active { cursor: grabbing; opacity: 0.8; }
+
+        /* Colori basati sull'immagine fornita */
+        /* Maschi: Azzurro */
+        .student.male {
+            background-color: #dbeafe; 
+            color: #0d47a1;
+            border: 1px solid #90caf9;
+        }
+        
+        /* Femmine: Rosa */
+        .student.female {
+            background-color: #fce4ec; 
+            color: #880e4f;
+            border: 1px solid #f48fb1;
+        }
+
+        /* Override per modalità stampa/export (B/N) */
+        .printing-mode .student {
+            background-color: transparent !important;
+            color: #000000 !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .printing-mode .seat {
+            border: none !important;
+            background-color: transparent !important;
+        }
+        .printing-mode .desk {
+            border-color: #444 !important;
+            background-color: #e6e6e6 !important;
+        }
+        .printing-mode .teacher-desk {
+            background-color: #e6e6e6 !important;
+            color: #000000 !important;
+            border: 2px solid #444 !important; /* Aggiungiamo bordo per renderla definita come i banchi */
+            box-shadow: none !important;
+        }
+
+        /* Spazio Cattedra */
+        .teacher-desk {
+            width: 250px;
+            height: 50px;
+            background-color: #555;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            font-size: 14px;
+            
+            /* Posizione di default: Basso Centro */
+            position: absolute;
+            bottom: 40px; /* Spazio standard dai bordi */
+            left: 50%;
+            transform: translateX(-50%);
+
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+            z-index: 2; /* Sopra i banchi se necessario */
+        }
+        
+        .teacher-desk:hover {
+            cursor: move;
+            background-color: #666;
+        }
+
+        .label-top { font-size: 12px; color: #888; margin-bottom: 10px; font-weight: bold; }
+
+        /* Footer Contatto Autore */
+        #author-footer {
+            margin-top: 50px;
+            margin-right: 20px;
+            margin-bottom: 20px;
+            align-self: flex-end; /* Allinea a destra nel container flex */
+            font-size: 12px;
+            color: #999;
+            cursor: pointer;
+            padding: 5px 10px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            transition: all 0.2s;
+            user-select: none;
+            text-align: right;
+        }
+
+        #author-footer:hover {
+            color: #333;
+            border-color: #ddd;
+            background-color: #fff;
+        }
+
+        #author-footer a {
+            color: #2196F3;
+            text-decoration: none;
+            display: block;
+            margin-top: 2px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <h2>Elenco Studenti</h2>
+        <div id="student-list-container">
+            <!-- La lista verrà popolata via JS -->
+        </div>
+        <div id="unseated-container"></div> <!-- Container per studenti non assegnati -->
+        <div class="sidebar-actions">
+            <button class="add-btn" onclick="openBulkModal()" title="Aggiungi nuovi studenti alla lista">+ Inserisci Studenti</button>
+            
+            <!-- Controlli Visualizzazione -->
+            <div style="background: #f9f9f9; padding: 10px; border-radius: 5px; border: 1px solid #eee; margin-bottom: 10px;">
+                <button id="btn-display-mode" class="clear-btn" onclick="toggleDisplayMode()" title="Clicca per cambiare la visualizzazione (Cognomi, Nomi, ecc.)" style="width: 100%; margin-bottom: 8px; font-weight: bold; background-color: #e3f2fd; border-color: #bbdefb; color: #1565c0;">
+                    👁️ Solo Cognomi
+                </button>
+                
+                <label style="display: flex; align-items: start; gap: 8px; font-size: 13px; color: #555; cursor: pointer; line-height: 1.3;">
+                    <input type="checkbox" id="simplify-names" onchange="applyDisplayMode()" style="margin-top: 2px;"> 
+                    <span>Abbrevia nomi/cognomi composti (es. tiene solo il primo)</span>
+                </label>
+            </div>
+
+            <button class="clear-btn" onclick="clearAllStudents()" title="Elimina tutti gli studenti dalla lista">🗑️ Svuota Lista</button>
+        </div>
+    </div>
+
+    <!-- Maniglia Sidebar -->
+    <div id="sidebar-resizer-handle"></div>
+
+    <!-- Modal per Inserimento Massivo -->
+    <div id="bulk-modal">
+        <div class="modal-content">
+            <h3>Inserisci Studenti</h3>
+            <p style="font-size: 13px; color: #666; margin: 0;">Incolla la lista dei NOMI (uno per riga).</p>
+            <textarea id="bulk-input" class="modal-textarea" placeholder="ROSSI MARIO&#10;BIANCHI ANNA&#10;VERDI LUIGI&#10;..."></textarea>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkModal()" title="Chiudi senza salvare">Annulla</button>
+                <button class="btn-confirm" onclick="processBulkAdd()" title="Inserisci gli studenti in lista">Inserisci</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div class="controls" style="margin-top: 10px;">
+            <!-- Box File -->
+            <div class="file-controls" style="display: flex; gap: 5px; background: #fff; padding: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                <button onclick="downloadMap()" style="background-color: #4CAF50;" title="Scarica l'immagine della classe in formato PNG">📸 Scarica PNG</button>
+                <button onclick="downloadPDF()" style="background-color: #d32f2f;" title="Scarica la mappa della classe in formato PDF">📄 Scarica PDF</button>
+                <div style="width: 1px; background: #ccc; margin: 0 5px;"></div>
+                <button onclick="saveMapConfig()" style="background-color: #009688;" title="Salva la configurazione corrente in un file di testo">💾 Salva TXT</button>
+                <button onclick="triggerLoadMap()" style="background-color: #009688;" title="Carica una configurazione salvata da file">📂 Carica TXT</button>
+                <input type="file" id="file-input" style="display: none;" accept=".txt" onchange="loadMapConfig(this)">
+            </div>
+            
+            <!-- Box Aggiunta Banchi -->
+            <div class="desk-controls">
+                <span style="font-size: 11px; font-weight: bold; color: #666; text-align: center;">BANCHI</span>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="addNewDesk(1)" style="margin: 0; background-color: #2196F3; font-size: 13px;" title="Aggiungi banco 1 posto">+ 1</button>
+                    <button onclick="addNewDesk(2)" style="margin: 0; background-color: #1976D2; font-size: 13px;" title="Aggiungi banco 2 posti">+ 2</button>
+                    <button onclick="alignDesks()" style="margin: 0; background-color: #ff9800; font-size: 13px;" title="Allinea i banchi alla griglia">📏</button>
+                </div>
+            </div>
+
+            <!-- Box Distribuzione -->
+            <div class="distribute-controls">
+                <button onclick="shuffleStudents()" style="margin: 0;" title="Distribuisci casualmente TUTTI gli studenti nei banchi">🎲 Tutto</button>
+                <button onclick="shuffleSelection()" id="btn-shuffle-sel" style="margin: 0; background-color: #9e9e9e; cursor: not-allowed;" disabled title="Seleziona banchi o studenti (Ctrl+Click) e premi qui">🔀 Selezione</button>
+                <button onclick="clearSelection()" id="btn-clear-sel" style="margin: 0; background-color: #fff; color: #333; border: 1px solid #ccc; display:none;" title="Deseleziona tutto">❌</button>
+                <div style="height: 20px; width: 1px; background: #ccc;"></div>
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;" title="Accoppia maschi e femmine nei banchi doppi">
+                    <input type="checkbox" id="pairing-toggle"> 
+                    <span style="font-size: 14px;">👫 M/F</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- QUESTO DIV VIENE FOTOGRAFATO -->
+        <div id="capture-area">
+            
+            <div class="label-top">FONDO AULA</div>
+
+            <div class="classroom" id="classroom-container">
+                <div class="resizer resizer-t"></div>
+                <div class="resizer resizer-r"></div>
+                <div class="resizer resizer-b"></div>
+                <div class="resizer resizer-l"></div>
+            
+            <!-- FILA 1 (IN ALTO - FONDO) -->
+            <div class="row">
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+
+            <!-- FILA 2 -->
+            <div class="row">
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+
+            <!-- FILA 3 -->
+            <div class="row">
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+
+            <!-- FILA 4 -->
+            <div class="row">
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+
+            <!-- FILA 5 (IN BASSO - PRIMA FILA) -->
+            <div class="row">
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="desk">
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    <div class="seat" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+
+            <!-- Cattedra spostata qui per essere gestita dal container assoluto -->
+            <div class="teacher-desk" title="Trascina per spostare la cattedra">CATTEDRA</div>
+
+        </div> <!-- Fine Classroom -->
+
+        <!-- RIMOSSO <div class="teacher-desk">CATTEDRA</div> -->
+    </div> <!-- Chiude capture-area -->
+    
+    <!-- Footer Autore -->
+    <div id="author-footer" onclick="toggleAuthorInfo()" data-expanded="false">
+        contatta l'autore
+    </div>
+
+    </div> <!-- Chiude main-content -->
+
+    <script>
+        // Variabili globali per drag banchi
+        let isDraggingDesk = false;
+        let currentDesk = null;
+        let deskOffsetX = 0;
+        let deskOffsetY = 0;
+        
+        // Variabili per distinguere Click da Drag
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+             // Applica il fit text iniziale a tutti
+             document.querySelectorAll('.student').forEach(fitText);
+             
+             // Converti layout in assoluto (inclusa cattedra)
+             convertToAbsoluteLayout();
+
+             initDraggables(); // Sostituisce initDesks per coprire tutto
+            renderSidebar();
+            initResizeHandles();
+            initSidebarResizer();
+
+            // Listener globali per drag banchi (mousemove, mouseup)
+            document.addEventListener('mousemove', onDeskMouseMove);
+            document.addEventListener('mouseup', onDeskMouseUp);
+
+            // Listener globale per Click su background per deselezionare
+            document.getElementById('main-content').addEventListener('click', (e) => {
+                // Se clicco sul background (non su banchi, studenti, controlli)
+                if (e.target.id === 'main-content' || e.target.id === 'capture-area' || e.target.classList.contains('classroom')) {
+                    clearSelection();
+                }
+            });
+            
+            // Listener globale per drop fuori dai posti (Unseat)
+            document.body.addEventListener('dragover', (e) => e.preventDefault());
+            document.body.addEventListener('drop', (e) => {
+                e.preventDefault();
+                var data = e.dataTransfer.getData("text");
+                if(!data) return;
+                var draggedElement = document.getElementById(data);
+                
+                // Se è uno studente ed è attualmente in un posto (seat)
+                if (draggedElement && 
+                    draggedElement.classList.contains('student') && 
+                    draggedElement.parentElement && 
+                    draggedElement.parentElement.classList.contains('seat')) {
+                    
+                    // Rimuovi dal banco (sposta in container nascosto)
+                    document.getElementById('unseated-container').appendChild(draggedElement);
+                    renderSidebar();
+                }
+            });
+        });
+
+        function convertToAbsoluteLayout() {
+            const classroom = document.querySelector('.classroom');
+            
+            // 1. Calcola offset container e posizioni attuali
+            const containerRect = classroom.getBoundingClientRect();
+            
+            const positions = [];
+            // Ora includiamo anche la teacher-desk
+            const elements = document.querySelectorAll('.desk, .teacher-desk');
+            
+            elements.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                // Verifica di sicurezza
+                if(rect.width === 0 && rect.height === 0) return;
+
+                positions.push({
+                    element: el,
+                    left: rect.left - containerRect.left,
+                    top: rect.top - containerRect.top
+                });
+            });
+
+            // 2. Cambia stato container
+            classroom.classList.add('initialized');
+            // Imposta dimensioni fisse basate esattamente sul contenuto iniziale + margine minimo
+            // Ricalcoliamo il bounding box di tutti gli elementi figli ora in posizione assoluta
+            let maxW = 0;
+            let maxH = 0;
+            
+            // Ricalcola bounds usando le posizioni appena salvate
+            positions.forEach(p => {
+                const elW = p.element.offsetWidth;
+                const elH = p.element.offsetHeight;
+                if(p.left + elW > maxW) maxW = p.left + elW;
+                if(p.top + elH > maxH) maxH = p.top + elH;
+            });
+            
+            // Calcolo dimensioni precise per avere bordi simmetrici (40px su ogni lato)
+            // Totale richiesto X = maxW + 40
+            // style.width + paddingLeft(40) + paddingRight(40) = maxW + 40 -> style.width = maxW - 40
+            // style.height + paddingTop(40) + paddingBottom(120) = maxH + 40 -> style.height = maxH - 120
+            
+            let finalW = maxW - 40;
+            let finalH = maxH - 120;
+            
+            if(finalW < 200) finalW = 200;
+            if(finalH < 200) finalH = 200;
+            
+            classroom.style.width = finalW + 'px';
+            classroom.style.height = finalH + 'px';
+            
+            // Applica posizioni assolute
+
+            // 3. Sposta elementi in position absolute
+            positions.forEach(pos => {
+                const d = pos.element;
+                d.style.position = 'absolute';
+                d.style.left = pos.left + 'px';
+                d.style.top = pos.top + 'px';
+                d.style.margin = '0';
+                
+                // Rimuove eventuali proprietà CSS statiche che interferiscono (es. per la cattedra)
+                d.style.bottom = 'auto';
+                d.style.right = 'auto';
+                d.style.transform = 'none';
+
+                if (d.parentElement !== classroom) {
+                    classroom.appendChild(d);
+                }
+            });
+
+            // 4. Rimuovi le righe ormai vuote
+            document.querySelectorAll('.row').forEach(r => r.remove());
+        }
+        
+        // Inizializza funzionalità draggabili (banchi + cattedra)
+        function initDraggables() {
+            // Setup per i Banchi normali
+            document.querySelectorAll('.desk').forEach((desk, index) => {
+                if (!desk.id) desk.id = 'desk-auto-' + index;
+                setupDraggable(desk);
+                addCloseButton(desk);
+            });
+
+            // Setup per la Cattedra
+            document.querySelectorAll('.teacher-desk').forEach(desk => {
+                if (!desk.id) desk.id = 'teacher-desk';
+                setupDraggable(desk);
+            });
+        }
+
+        function setupDraggable(el) {
+             // Evita doppi listeners se richiamato
+             if (el.dataset.draggableInit) return;
+             el.dataset.draggableInit = "true";
+
+             el.onmousedown = (e) => {
+                // Se clicco su tasto chiudi o su uno studente, ignora drag
+                if (e.target.classList.contains('desk-close') || 
+                    e.target.classList.contains('student') ||
+                    e.target.closest('.student')) {
+                    return;
+                }
+                if (['INPUT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+                isDraggingDesk = true;
+                currentDesk = el; // Funziona sia per banchi che per cattedra
+                
+                // Salva coordinate start per distinguere click da drag
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+
+                // Alza z-index
+                // Reimposta z-index base
+                document.querySelectorAll('.desk').forEach(d => d.style.zIndex = '1');
+                document.querySelectorAll('.teacher-desk').forEach(d => d.style.zIndex = '2');
+                
+                // Elemento corrente in primo piano
+                el.style.zIndex = '100';
+
+                // Calcola offset click interno
+                const rect = el.getBoundingClientRect();
+                deskOffsetX = e.clientX - rect.left;
+                deskOffsetY = e.clientY - rect.top;
+                
+                e.preventDefault();
+            };
+        }
+
+        function addCloseButton(desk) {
+            if (!desk.querySelector('.desk-close')) {
+                const closeBtn = document.createElement('div');
+                closeBtn.className = 'desk-close';
+                closeBtn.innerText = '✕';
+                closeBtn.title = "Elimina Banco";
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    // Recupera eventuali studenti per unseat (come in drag out)
+                    const students = desk.querySelectorAll('.student');
+                    if (students.length > 0) {
+                        const unseatedContainer = document.getElementById('unseated-container');
+                        students.forEach(s => unseatedContainer.appendChild(s));
+                        renderSidebar();
+                    }
+                    desk.remove();
+                };
+                desk.prepend(closeBtn);
+            }
+        }
+
+        function addNewDesk(seatsCount) {
+             // seatsCount = 1 o 2
+            const classroom = document.querySelector('.classroom');
+            const desk = document.createElement('div');
+            desk.className = 'desk';
+            desk.id = 'desk-manual-' + Date.now();
+            
+            // Posiziona al centro o in alto a sinistra ma visibile
+            desk.style.position = 'absolute';
+            desk.style.left = '50px';
+            desk.style.top = '50px';
+            desk.style.zIndex = '10'; // Appena creato sta sopra
+            
+            // Imposta larghezza in base ai posti
+            if (seatsCount === 1) {
+                desk.style.width = '100px'; // Metà larghezza circa
+            } else {
+                desk.style.width = '210px';
+            }
+
+            // Aggiungi posti
+            for(let i=0; i<seatsCount; i++) {
+                const s = document.createElement('div'); 
+                s.className = 'seat';
+                s.setAttribute('ondrop', 'drop(event)'); 
+                s.setAttribute('ondragover', 'allowDrop(event)');
+                desk.appendChild(s);
+            }
+            
+            classroom.appendChild(desk);
+            
+            // Init drag e close button
+            setupDraggable(desk);
+            addCloseButton(desk);
+        }
+
+        // function initDesks() RIMOSSA in favore di initDraggables
+
+
+        function onDeskMouseMove(e) {
+            if (!isDraggingDesk || !currentDesk) return;
+            
+            const classroom = document.querySelector('.classroom');
+            const containerRect = classroom.getBoundingClientRect();
+
+            let newLeft = e.clientX - containerRect.left - deskOffsetX;
+            let newTop = e.clientY - containerRect.top - deskOffsetY;
+            
+            // VINCOLI RIMOSSI: Permettiamo il drag out per eliminazione
+            // if(newLeft < 0) newLeft = 0; ...
+
+            currentDesk.style.left = newLeft + 'px';
+            currentDesk.style.top = newTop + 'px';
+        }
+
+        function onDeskMouseUp(e) {
+            if (isDraggingDesk && currentDesk) {
+                // Calcola distanza percorsa
+                const dist = Math.sqrt(Math.pow(e.clientX - dragStartX, 2) + Math.pow(e.clientY - dragStartY, 2));
+                
+                if (dist < 5) {
+                    // È un CLICK
+                    // Modifica richiesta: selezione multipla sempre attiva (senza Ctrl)
+                    handleSelection(currentDesk, true);
+                } else {
+                    // È stato un DRAG
+                    
+                    // Controllo se il banco è stato trascinato completamente fuori dall'area
+                    const classroom = document.querySelector('.classroom');
+                    const deskRect = currentDesk.getBoundingClientRect();
+                    const containerRect = classroom.getBoundingClientRect();
+
+                    // Verifica intersezione (Se i rettangoli NON si toccano, è fuori)
+                    const isOutside = (deskRect.right < containerRect.left || 
+                                    deskRect.left > containerRect.right || 
+                                    deskRect.bottom < containerRect.top || 
+                                    deskRect.top > containerRect.bottom);
+
+                    if (isOutside) {
+                        // Recupera eventuali studenti seduti
+                        const students = currentDesk.querySelectorAll('.student');
+                        if (students.length > 0) {
+                            const unseatedContainer = document.getElementById('unseated-container');
+                            students.forEach(s => {
+                                unseatedContainer.appendChild(s);
+                            });
+                            // Aggiorna sidebar per mostrare che sono "unseated"
+                            renderSidebar();
+                        }
+                        
+                        // Rimuovi il banco
+                        currentDesk.remove();
+                    }
+                }
+
+                isDraggingDesk = false;
+                currentDesk = null;
+            }
+        }
+        
+        // --- LOGICA SELEZIONE ---
+        
+        function handleSelection(element, isMulti) {
+            if (!isMulti) {
+                // Se non è selezione multipla, deseleziona tutto il resto 
+                clearSelection(element);
+                element.classList.add('selected');
+            } else {
+                // Toggle
+                if (element.classList.contains('selected')) {
+                    element.classList.remove('selected');
+                } else {
+                    element.classList.add('selected');
+                }
+            }
+            updateSelectionUI();
+        }
+        
+        function clearSelection(exceptElement = null) {
+            document.querySelectorAll('.selected').forEach(el => {
+                if (el !== exceptElement) el.classList.remove('selected');
+            });
+            updateSelectionUI();
+        }
+        
+        function updateSelectionUI() {
+            const count = document.querySelectorAll('.selected').length;
+            const btn = document.getElementById('btn-shuffle-sel');
+            const btnClear = document.getElementById('btn-clear-sel');
+            
+            if (count > 0) {
+                btn.disabled = false;
+                btn.style.backgroundColor = '#FF9800'; // Orange
+                btn.style.cursor = 'pointer';
+                btnClear.style.display = 'inline-block';
+            } else {
+                btn.disabled = true;
+                btn.style.backgroundColor = '#9e9e9e';
+                btn.style.cursor = 'not-allowed';
+                btnClear.style.display = 'none';
+            }
+        }
+
+        function renderSidebar() {
+            const container = document.getElementById('student-list-container');
+            container.innerHTML = '';
+            
+            // Trova tutti gli elementi studente (sia nei banchi che unseated)
+            const students = Array.from(document.querySelectorAll('.student'));
+            
+            // Ordina alfabeticamente per nome
+            students.sort((a, b) => a.innerText.localeCompare(b.innerText));
+
+            students.forEach((student, index) => {
+                const item = document.createElement('div');
+                item.className = 'student-list-item';
+                
+                // Checkmark di piazzamento
+                const isPlaced = !!student.closest('.seat');
+                const check = document.createElement('span');
+                check.className = 'seat-check ' + (isPlaced ? 'placed' : '');
+                check.innerText = isPlaced ? '✔️' : '⭕';
+                check.title = isPlaced ? 'Piazzato' : 'Non piazzato';
+                item.appendChild(check);
+
+                // Numero
+                const num = document.createElement('span');
+                num.className = 'student-number';
+                num.innerText = (index + 1) + '.';
+                item.appendChild(num);
+
+            // Card Studente (Draggable)
+            const card = document.createElement('div');
+            const isSelected = student.classList.contains('selected');
+            const isMale = student.classList.contains('male');
+            card.className = `student-card-sidebar ${isMale ? 'male' : 'female'} ${isSelected ? 'selected' : ''}`;
+            card.draggable = true;
+            card.title = "Doppio click per rinominare, trascina per posizionare";
+            
+            // Span Nome (sostituisce input fisso)
+            const nameSpan = document.createElement('span');
+            // Mostra sempre il nome completo nella sidebar, se disponibile
+            nameSpan.innerText = student.dataset.fullName || student.innerText;
+            nameSpan.style.flex = '1';
+            nameSpan.style.textAlign = 'left'; // Allineamento a sinistra
+            nameSpan.style.paddingLeft = '5px'; // Un po' di margine
+            nameSpan.style.pointerEvents = 'none'; // Lascia gestire il dblclick alla card
+            nameSpan.style.overflow = 'hidden';
+            nameSpan.style.textOverflow = 'ellipsis'; // Puntini se troppo lungo (anche se il contenitore ha overflow hidden)
+
+            // Gestione Click per Selezione Sidebar
+            card.onclick = (e) => {
+                // Evita selezione se stiamo interagendo con input o pulsanti interni
+                if (e.target.tagName === 'INPUT') return;
+                
+                // Toggle selezione sull'oggetto STUDENTE originale (sempre multi-select)
+                handleSelection(student, true);
+                // Aggiorna visivamente la card corrente e lo studente mappa
+                if (student.classList.contains('selected')) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            };
+            
+            // Gestione Doppio Click per Rinomina
+            card.ondblclick = (e) => {
+                e.stopPropagation(); // Evita drag indesiderati o altro
+                
+                // Sostituisci span con input
+                card.innerHTML = ''; 
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = student.innerText;
+                input.style.width = '100%';
+                input.style.textAlign = 'center';
+                input.style.border = 'none';
+                input.style.background = 'transparent';
+                input.style.fontWeight = 'bold';
+                input.style.color = 'inherit';
+                input.style.outline = 'none';
+                input.style.textTransform = 'uppercase';
+
+                // Salva al blur o invio
+                const save = () => {
+                    let val = input.value.toUpperCase();
+                    if(val.length > 20) val = val.substring(0, 20);
+                    if(val.trim() === "") val = "STUDENTE"; // Default
+                    
+                    // Aggiorna sia il testo visualizzato che il full name
+                    student.innerText = val;
+                    student.dataset.fullName = val;
+                    
+                    fitText(student);
+                    renderSidebar(); // Ridisegna tutto per ripristinare la vista normale
+                };
+
+                input.onblur = save;
+                input.onkeydown = (ev) => { if(ev.key === 'Enter') input.blur(); };
+                
+                card.appendChild(input);
+                input.focus();
+            };
+
+            // Drag dal side menu
+            card.ondragstart = (e) => {
+                e.dataTransfer.setData("type", "student-list");
+                e.dataTransfer.setData("text", student.id); // Importante per la compatibilità con drop()
+                e.effectAllowed = "copyMove";
+                card.style.opacity = '0.5';
+            };
+                card.ondragend = () => {
+                    card.style.opacity = '1';
+                };
+
+                card.appendChild(nameSpan);
+                item.appendChild(card);
+
+                // Switch Gender
+                const genderSwitch = document.createElement('div');
+                genderSwitch.className = `gender-switch ${isMale ? 'male' : 'female'}`;
+                genderSwitch.innerText = isMale ? 'M' : 'F';
+                genderSwitch.title = "Cambia sesso";
+                genderSwitch.onclick = () => {
+                    if (student.classList.contains('male')) {
+                        student.classList.remove('male');
+                        student.classList.add('female');
+                    } else {
+                        student.classList.remove('female');
+                        student.classList.add('male');
+                    }
+                    renderSidebar(); // Aggiorna sidebar per riflettere colori
+                };
+
+                // Delete Button
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.innerText = '✕';
+                delBtn.title = "Elimina studente";
+                delBtn.onclick = () => {
+                    if(confirm(`Sei sicuro di voler eliminare lo studente ${student.innerText}?`)) {
+                        student.remove();
+                        renderSidebar();
+                    }
+                };
+
+                item.appendChild(genderSwitch);
+                item.appendChild(delBtn);
+                container.appendChild(item);
+            });
+        }
+
+        // Funzione per adattare il font
+        function fitText(el) {
+            let size = 12; // Dimensione massima iniziale
+            el.style.fontSize = size + 'px';
+            
+            // Riduci finché c'è overflow
+            // Usiamo scrollWidth > clientWidth per vedere se il testo è più largo del contenitore
+            while (el.scrollWidth > el.clientWidth && size > 6) {
+                size--;
+                el.style.fontSize = size + 'px';
+            }
+        }
+
+        // --- GESTIONE MODAL E INSERIMENTO MASSIVO ---
+        function openBulkModal() {
+            document.getElementById('bulk-modal').style.display = 'flex';
+            document.getElementById('bulk-input').value = '';
+            document.getElementById('bulk-input').focus();
+        }
+
+        function closeBulkModal() {
+            document.getElementById('bulk-modal').style.display = 'none';
+        }
+
+        function processBulkAdd() {
+            const rawText = document.getElementById('bulk-input').value;
+            if(!rawText.trim()) return closeBulkModal();
+
+            // Prepara linee pulite
+            let lines = rawText.split('\n').map(l => l.trim().toUpperCase()).filter(l => l.length > 0);
+            
+            const currentCount = document.querySelectorAll('.student').length;
+            if (currentCount + lines.length > 50) {
+                alert(`Impossibile aggiungere ${lines.length} studenti. Il limite totale è 50. Posti attuali: ${currentCount}.`);
+                return;
+            }
+
+            // RILEVAMENTO FORMATO E SESSO
+            const listFormat = detectListFormat(lines);
+            console.log("Formato rilevato per importazione:", listFormat);
+
+            // Tenta di riempire posti vuoti
+            const emptySeats = Array.from(document.querySelectorAll('.seat')).filter(seat => !seat.querySelector('.student'));
+            const unseatedContainer = document.getElementById('unseated-container');
+            
+            lines.forEach(line => {
+                // Analizza nome per il sesso
+                const parsed = parseFullName(line, listFormat);
+                
+                // Determina sesso dai nomi propri trovati
+                let gender = null;
+                
+                // Cerca nel primo nome, poi nel secondo...
+                for (let token of parsed.nameParts) {
+                    const g = getGenderFromToken(token);
+                    if (g) {
+                        gender = g;
+                        break;
+                    }
+                }
+                
+                // Fallback casuale se sconosciuto
+                if (!gender) {
+                    gender = Math.random() < 0.5 ? 'male' : 'female';
+                }
+
+                const newStudent = document.createElement('div');
+                newStudent.id = 's' + Date.now() + Math.random().toString(36).substr(2, 5);
+                newStudent.className = `student ${gender}`;
+                newStudent.draggable = true;
+                newStudent.ondragstart = drag;
+                
+                // Salva nome completo originale per riferimento futuro
+                newStudent.dataset.fullName = line;
+                
+                // Imposta testo iniziale (verrà sovrascritto subito da applyDisplayMode, ma mettiamo full per ora)
+                newStudent.innerText = line;
+
+                // Applica fitText subito
+                fitText(newStudent);
+
+                if (emptySeats.length > 0) {
+                    emptySeats.shift().appendChild(newStudent);
+                } else {
+                    unseatedContainer.appendChild(newStudent);
+                }
+            });
+
+            closeBulkModal();
+            renderSidebar();
+            
+            // Applica la formattazione corrente (Default: Solo Cognomi)
+            applyDisplayMode();
+        }
+        // --------------------------------------------
+
+        /* function addNewStudent() RIMOSSA in favore del bulk insert */
+
+        // Logica Drag & Drop (Invariata)
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+            ev.target.style.opacity = '0.5';
+        }
+
+        document.addEventListener("dragend", function(event) {
+            event.target.style.opacity = '1';
+            document.querySelectorAll('.seat').forEach(seat => seat.classList.remove('drag-over'));
+        });
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+            let seat = ev.target.closest('.seat');
+            if(seat) seat.classList.add('drag-over');
+        }
+
+        document.addEventListener("dragleave", function(event) {
+            let seat = event.target.closest('.seat');
+            if(seat) seat.classList.remove('drag-over');
+        });
+
+        function drop(ev) {
+            ev.preventDefault();
+            ev.stopPropagation(); // Stop bubbling per evitare drop su classroom (unseat)
+
+            var data = ev.dataTransfer.getData("text");
+            // Se non c'è dato text (es. drag banco), ignoriamo qui
+            if (!data) return;
+
+            var draggedElement = document.getElementById(data);
+            
+            // Verifica che sia uno studente
+            if (!draggedElement || !draggedElement.classList.contains('student')) return;
+            
+            var targetSeat = ev.target.closest('.seat');
+
+            if (targetSeat) {
+                targetSeat.classList.remove('drag-over');
+                var existingStudent = targetSeat.querySelector('.student');
+                
+                // Case 1: Dragged from Sidebar/Unseated
+                if (draggedElement.parentElement.id === 'unseated-container') {
+                    if (existingStudent) {
+                        // "Scalzare via": move existing to unseated
+                        document.getElementById('unseated-container').appendChild(existingStudent);
+                    }
+                    targetSeat.appendChild(draggedElement);
+                } 
+                // Case 2: Dragged from another Seat
+                else {
+                    if (existingStudent) {
+                        // Swap
+                        var originalSeat = draggedElement.parentNode;
+                        originalSeat.appendChild(existingStudent);
+                        targetSeat.appendChild(draggedElement);
+                    } else {
+                        // Move
+                        targetSeat.appendChild(draggedElement);
+                    }
+                }
+                renderSidebar();
+            }
+        }
+
+        function shuffleStudents() {
+            // Wrapper per distribuire TUTTI
+            const allStudents = Array.from(document.querySelectorAll('.student'));
+            const allSeats = Array.from(document.querySelectorAll('.seat'));
+            distributeStudents(allStudents, allSeats);
+        }
+
+        function shuffleSelection() {
+            // 1. Identifica Elementi Selezionati
+            const selectedDesks = Array.from(document.querySelectorAll('.desk.selected'));
+            const selectedStudents = Array.from(document.querySelectorAll('.student.selected')); // Include sia mappa che sidebar (se marcati)
+
+            // 2. Determina POSTI target (Seats)
+            let targetSeats = new Set();
+            
+            // Tutti i posti dei banchi selezionati
+            selectedDesks.forEach(desk => {
+                desk.querySelectorAll('.seat').forEach(s => targetSeats.add(s));
+            });
+
+            // Posti dove siedono studenti selezionati (se sulla mappa)
+            selectedStudents.forEach(s => {
+                const seat = s.closest('.seat');
+                if (seat) targetSeats.add(seat);
+            });
+
+            if (targetSeats.size === 0 && selectedStudents.length === 0) {
+                alert("Seleziona almeno un banco o uno studente.");
+                return;
+            }
+
+            // 3. Determina STUDENTI target (Students)
+            let targetStudents = new Set();
+
+            // Studenti esplicitamente selezionati
+            selectedStudents.forEach(s => targetStudents.add(s));
+
+            // Studenti che sono seduti nei posti target (anche se non selezionati esplicitamente, vengono coinvolti nel rimescolamento di quei banchi)
+            targetSeats.forEach(seat => {
+                const s = seat.querySelector('.student');
+                if (s) targetStudents.add(s);
+            });
+            
+            // Converti in array
+            const seatsArray = Array.from(targetSeats);
+            const studentsArray = Array.from(targetStudents);
+
+            if (studentsArray.length === 0) {
+                // Se ho selezionato solo banchi vuoti, non fa nulla?
+                // O magari ho studenti nella sidebar selezionati?
+                // Se studentsArray è vuoto, check sidebar selection (dovrebbero essere in selectedStudents)
+                // Se ancora 0
+                alert("Nessuno studente coinvolto nella selezione.");
+                return;
+            }
+
+            distributeStudents(studentsArray, seatsArray);
+        }
+
+        function distributeStudents(studentsList, seatsList) {
+            const pairing = document.getElementById('pairing-toggle').checked;
+            const unseatedContainer = document.getElementById('unseated-container');
+
+            // 1. Svuota i posti target (sposta studenti nel container temporaneamente)
+            // MA SOLO quelli coinvolti.
+            studentsList.forEach(s => {
+                // Salva posizione originale per fallback? No, shuffle è distruttivo.
+                unseatedContainer.appendChild(s);
+            });
+
+            // Helper Shuffle
+            function shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            let males = studentsList.filter(s => s.classList.contains('male'));
+            let females = studentsList.filter(s => s.classList.contains('female'));
+            
+            shuffle(males);
+            shuffle(females);
+
+            // Logica PAIRING su sottoinsieme
+            // Dobbiamo identificare "Coppie di posti" all'interno di seatsList che appartengono allo stesso banco.
+            // Raggruppa seats per desk
+            const seatsByDesk = new Map();
+            seatsList.forEach(seat => {
+                const desk = seat.closest('.desk');
+                if (!desk) return; // Should not happen
+                if (!seatsByDesk.has(desk)) seatsByDesk.set(desk, []);
+                seatsByDesk.get(desk).push(seat);
+            });
+
+            // Estrai coppie valide (banchi con almeno 2 posti DISPONIBILI nella selezione)
+            // Se ho selezionato solo 1 posto di un banco doppio, non posso fare pairing lì.
+            
+            const pairableGroups = [];
+            const singleSeats = [];
+
+            seatsByDesk.forEach((seats, desk) => {
+                if (seats.length >= 2) {
+                    // Possiamo fare pairing
+                    pairableGroups.push(seats); // array di posti
+                } else {
+                    seats.forEach(s => singleSeats.push(s));
+                }
+            });
+
+            if (pairing) {
+                shuffle(pairableGroups);
+                
+                pairableGroups.forEach(group => {
+                    // Prendi 2 posti dal gruppo (normalmente sono 2, ma potrebbero essere 3?)
+                    // Assumiamo banchi da 2.
+                    // Se non ho maschi O non ho femmine, salta pairing
+                    if (males.length > 0 && females.length > 0) {
+                        const m = males.pop();
+                        const f = females.pop();
+                        
+                        // Assegna
+                        if (Math.random() < 0.5) {
+                            group[0].appendChild(m);
+                            if(group[1]) group[1].appendChild(f); else unseatedContainer.appendChild(f); 
+                        } else {
+                            if(group[1]) group[1].appendChild(m); else unseatedContainer.appendChild(m);
+                            group[0].appendChild(f);
+                        }
+                    } else {
+                        // Non posso accoppiare, butta i posti nei singoli
+                        group.forEach(s => singleSeats.push(s));
+                    }
+                });
+            } else {
+                // No pairing, tutti i posti sono "singoli"
+                pairableGroups.forEach(g => g.forEach(s => singleSeats.push(s)));
+            }
+
+            // Riempi posti singoli/rimanenti
+            let leftovers = [...males, ...females];
+            shuffle(leftovers);
+            shuffle(singleSeats);
+
+            singleSeats.forEach(seat => {
+                if (leftovers.length > 0) {
+                    seat.appendChild(leftovers.pop());
+                }
+            });
+
+            renderSidebar();
+        }
+
+        function clearAllStudents() {
+            if(confirm("Sei sicuro di voler eliminare TUTTI gli studenti? Questa azione non può essere annullata.")) {
+                document.querySelectorAll('.student').forEach(s => s.remove());
+                renderSidebar();
+            }
+        }
+
+        function alignDesks() {
+            // Dimensioni griglia CALCOLATE SUI VALORI CSS REALI
+            const gridX = 252; 
+            const gridY = 77;
+
+            const desks = document.querySelectorAll('.desk');
+            if (desks.length === 0) return;
+
+            // Algoritmo "Best Fit Grid":
+            // Calcoliamo l'offset medio (fase) usando la media circolare degli angoli
+            // Questo minimizza lo spostamento globale di tutti i banchi esistenti
+            // invece di ancorarsi al primo banco (che potrebbe essere spostato).
+
+            let sumSinX = 0, sumCosX = 0;
+            let sumSinY = 0, sumCosY = 0;
+
+            desks.forEach(desk => {
+                const l = parseFloat(desk.style.left) || 0;
+                const t = parseFloat(desk.style.top) || 0;
+                
+                // Mappa posizione su angolo 0..2PI rispetto al passo griglia
+                const angX = (l / gridX) * 2 * Math.PI;
+                const angY = (t / gridY) * 2 * Math.PI;
+                
+                sumSinX += Math.sin(angX);
+                sumCosX += Math.cos(angX);
+                sumSinY += Math.sin(angY);
+                sumCosY += Math.cos(angY);
+            });
+
+            // Calcola angolo medio
+            const avgAngX = Math.atan2(sumSinX, sumCosX);
+            const avgAngY = Math.atan2(sumSinY, sumCosY);
+
+            // Converti indietro in pixel (offset)
+            let offsetX = (avgAngX / (2 * Math.PI)) * gridX;
+            let offsetY = (avgAngY / (2 * Math.PI)) * gridY;
+            
+            // Normalizza positivi
+            if (offsetX < 0) offsetX += gridX;
+            if (offsetY < 0) offsetY += gridY;
+            
+            desks.forEach(desk => {
+                // Posizione corrente
+                const currentLeft = parseFloat(desk.style.left) || 0;
+                const currentTop = parseFloat(desk.style.top) || 0;
+                
+                // Snap to best fit grid
+                const rawX = (currentLeft - offsetX) / gridX;
+                const rawY = (currentTop - offsetY) / gridY;
+                
+                const snapLeft = (Math.round(rawX) * gridX) + offsetX;
+                const snapTop = (Math.round(rawY) * gridY) + offsetY;
+                
+                desk.style.left = snapLeft + 'px';
+                desk.style.top = snapTop + 'px';
+            });
+
+            // Allinea anche la cattedra alla stessa griglia (ma con passo dimezzato per X per centratura)
+            const teacherDesk = document.querySelector('.teacher-desk');
+            if(teacherDesk) {
+                 const tLeft = parseFloat(teacherDesk.style.left) || 0;
+                 // Cattedra indipendente Y ma allineata X
+                 
+                 const teacherGridX = gridX / 2;
+                 // Offset compatibile con la griglia principale: se offset principale è O, 
+                 // offset secondario (mezzo passo) deve essere O oppure O + G/2.
+                 // Usiamo lo stesso approccio circolare o semplicemente snappiamo al mezzo passo più vicino
+                 
+                 // Snap left to nearest (gridX/2) respecting main offsetX
+                 // Vogliamo che i punti snap della cattedra siano { offsetX, offsetX + 126, offsetX + 252 ... }
+                 // Quindi usiamo offsetX come base
+                 
+                 const distFromOffset = (tLeft - offsetX);
+                 const snapUnits = Math.round(distFromOffset / teacherGridX);
+                 const newTX = offsetX + (snapUnits * teacherGridX);
+                 
+                 teacherDesk.style.left = newTX + 'px';
+                 
+                 // NON Tocchiamo la Y della cattedra a meno che non sia palesemente fuori posto?
+                 // L'utente vuole "allineata con i banchi" -> probabilmente intende le file (colonne).
+                 // La distanza verticale è gestita dal CSS bottom per default, ma se spostata a mano?
+                 // Lasciamo Y libera per la cattedra per massima flessibilità o snappiamo a grigliaY?
+                 // Meglio lasciare libera Y (spesso avanti/indietro a piacere), ma allineare X è utile.
+            }
+        }
+
+        // Funzione per scaricare l'immagine
+        function downloadMap() {
+            const captureElement = document.getElementById('capture-area');
+            
+            // Applica stile B/N
+            captureElement.classList.add('printing-mode');
+
+            // Usa html2canvas per creare l'immagine
+            html2canvas(captureElement, {
+                scale: 2, // Migliora la qualità
+                backgroundColor: "#ffffff" // Assicura sfondo bianco
+            }).then(canvas => {
+                // Rimuovi stile B/N
+                captureElement.classList.remove('printing-mode');
+
+                // Crea un link finto per scaricare
+                const link = document.createElement('a');
+                link.download = 'Mappa_Classe.png';
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+            }).catch(err => {
+                console.error(err);
+                captureElement.classList.remove('printing-mode');
+            });
+        }
+
+        function downloadPDF() {
+            const captureElement = document.getElementById('capture-area');
+            
+            // Applica stile B/N
+            captureElement.classList.add('printing-mode');
+
+            html2canvas(captureElement, {
+                scale: 2, // Migliora la qualità
+                backgroundColor: "#ffffff"
+            }).then(canvas => {
+                // Rimuovi stile B/N subito
+                captureElement.classList.remove('printing-mode');
+
+                const imgData = canvas.toDataURL('image/png');
+                
+                // Inizializza PDF (Landscape, Millimetri, A4)
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('l', 'mm', 'a4');
+                
+                const pageWidth = 297;
+                const pageHeight = 210;
+                const margin = 10;
+                
+                // Calcola ratio per adattare l'immagine alla pagina (meno margini)
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                
+                const ratio = Math.min((pageWidth - margin*2) / imgWidth, (pageHeight - margin*2) / imgHeight);
+                
+                const finalW = imgWidth * ratio;
+                const finalH = imgHeight * ratio;
+                
+                // Centra l'immagine
+                const x = (pageWidth - finalW) / 2;
+                const y = (pageHeight - finalH) / 2;
+
+                pdf.addImage(imgData, 'PNG', x, y, finalW, finalH);
+                pdf.save('Mappa_Classe.pdf');
+            }).catch(err => {
+                console.error(err);
+                captureElement.classList.remove('printing-mode');
+            });
+        }
+
+        // --- SALVATAGGIO / CARICAMENTO MAPPA (TXT) ---
+
+        function saveMapConfig() {
+            const classroom = document.getElementById('classroom-container');
+            
+            // 1. Dimensioni Mappa
+            const config = {
+                width: classroom.style.width,
+                height: classroom.style.height,
+                desks: [],
+                teacherDesk: null,
+                students: [] // Lista "logica" degli studenti (piazzati e non)
+            };
+
+            // 2. Banchi
+            document.querySelectorAll('.desk').forEach(desk => {
+                const seats = Array.from(desk.querySelectorAll('.seat'));
+                const deskData = {
+                    left: desk.style.left,
+                    top: desk.style.top,
+                    // Il tipo di banco (1 o 2 posti) lo deduciamo dal numero di .seat
+                    seatsCount: seats.length,
+                    seatedStudentsIndexes: [] // Salveremo quali studenti sono qui
+                };
+
+                // Identifica chi c'è seduto
+                seats.forEach((seat, idx) => {
+                    const student = seat.querySelector('.student');
+                    if(student) {
+                        deskData.seatedStudentsIndexes.push({
+                            seatIndex: idx,
+                            name: student.innerText.trim(),
+                            gender: student.classList.contains('male') ? 'male' : 'female'
+                        });
+                    }
+                });
+                
+                config.desks.push(deskData);
+            });
+
+            // 3. Cattedra
+            const teacherDesk = document.querySelector('.teacher-desk');
+            if (teacherDesk) {
+                config.teacherDesk = {
+                    left: teacherDesk.style.left,
+                    top: teacherDesk.style.top,
+                    bottom: teacherDesk.style.bottom // Nel caso uno usi bottom
+                };
+            }
+
+            // 4. Studenti NON seduti (nella sidebar o unseated-container)
+            // Per non duplicare, scansioniamo TUTTI gli studenti nel documento
+            // e salviamo quelli che NON sono dentro un .desk
+            document.querySelectorAll('.student').forEach(student => {
+                if(!student.closest('.desk')) {
+                    config.students.push({
+                        name: student.innerText.trim(),
+                        gender: student.classList.contains('male') ? 'male' : 'female',
+                        placed: false
+                    });
+                }
+            });
+
+            // Genera Blob
+            const dataStr = JSON.stringify(config, null, 2);
+            const blob = new Blob([dataStr], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            
+            // Download
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "MappaClasse_Config.txt";
+            link.click();
+        }
+
+        function triggerLoadMap() {
+            document.getElementById('file-input').click();
+        }
+
+        function loadMapConfig(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    applyMapConfig(config);
+                } catch (err) {
+                    alert("Errore nel caricamento del file: " + err.message);
+                }
+                // Reset input per poter ricaricare lo stesso file se serve
+                input.value = ''; 
+            };
+            reader.readAsText(file);
+        }
+
+        function applyMapConfig(config) {
+            const classroom = document.getElementById('classroom-container');
+
+            // 1. Pulisci tutto
+            // Rimuovi banchi esistenti
+            document.querySelectorAll('.desk').forEach(el => el.remove());
+            // Rimuovi studenti esistenti
+            document.querySelectorAll('.student').forEach(el => el.remove());
+            
+            // 2. Applica dimensioni
+            if(config.width) classroom.style.width = config.width;
+            if(config.height) classroom.style.height = config.height;
+
+            // 3. Ricrea Banchi
+            if(config.desks) {
+                config.desks.forEach(dData => {
+                    const desk = createDeskElement(dData.seatsCount);
+                    desk.style.left = dData.left;
+                    desk.style.top = dData.top;
+                    
+                    // Ripristina studenti nei posti
+                    if(dData.seatedStudentsIndexes) {
+                        const seats = desk.querySelectorAll('.seat');
+                        dData.seatedStudentsIndexes.forEach(sData => {
+                            if(seats[sData.seatIndex]) {
+                                const studentEl = createStudentElement(sData.name, sData.gender);
+                                seats[sData.seatIndex].appendChild(studentEl);
+                            }
+                        });
+                    }
+                    
+                    classroom.appendChild(desk);
+                    setupDraggable(desk);
+                    addCloseButton(desk);
+                });
+            }
+
+            // 4. Ripristina Cattedra
+            const teacherDesk = document.querySelector('.teacher-desk');
+            if(teacherDesk && config.teacherDesk) {
+                if(config.teacherDesk.left) teacherDesk.style.left = config.teacherDesk.left;
+                if(config.teacherDesk.top) teacherDesk.style.top = config.teacherDesk.top;
+                // Se c'era bottom, lo rispettiamo resettando top se necessario, ma meglio usare left/top assoluti
+                // Se il save ha salvato 'auto' in top, usiamo bottom.
+                if(config.teacherDesk.bottom && (!config.teacherDesk.top || config.teacherDesk.top === 'auto')) {
+                    teacherDesk.style.bottom = config.teacherDesk.bottom;
+                    teacherDesk.style.top = 'auto'; // Reset top driven
+                } else {
+                    teacherDesk.style.bottom = 'auto'; // Reset bottom driven
+                }
+            }
+
+            // 5. Ripristina Studenti NON seduti
+            const unseatedContainer = document.getElementById('unseated-container');
+            if(config.students) {
+                config.students.forEach(sData => {
+                    const studentEl = createStudentElement(sData.name, sData.gender);
+                    unseatedContainer.appendChild(studentEl);
+                });
+            }
+
+            // Aggiorna sidebar
+            renderSidebar();
+            // Riapplica FitText
+            document.querySelectorAll('.student').forEach(fitText);
+        }
+
+        // Funzioni helper per la creazione (da duplicare logica esistente se serve, o refactoring)
+        // Siccome addNewDesk crea e appende, facciamo una versione "create" pura o usiamo addNewDesk refactored?
+        // Creiamo helper createDeskElement copiando la logica di addNewDesk ma senza append
+        
+        function createDeskElement(seatsCount) {
+            const desk = document.createElement('div');
+            desk.className = 'desk';
+            desk.style.position = 'absolute'; // Importante
+            
+            // Imposta larghezza corretta in base ai posti
+            if (seatsCount === 1) {
+                desk.style.width = '100px'; 
+            } else {
+                desk.style.width = '210px';
+            }
+            
+            // Crea posti
+            for(let i=0; i<seatsCount; i++) {
+                const seat = document.createElement('div');
+                seat.className = 'seat';
+                seat.ondrop = drop;
+                seat.ondragover = allowDrop;
+                desk.appendChild(seat);
+            }
+            return desk;
+        }
+
+        function createStudentElement(name, gender) {
+            const div = document.createElement('div');
+            // Genera ID univoco veloce
+            div.id = 's-' + Math.random().toString(36).substr(2, 9);
+            div.className = `student ${gender}`;
+            div.draggable = true;
+            div.innerText = name;
+            div.ondragstart = drag;
+            
+            // Aggiungi click listener per selezione anche sulla mappa
+            div.onclick = (e) => {
+                e.stopPropagation(); // Evita che il click passi al banco o background
+                handleSelection(div, true); // Sempre multi-select
+                renderSidebar();
+            };
+
+            return div;
+        }
+
+        function initResizeHandles() {
+            const classroom = document.getElementById('classroom-container');
+            const resizers = classroom.querySelectorAll('.resizer');
+            
+            let original_width = 0;
+            let original_height = 0;
+            let original_mouse_x = 0;
+            let original_mouse_y = 0;
+            
+            resizers.forEach(resizer => {
+                resizer.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    original_width = parseFloat(getComputedStyle(classroom, null).getPropertyValue('width').replace('px', ''));
+                    original_height = parseFloat(getComputedStyle(classroom, null).getPropertyValue('height').replace('px', ''));
+                    original_mouse_x = e.pageX;
+                    original_mouse_y = e.pageY;
+                    
+                    const onMouseMove = (e) => {
+                        const dx = e.pageX - original_mouse_x;
+                        const dy = e.pageY - original_mouse_y;
+
+                        if (resizer.classList.contains('resizer-r')) {
+                            // Cambia larghezza verso destra
+                            const width = original_width + dx;
+                            if (width > 200) classroom.style.width = width + 'px';
+                        }
+                        else if (resizer.classList.contains('resizer-b')) {
+                            // Cambia altezza verso il basso
+                            const height = original_height + dy;
+                            if (height > 200) classroom.style.height = height + 'px';
+                        }
+                        else if (resizer.classList.contains('resizer-t')) {
+                            // Cambia altezza verso l'alto (sottraiamo DY perché se andiamo su DY è negativo, Height deve aumentare)
+                            const height = original_height - dy;
+                            if (height > 200) {
+                                classroom.style.height = height + 'px';
+                                // Dobbiamo spostare fisicamente tutti gli oggetti all'interno verso il BASSO 
+                                // della stessa quantità di pixel che abbiamo aggiunto in alto,
+                                // per dare l'illusione che il bordo si sposti ma gli oggetti stiano fermi
+                                // (in realtà se Height aumenta, e Top objects resta uguale, loro stanno attaccati al bordo Top.
+                                //  Se il bordo Top sale, loro salgono con lui. Noi vogliamo che stiano fermi nello schermo,
+                                //  quindi devono scendere (aumentare Top) di quanto il bordo è salito).
+                                
+                                // Tuttavia, update continuo in mousemove è complesso per i delta relativi.
+                                // Calcoliamo la variazione rispetto all'ULTIMO frame? No, usiamo dx/dy totali e reset?
+                                // Meglio approccio incrementale o ricalcolo da original?
+                                
+                                // Approccio semplice: ricalcolo tutto da original ogni frame, ma per top/left shift 
+                                // dobbiamo sapere la posizione "originale" dei banchi al mousedown.
+                                // Questo richiede di salvare lo stato iniziale di tutti i banchi al mousedown.
+                            }
+                        }
+                        else if (resizer.classList.contains('resizer-l')) {
+                            // Idem per sinistra
+                            const width = original_width - dx;
+                            if (width > 200) {
+                                classroom.style.width = width + 'px';
+                            }
+                        }
+                    }
+
+                    // Logica specializzata per Top e Left che richiedono lo spostamento degli oggetti
+                    // Per semplificare e rendere fluido, implementiamo una logica 'delta' passo-passo
+                    // o meglio, aggiorniamo solo width/height per R/B, e width/height+shift per L/T.
+                    // Per fare shift consistente, salviamo snapshot posizioni.
+                    
+                    let initialObjectPositions = [];
+                    if (resizer.classList.contains('resizer-t') || resizer.classList.contains('resizer-l')) {
+                        document.querySelectorAll('.desk, .teacher-desk').forEach(el => {
+                            initialObjectPositions.push({
+                                el: el,
+                                top: parseFloat(el.style.top),
+                                left: parseFloat(el.style.left)
+                            });
+                        });
+                    }
+
+                    const onMouseMoveComplex = (e) => {
+                        const dx = e.pageX - original_mouse_x;
+                        const dy = e.pageY - original_mouse_y;
+
+                        if (resizer.classList.contains('resizer-r')) {
+                            const width = original_width + dx;
+                            if (width > 200) classroom.style.width = width + 'px';
+                        }
+                        else if (resizer.classList.contains('resizer-b')) {
+                            const height = original_height + dy;
+                            if (height > 200) classroom.style.height = height + 'px';
+                        }
+                        else if (resizer.classList.contains('resizer-t')) {
+                            const newHeight = original_height - dy;
+                            if (newHeight > 200) {
+                                classroom.style.height = newHeight + 'px';
+                                // Shift objects: Top aumenta di -dy (che è positivo se vado su)
+                                const shiftY = -dy; 
+                                initialObjectPositions.forEach(obj => {
+                                    obj.el.style.top = (obj.top + shiftY) + 'px';
+                                });
+                            }
+                        }
+                        else if (resizer.classList.contains('resizer-l')) {
+                            const newWidth = original_width - dx;
+                            if (newWidth > 200) {
+                                classroom.style.width = newWidth + 'px';
+                                // Shift objects: Left aumenta di -dx
+                                const shiftX = -dx;
+                                initialObjectPositions.forEach(obj => {
+                                    obj.el.style.left = (obj.left + shiftX) + 'px';
+                                });
+                            }
+                        }
+                    };
+
+                    const onMouseUp = () => {
+                        window.removeEventListener('mousemove', onMouseMoveComplex);
+                        window.removeEventListener('mouseup', onMouseUp);
+                    }
+
+                    window.addEventListener('mousemove', onMouseMoveComplex);
+                    window.addEventListener('mouseup', onMouseUp);
+                });
+            });
+        }
+
+        function initSidebarResizer() {
+            const sidebar = document.getElementById('sidebar');
+            const resizer = document.getElementById('sidebar-resizer-handle');
+            
+            if (!resizer || !sidebar) return;
+
+            resizer.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                // Blocca selezione testo durante il drag
+                document.body.style.userSelect = 'none';
+                document.body.style.cursor = 'col-resize';
+                resizer.classList.add('active');
+                
+                const startX = e.clientX;
+                const startWidth = parseFloat(window.getComputedStyle(sidebar).width);
+
+                function onMouseMove(e) {
+                    const newWidth = startWidth + (e.clientX - startX);
+                    // Limiti min/max (coerenti con CSS)
+                    if (newWidth >= 150 && newWidth <= 600) {
+                        sidebar.style.width = newWidth + 'px';
+                    }
+                }
+
+                function onMouseUp() {
+                    document.body.style.userSelect = '';
+                    document.body.style.cursor = '';
+                    resizer.classList.remove('active');
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        }
+
+        // Funzione per decifrare e mostrare contatti autore
+        function toggleAuthorInfo() {
+            const footer = document.getElementById('author-footer');
+            const isExpanded = footer.getAttribute('data-expanded') === 'true';
+            
+            if (isExpanded) {
+                // Ripristina stato iniziale
+                footer.innerHTML = "contatta l'autore";
+                footer.setAttribute('data-expanded', 'false');
+            } else {
+                // Decifra e mostra
+                const revEmail = "moc.liamg@ecsidocram";
+                const email = reverseString(revEmail);
+                const name = "Marco Discendenti";
+                
+                footer.innerHTML = `<a href="mailto:${email}">${email}</a>`;
+                footer.setAttribute('data-expanded', 'true');
+            }
+        }
+
+        function reverseString(str) {
+            return str.split("").reverse().join("");
+        }
+
+        // --- LOGICA SMART PER NOMI/COGNOMI E SESSO ---
+        // N.B. Le costanti MALE_NAMES, FEMALE_NAMES e SURNAME_PREFIXES sono definite in nomi.js
+
+        function isCommonName(str) {
+            return MALE_NAMES.has(str) || FEMALE_NAMES.has(str);
+        }
+
+        function getGenderFromToken(token) {
+            if (MALE_NAMES.has(token)) return 'male';
+            if (FEMALE_NAMES.has(token)) return 'female';
+            return null;
+        }
+
+        // Rileva se la lista è "COGNOME NOME" o "NOME COGNOME"
+        function detectListFormat(lines) {
+            let scoreSurnameFirst = 0;
+            let scoreNameFirst = 0;
+            
+            lines.forEach(line => {
+                const parts = line.trim().split(/\s+/);
+                if (parts.length < 2) return;
+                
+                const first = parts[0];
+                const last = parts[parts.length - 1];
+                
+                // Prefissi Cognome (es. DE, DI) all'inizio -> probabile Cognome Nome
+                if (SURNAME_PREFIXES.has(first) || first.includes("'")) {
+                    scoreSurnameFirst += 2;
+                }
+                
+                const firstIsName = isCommonName(first);
+                const lastIsName = isCommonName(last);
+                
+                if (firstIsName && !lastIsName) scoreNameFirst++;
+                else if (!firstIsName && lastIsName) scoreSurnameFirst++;
+            });
+            
+            return scoreSurnameFirst >= scoreNameFirst ? 'surname_first' : 'name_first';
+        }
+
+        // Estrae parti nome/cognome da una stringa completa in base al formato
+        function parseFullName(fullName, format) {
+            const parts = fullName.trim().split(/\s+/);
+            // Se ha meno di 2 parti, ritorniamo tutto come nome per sicurezza, o gestiamo come errore
+            if (parts.length < 2) return { nameParts: parts, surnameParts: [], full: fullName };
+
+            let nameParts = [];
+            let surnameParts = [];
+
+            if (format === 'surname_first') {
+                // FORMATO: COGNOME NOME (cerca nomi dalla fine)
+                let splitIndex = -1;
+                let i = parts.length - 1;
+                let foundName = false;
+                
+                while (i > 0) {
+                    if (isCommonName(parts[i])) {
+                        foundName = true;
+                        i--;
+                    } else {
+                        if (foundName) break;
+                        break;
+                    }
+                }
+                
+                if (!foundName) {
+                    splitIndex = parts.length - 1; // Fallback: ultimo è nome
+                } else {
+                    splitIndex = i + 1;
+                }
+                
+                surnameParts = parts.slice(0, splitIndex);
+                nameParts = parts.slice(splitIndex);
+
+            } else {
+                // FORMATO: NOME COGNOME (cerca nomi dall'inizio)
+                let splitIndex = 1; 
+                let i = 0;
+                let foundName = false;
+
+                while (i < parts.length - 1) {
+                    if (isCommonName(parts[i])) {
+                        foundName = true;
+                        i++;
+                    } else {
+                        if (foundName) break;
+                        break;
+                    }
+                }
+
+                if (!foundName) {
+                    splitIndex = 1; 
+                } else {
+                    splitIndex = i;
+                }
+
+                nameParts = parts.slice(0, splitIndex);
+                surnameParts = parts.slice(splitIndex);
+            }
+
+            return { nameParts, surnameParts, full: fullName };
+        }
+
+        // --- GESTIONE VISUALIZZAZIONE NOMI ---
+
+        let currentDisplayMode = 'surname_only'; // surname_only, name_only, surname_initial, name_initial, full
+        
+        const DISPLAY_MODES = [
+            { id: 'surname_only', label: '👁️ Solo Cognomi' },
+            { id: 'name_only', label: '👁️ Solo Nomi' },
+            { id: 'surname_initial', label: '👁️ Cognome + Iniz.' },
+            { id: 'name_initial', label: '👁️ Nome + Iniz.' },
+            { id: 'full', label: '👁️ Completi' }
+        ];
+
+        function toggleDisplayMode() {
+            // Trova indice corrente
+            const currentIndex = DISPLAY_MODES.findIndex(m => m.id === currentDisplayMode);
+            // Prossimo
+            const nextIndex = (currentIndex + 1) % DISPLAY_MODES.length;
+            currentDisplayMode = DISPLAY_MODES[nextIndex].id;
+            
+            // Aggiorna UI Tasto
+            document.getElementById('btn-display-mode').innerText = DISPLAY_MODES[nextIndex].label;
+            
+            // Applica
+            applyDisplayMode();
+        }
+
+        function applyDisplayMode() {
+            const students = document.querySelectorAll('.student');
+            if (students.length === 0) return;
+
+            const simplify = document.getElementById('simplify-names').checked;
+
+            // Rileva formato globale (per parsing corretto)
+            // Usiamo i FullName salvati se possibile per l'analisi statistica, altrimenti innerText
+            // Ma l'analisi statistica ha senso sulla lista completa originale. 
+            // Se abbiamo già i dati salvati, possiamo usare parseFullName sul singolo elemento usando il formato 
+            // che ricalcoliamo al volo o (meglio) ricalcoliamo su tutto il set di full names.
+            
+            const rawNames = Array.from(students).map(s => s.dataset.fullName || s.innerText);
+            const format = detectListFormat(rawNames);
+
+            students.forEach(s => {
+                let sourceText = s.dataset.fullName;
+                if (!sourceText) {
+                    sourceText = s.innerText.trim();
+                    s.dataset.fullName = sourceText;
+                }
+
+                const parsed = parseFullName(sourceText, format);
+                let textToShow = "";
+
+                // Funzione locale per ottenere la versione semplificata di un array di parti
+                const getSmartPart = (parts) => {
+                    if (!simplify || parts.length <= 1) return parts.join(" ");
+                    
+                    // Logica "Smart Abbreviate"
+                    // Accumula token finché non trovi un NON-Prefisso
+                    let result = [];
+                    for (let token of parts) {
+                        result.push(token);
+                        // Se questo token NON è un prefisso, abbiamo finito il "primo" cognome
+                        // (es. DE (pref) LA (pref) CRUZ (no-pref) -> Stop)
+                        if (!SURNAME_PREFIXES.has(token) && !token.includes("'")) {
+                            break;
+                        }
+                    }
+                    return result.join(" ");
+                };
+
+                const getInitial = (parts) => {
+                    if (parts.length === 0) return "";
+                    return parts[0].charAt(0) + ".";
+                };
+
+                const surnameStr = getSmartPart(parsed.surnameParts);
+                const nameStr = getSmartPart(parsed.nameParts); // Per i nomi vale stessa logica (es. Gian Marco -> Gian)
+                
+                // Nota: per i nomi propri la logica prefissi è meno rilevante ma non dannosa. 
+                // "ANNA MARIA" -> ANNA non è prefisso -> Stop -> "ANNA". OK.
+                
+                const fullSurname = parsed.surnameParts.join(" ");
+                const fullName = parsed.nameParts.join(" ");
+
+                switch (currentDisplayMode) {
+                    case 'surname_only':
+                        textToShow = surnameStr;
+                        break;
+                    case 'name_only':
+                        textToShow = nameStr;
+                        break;
+                    case 'surname_initial':
+                        textToShow = surnameStr + " " + getInitial(parsed.nameParts);
+                        break;
+                    case 'name_initial':
+                        textToShow = nameStr + " " + getInitial(parsed.surnameParts);
+                        break;
+                    case 'full':
+                    default:
+                        // Se simplify è on, mostriamo comunque tutto o semplifichiamo le parti?
+                        // "Completi" di solito intende tutto. Ma se l'utente spunta "Abbrevia", forse vuole "Cognome1 Nome1"?
+                        // Interpretiamo "Completi" come "Tutte le parti, senza tagli". 
+                        // Ma se l'utente vuole Nome1 Cognome1?
+                        // Facciamo che 'full' ignora simplify, mostra TUTTO originale.
+                        // Se vuole Nome1 Cognome1 non c'è una modalità esplicita, ma Nome+Iniziale si avvicina.
+                        // Modifica: Rispettiamo la logica dei tasti precedenti.
+                        // Se simplify è attivo:
+                        // Solo Cognomi -> Cognome1
+                        // Solo Nomi -> Nome1
+                        // Cognome+Iniz -> Cognome1 + N.
+                        // Nome+Iniz -> Nome1 + C.
+                        // Completi -> Tutto originale.
+                        textToShow = parsed.surnameParts.join(" ") + " " + parsed.nameParts.join(" ");
+                        // Ricostruzione nell'ordine originale? parseFullName ha diviso.
+                        // Meglio usare sourceText se è Full
+                        textToShow = sourceText;
+                        break;
+                }
+
+                s.innerText = textToShow;
+                fitText(s);
+            });
+            
+            // La sidebar deve sempre mostrare il nome completo, quindi non la tocchiamo qui 
+            // (renderSidebar usa dataset.fullName)
+            // Ma se abbiamo appena fatto un import massivo, la sidebar potrebbe non essere aggiornata?
+            // processBulkAdd chiama renderSidebar.
+            // Qui stiamo solo cambiando visualizzazione banchi.
+        }
+    </script>
+
+</body>
+</html>
