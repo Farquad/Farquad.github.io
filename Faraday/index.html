@@ -775,7 +775,7 @@
   <div id="tip-view" class="tip-src">
     Il potenziale colora i conduttori: rosso dove è più alto, blu dove è più basso.
     Il flusso colora l’area del circuito secondo il flusso totale Φ = Φ<sub>B</sub> + Φ<sub>i</sub>. L’intensità cresce con |Φ|; il colore segue il segno di Φ, con la stessa scala di B.
-    B indotto disegna in giallo il campo medio della corrente, solo dentro il circuito. I cerchi stanno sul reticolo spostato di mezzo passo, così non cadono su quelli di B. ⊙ esce dal foglio, ⊗ entra. Il cerchio pieno corrisponde a 8 μT.
+    B indotto disegna il campo medio della corrente, solo dentro il circuito: giallo se è positivo, verde se è negativo. I cerchi stanno sul reticolo spostato di mezzo passo, così non cadono su quelli di B. ⊙ esce dal foglio, ⊗ entra. Il cerchio pieno corrisponde a 8 μT.
     Il tasto accende solo il disegno: flusso, corrente e forza tengono conto di B indotto anche quando i cerchi sono spenti.
   </div>
   <div id="tip-graph" class="tip-src">
@@ -1293,9 +1293,9 @@
 
   function biRgb(b) {
     const t = clamp(b / B_IND_VIS, -1, 1);
-    const end = t >= 0 ? [242, 214, 84] : [214, 148, 42];
-    const u = Math.abs(t);
-    const z = [154, 146, 112];
+    const end = t >= 0 ? [242, 214, 84] : [72, 198, 96];
+    const u = Math.pow(Math.abs(t), 0.55);
+    const z = [168, 168, 156];
     return [
       Math.round(z[0] + (end[0] - z[0]) * u),
       Math.round(z[1] + (end[1] - z[1]) * u),
