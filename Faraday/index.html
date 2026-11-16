@@ -261,15 +261,37 @@
       box-shadow: 0 0 0 1px #888;
       cursor: pointer;
     }
+    .b-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      height: 22px;
+    }
+    .b-finger {
+      position: absolute;
+      top: 50%;
+      width: 8px;
+      height: 8px;
+      margin: -4px 0 0 -4px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.75);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+      display: none;
+    }
+    .b-wrap.is-drag .b-finger { display: block; }
     #bField {
       -webkit-appearance: none;
       appearance: none;
-      flex: 1;
+      display: block;
+      width: 100%;
       height: 22px;
       background: transparent;
       outline: none;
-      cursor: pointer;
+      cursor: grab;
+      touch-action: none;
     }
+    .b-wrap.is-drag #bField { cursor: grabbing; }
     #bField::-webkit-slider-runnable-track {
       height: 8px;
       border-radius: 999px;
@@ -302,66 +324,6 @@
       box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
       cursor: pointer;
     }
-    .ctrl label.switch {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 8px;
-      flex: none;
-      width: auto;
-      margin: 0 0 10px;
-      font-size: 0.92rem;
-      font-weight: 600;
-      cursor: pointer;
-      color: #e4e4e4;
-    }
-    .ctrl label.switch:last-child { margin-bottom: 0; }
-    .switch-name {
-      flex: 0 1 auto;
-      min-width: 0;
-    }
-    .switch input {
-      position: absolute;
-      opacity: 0;
-      width: 1px;
-      height: 1px;
-      margin: 0;
-      pointer-events: none;
-    }
-    .switch .track {
-      position: relative;
-      display: block;
-      flex: 0 0 36px;
-      width: 36px;
-      height: 20px;
-      border-radius: 999px;
-      background: #3a3a3a;
-      border: 1px solid #5a5a5a;
-    }
-    .switch .track::after {
-      content: "";
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #c8c8c8;
-      transition: transform 0.15s ease;
-    }
-    .switch input:checked + .track {
-      background: #245078;
-      border-color: #6eb0e4;
-    }
-    .switch input:checked + .track::after {
-      transform: translateX(16px);
-      background: #fff;
-    }
-    .switch input:focus-visible + .track {
-      outline: 2px solid #fff;
-      outline-offset: 2px;
-    }
     #resetBtn {
       width: 100%;
       margin-bottom: 14px;
@@ -381,8 +343,7 @@
       gap: 8px;
       margin-bottom: 8px;
     }
-    .cmd-row button,
-    #motorBtn {
+    .cmd-row button {
       flex: 1;
       padding: 8px 8px;
       border-radius: 6px;
@@ -395,12 +356,96 @@
       cursor: pointer;
     }
     .cmd-row button:hover,
-    #motorBtn:hover { background: #2a2a2a; }
-    #motorBtn { width: 100%; }
-    #motorBtn.is-on {
+    .tick-btn:hover { background: #2a2a2a; }
+    .cmd-row button:disabled {
+      opacity: 0.38;
+      color: #8a8a8a;
+      cursor: default;
+    }
+    .cmd-row button:disabled:hover { background: #111; }
+    .kick-arrow {
+      display: inline-block;
+      margin-left: 0.18em;
+      font-size: 2.15em;
+      line-height: 0.8;
+      vertical-align: -0.12em;
+    }
+    .cmd-row .tick-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 0;
+      line-height: 1.2;
+      color: #8d8d8d;
+    }
+    .view-row {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 6px;
+    }
+    .view-btn {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 8px 4px;
+      border-radius: 6px;
+      border: 1px solid #4a4a4a;
+      background: #111;
+      color: #8d8d8d;
+      font: inherit;
+      font-size: 0.76rem;
+      font-weight: 650;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .view-btn .tick,
+    .tick-btn .tick {
+      position: relative;
+      flex: 0 0 auto;
+      width: 14px;
+      height: 14px;
+      border: 1.5px solid #8a8a8a;
+      border-radius: 2px;
+      background: #0c0c0c;
+    }
+    .view-btn.is-on .tick,
+    .tick-btn.is-on .tick {
+      border-color: #b9ddf8;
+      background: #2a6ea0;
+    }
+    .view-btn.is-on .tick::after,
+    .tick-btn.is-on .tick::after {
+      content: "";
+      position: absolute;
+      left: 3.5px;
+      top: 1px;
+      width: 4px;
+      height: 7px;
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+    .view-btn:hover { background: #2a2a2a; }
+    .view-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .view-btn.is-on {
+      border-color: #6eb0e4;
+      color: #e7f3ff;
+      background: #1a3348;
+    }
+    #motorBtn.is-on,
+    #lockBtn.is-on {
       border-color: #e0b85a;
       color: #ffe1a3;
       background: #3a2e14;
+    }
+    #motorBtn.is-on .tick,
+    #lockBtn.is-on .tick {
+      border-color: #ffe1a3;
+      background: #6a5420;
     }
     .data-box {
       background: #141414;
@@ -456,7 +501,9 @@
     .datum[data-series="v"] .dv { color: #49c6ff; }
     .datum[data-series="emf"] .dv { color: #ffb03a; }
     .datum[data-series="I"] .dv { color: #5ddeaf; }
-    .datum[data-series="phi"] .dv { color: #e070d0; }
+    .datum[data-series="phiB"] .dv { color: #e070d0; }
+    .datum[data-series="phiI"] .dv { color: #e6c84a; }
+    .datum[data-series="phi"] .dv { color: #f2f2f2; }
     .formula {
       margin-top: 8px;
       padding-top: 8px;
@@ -520,6 +567,9 @@
     }
     .swatch.dash {
       background: repeating-linear-gradient(90deg, #5ddeaf 0 5px, transparent 5px 8px);
+    }
+    .swatch.dash-w {
+      background: repeating-linear-gradient(90deg, #f2f2f2 0 5px, transparent 5px 8px);
     }
     @media (max-width: 900px) {
       #wrap { flex-direction: column; }
@@ -600,7 +650,10 @@
           <button type="button" class="help" data-tip="tip-b" aria-label="Informazioni sul campo magnetico">i</button>
         </div>
         <div class="row">
-          <input id="bField" type="range" min="-1" max="1" step="0.01" value="0.5" />
+          <div class="b-wrap" id="bWrap">
+            <input id="bField" type="range" min="-1" max="1" step="any" value="0.5" />
+            <span class="b-finger" id="bFinger"></span>
+          </div>
         </div>
       </div>
 
@@ -610,10 +663,13 @@
           <button type="button" class="help" data-tip="tip-cmd" aria-label="Informazioni sui comandi">i</button>
         </div>
         <div class="cmd-row">
-          <button id="kickLeft" type="button">Impulso a sinistra</button>
-          <button id="kickRight" type="button">Impulso a destra</button>
+          <button id="kickLeft" type="button">Impulso<span class="kick-arrow">←</span></button>
+          <button id="kickRight" type="button">Impulso<span class="kick-arrow">→</span></button>
         </div>
-        <button id="motorBtn" type="button" aria-pressed="false">Motore oscillante</button>
+        <div class="cmd-row">
+          <button id="lockBtn" type="button" class="tick-btn" aria-pressed="false"><span class="tick" aria-hidden="true"></span>Blocca barretta</button>
+          <button id="motorBtn" type="button" class="tick-btn" aria-pressed="false"><span class="tick" aria-hidden="true"></span>Motore oscillante</button>
+        </div>
       </div>
 
       <div class="ctrl">
@@ -621,16 +677,11 @@
           <label>Visualizzazione</label>
           <button type="button" class="help" data-tip="tip-view" aria-label="Informazioni sulla visualizzazione">i</button>
         </div>
-        <label class="switch">
-          <input id="potToggle" type="checkbox" checked />
-          <span class="track" aria-hidden="true"></span>
-          <span class="switch-name">Potenziale</span>
-        </label>
-        <label class="switch">
-          <input id="fluxToggle" type="checkbox" checked />
-          <span class="track" aria-hidden="true"></span>
-          <span class="switch-name">Flusso</span>
-        </label>
+        <div class="view-row">
+          <button id="potToggle" type="button" class="view-btn is-on" aria-pressed="true"><span class="tick" aria-hidden="true"></span>Potenziale</button>
+          <button id="fluxToggle" type="button" class="view-btn is-on" aria-pressed="true"><span class="tick" aria-hidden="true"></span>Flusso</button>
+          <button id="bindToggle" type="button" class="view-btn" aria-pressed="false"><span class="tick" aria-hidden="true"></span>B indotto</button>
+        </div>
       </div>
 
       <button id="resetBtn" type="button">Ripristina</button>
@@ -653,13 +704,23 @@
             <span class="dk">Intensità <i>I</i></span>
             <span class="dv" id="valI">+0.000 A</span>
           </button>
+          <button type="button" class="datum" data-series="phiB" aria-pressed="true">
+            <span class="dk">Flusso di B</span>
+            <span class="dv" id="valPB">+0.0 mWb</span>
+          </button>
+          <button type="button" class="datum" data-series="phiI" aria-pressed="true">
+            <span class="dk">Flusso di B indotto</span>
+            <span class="dv" id="valPI">+0.00 μWb</span>
+          </button>
           <button type="button" class="datum" data-series="phi" aria-pressed="true">
-            <span class="dk">Flusso <i>Φ</i></span>
+            <span class="dk">Flusso totale</span>
             <span class="dv" id="valP">+0.0 mWb</span>
           </button>
         </div>
         <p class="formula">
-          ε = Bℓv &nbsp;·&nbsp; I = ε/R &nbsp;·&nbsp; Φ = Bℓx<br />
+          ε = −dΦ/dt = Bℓv − ℓx dB/dt − d(LI)/dt<br />
+          I = ε/R &nbsp;·&nbsp; Φ = Φ<sub>B</sub> + Φ<sub>i</sub><br />
+          Φ<sub>B</sub> = Bℓx &nbsp;·&nbsp; Φ<sub>i</sub> = LI<br />
           ℓ = 20 cm &nbsp;·&nbsp; R = 0,20 Ω &nbsp;·&nbsp; m = 15 g<br />
           x = larghezza del circuito. v &gt; 0 verso destra.
         </p>
@@ -675,7 +736,9 @@
           <li><button type="button" class="legend-btn" data-series="v" aria-pressed="true"><i class="swatch" style="background:#49c6ff"></i><span class="name">v</span> <span class="scale" id="legV"></span></button></li>
           <li><button type="button" class="legend-btn" data-series="emf" aria-pressed="true"><i class="swatch" style="background:#ffb03a"></i><span class="name">ε</span> <span class="scale" id="legE"></span></button></li>
           <li><button type="button" class="legend-btn" data-series="I" aria-pressed="true"><i class="swatch dash"></i><span class="name">I</span> <span class="scale" id="legI"></span></button></li>
-          <li><button type="button" class="legend-btn" data-series="phi" aria-pressed="true"><i class="swatch" style="background:#e070d0"></i><span class="name">Φ</span> <span class="scale" id="legP"></span></button></li>
+          <li><button type="button" class="legend-btn" data-series="phiB" aria-pressed="true" aria-label="Flusso di B"><i class="swatch" style="background:#e070d0"></i><span class="name">Φ<sub>B</sub></span> <span class="scale" id="legPB"></span></button></li>
+          <li><button type="button" class="legend-btn" data-series="phiI" aria-pressed="true" aria-label="Flusso di B indotto"><i class="swatch" style="background:#e6c84a"></i><span class="name">Φ<sub>i</sub></span> <span class="scale" id="legPI"></span></button></li>
+          <li><button type="button" class="legend-btn" data-series="phi" aria-pressed="true" aria-label="Flusso totale"><i class="swatch dash-w"></i><span class="name">Φ</span> <span class="scale" id="legP"></span></button></li>
         </ul>
       </div>
     </aside>
@@ -688,25 +751,37 @@
     La barretta segue la mano mentre è presa; al rilascio conserva la velocità.
   </div>
   <div id="tip-cmd" class="tip-src">
-    Ogni impulso somma 0,50 m/s. Il motore oscillante impone un moto armonico sinusoidale, con un’ampiezza che resta poco dentro i due estremi della rotaia. Continua finché non si preme di nuovo il tasto.
+    Ogni impulso somma 0,50 m/s. Con il motore o il blocco accesi gli impulsi restano disattivati. Il motore oscillante impone un moto armonico sinusoidale, con un’ampiezza che resta poco dentro i due estremi della rotaia. Continua finché non si preme di nuovo il tasto.
+    <strong>Blocca barretta</strong> toglie la forza magnetica: la barretta resta dove viene lasciata. Mentre la sposti segue la mano con lo stesso ritardo del cursore di B, e al rilascio si ferma. L’area cambia, il flusso varia e nel circuito nasce f.e.m. Accendere il motore spegne il blocco, e accendere il blocco spegne il motore.
   </div>
   <div id="tip-b" class="tip-src">
-    Campo uniforme perpendicolare al piano. Valore positivo: B esce dal foglio (⊙).
-    Valore negativo: B entra (⊗). La forza sulla barretta è <strong>F = iℓ × B</strong> e si oppone al moto.
+    Campo uniforme perpendicolare al piano. Il cursore segue la mano con un breve ritardo e, al rilascio, si ferma dov’è: finché si muove, nel circuito nasce f.e.m.
+    Valore positivo: B esce dal foglio (⊙).
+    Valore negativo: B entra (⊗). La forza sulla barretta è <strong>F = iℓ × B</strong>:
+    frena il moto e, mentre B cambia, spinge la barretta nel verso che si oppone alla variazione del flusso.
   </div>
   <div id="tip-data" class="tip-src">
-    <strong>v</strong> è positiva verso destra. <strong>ε = Bℓv</strong> spinge le cariche positive nel verso di <strong>v × B</strong>.
-    <strong>I = ε/R</strong> è positiva in senso antiorario (verso il basso nella barretta, se ε &gt; 0).
-    <strong>Φ = Bℓx</strong> è il flusso uscente dal circuito.
+    <strong>v</strong> è positiva verso destra.
+    Il flusso totale è <strong>Φ = Φ<sub>B</sub> + Φ<sub>i</sub></strong>, con <strong>Φ<sub>B</sub> = Bℓx</strong> e <strong>Φ<sub>i</sub> = LI</strong>.
+    L è l’induttanza della spira rettangolare, filo di raggio 2 mm, e cresce con la larghezza.
+    <strong>ε = −dΦ/dt = Bℓv − ℓx dB/dt − d(LI)/dt</strong> e <strong>I = ε/R</strong>.
+    Con questa spira Φ<sub>i</sub> resta di qualche μWb, quindi ε è quasi Bℓv − ℓx dB/dt.
+    La parte <strong>Bℓv</strong> spinge le cariche positive nel verso di <strong>v × B</strong> ed è l’unica che colora il potenziale: la variazione di B fa circolare corrente senza un potenziale assegnato lungo il filo.
+    <strong>I</strong> è positiva in senso antiorario (verso il basso nella barretta, se ε &gt; 0) e genera B indotto uscente dal foglio.
+    La forza sulla barretta è <strong>F = Iℓ × B</strong>, più il contributo dell’induttanza, piccolo, che tende ad allargare il circuito.
+    Muovere lo slider varia B e, finché il campo cambia, produce f.e.m. e corrente.
     Un clic sulla grandezza la spegne o la riaccende: la traccia esce dal grafico o vi ritorna.
   </div>
   <div id="tip-view" class="tip-src">
     Il potenziale colora i conduttori: rosso dove è più alto, blu dove è più basso.
-    Il flusso colora l’area del circuito con il colore di B; l’intensità cresce con |Φ|.
+    Il flusso colora l’area del circuito secondo il flusso totale Φ = Φ<sub>B</sub> + Φ<sub>i</sub>. L’intensità cresce con |Φ|; il colore segue il segno di Φ, con la stessa scala di B.
+    B indotto disegna in giallo il campo medio della corrente, solo dentro il circuito. I cerchi stanno sul reticolo spostato di mezzo passo, così non cadono su quelli di B. ⊙ esce dal foglio, ⊗ entra. Il cerchio pieno corrisponde a 8 μT.
+    Il tasto accende solo il disegno: flusso, corrente e forza tengono conto di B indotto anche quando i cerchi sono spenti.
   </div>
   <div id="tip-graph" class="tip-src">
-    Le quattro grandezze condividono gli ultimi 10 s di tempo simulato.
+    Le grandezze condividono gli ultimi 10 s di tempo simulato.
     L’asse verticale è in unità di piena scala, una per ciascuna grandezza (vedi legenda): 1 e −1 sono il fondo scala.
+    Φ<sub>B</sub> e Φ, il flusso totale, usano la stessa scala in mWb. Φ<sub>i</sub> è in μWb: il flusso del campo indotto è molto più piccolo, e sulla scala dei mWb Φ e Φ<sub>B</sub> restano sovrapposti.
     Un clic sulla voce in legenda, o sul dato corrispondente, nasconde o mostra quella traccia.
   </div>
 
@@ -717,14 +792,20 @@
   const ELL = 0.20;
   const MASS = 0.015;
   const R = 0.20;
-  const SPRING_K = 140;
-  const DRAG_DAMP = 12;
+  const SPRING_K = 95;
+  const DRAG_DAMP = 14;
   const WINDOW = 10;
   const V_SCALE = 1;
   const E_SCALE = 0.10;
   const I_SCALE = 1;
   const P_SCALE = 0.080;
+  const P_IND_SCALE = 1e-6;
+  const MU0 = Math.PI * 4e-7;
+  const WIRE_R = 0.002;
+  const B_IND_VIS = 8e-6;
   const V_COLOR = 0.007;
+  const V_ARROW = 160;
+  const F_ARROW = 3200;
   const I_METER = 0.35;
   const FLOW = 2600;
   const N_CH = 32;
@@ -759,9 +840,12 @@
   const trend = document.getElementById("trend");
   const tctx = trend.getContext("2d");
   const bEl = document.getElementById("bField");
+  const bWrap = document.getElementById("bWrap");
+  const bFinger = document.getElementById("bFinger");
   const timeEl = document.getElementById("timeScale");
   const potEl = document.getElementById("potToggle");
   const fluxEl = document.getElementById("fluxToggle");
+  const bindEl = document.getElementById("bindToggle");
   const pauseBtn = document.getElementById("pauseBtn");
   const bVal = document.getElementById("bVal");
   const timeVal = document.getElementById("timeVal");
@@ -769,19 +853,32 @@
   const valE = document.getElementById("valE");
   const valI = document.getElementById("valI");
   const valP = document.getElementById("valP");
+  const valPB = document.getElementById("valPB");
+  const valPI = document.getElementById("valPI");
 
   document.getElementById("legV").textContent = "1 ≙ " + V_SCALE.toFixed(0) + "\u00a0m/s";
   document.getElementById("legE").textContent = "1 ≙ " + E_SCALE.toFixed(2) + "\u00a0V";
   document.getElementById("legI").textContent = "1 ≙ " + I_SCALE.toFixed(0) + "\u00a0A";
+  document.getElementById("legPB").textContent = "1 ≙ " + Math.round(P_SCALE * 1000) + "\u00a0mWb";
+  document.getElementById("legPI").textContent = "1 ≙ " + (P_IND_SCALE * 1e6).toFixed(0) + "\u00a0μWb";
   document.getElementById("legP").textContent = "1 ≙ " + Math.round(P_SCALE * 1000) + "\u00a0mWb";
 
   let B = 0.5;
+  let bTarget = 0.5;
+  let bVel = 0;
+  let bDragging = false;
+  let dBdt = 0;
+  let bTrack = 0.5;
   let timeScale = 1;
   let showPot = true;
   let showFlux = true;
+  let showBind = false;
+  let loopI = 0;
+  let dIdt = 0;
   let paused = false;
   let barX = X0;
   let vx = 0;
+  let lockVel = 0;
   let dragging = false;
   let grabDx = 0;
   let targetX = X0;
@@ -846,18 +943,66 @@
     return Math.abs(p.x - barX) <= barW / 2 + 16 && p.y >= yTop - 18 && p.y <= yBot + 18;
   }
 
+  // Induttanza in bassa frequenza di una spira rettangolare (Grover):
+  // lati a, b e filo rotondo di raggio r. Include l'induttanza interna.
+  function inductance(a) {
+    const b = ELL;
+    const r = WIRE_R;
+    const width = Math.max(a, 4 * r);
+    const diag = Math.hypot(width, b);
+    const f = width * Math.log((2 * width) / r)
+      + b * Math.log((2 * b) / r)
+      - width * Math.asinh(width / b)
+      - b * Math.asinh(b / width)
+      + 2 * diag
+      - 1.75 * (width + b);
+    return (MU0 / Math.PI) * f;
+  }
+
+  function dInductance(a) {
+    const b = ELL;
+    const r = WIRE_R;
+    const width = Math.max(a, 4 * r);
+    const diag = Math.hypot(width, b);
+    const df = Math.log((2 * width) / r)
+      - Math.asinh(width / b)
+      + diag / width
+      - 0.75;
+    return (MU0 / Math.PI) * df;
+  }
+
+  function circuitStep(hSim) {
+    const widthM = (xRight - barX) * mPerPx;
+    const v_m = vx * mPerPx;
+    const L = inductance(widthM);
+    const dLdt = -dInductance(widthM) * v_m;
+    const emfExt = B * ELL * v_m - widthM * ELL * dBdt;
+    const h = Math.max(hSim, 1e-6);
+    const denom = R + L / h + dLdt;
+    const next = (emfExt + (L / h) * loopI) / denom;
+    dIdt = (next - loopI) / h;
+    loopI = next;
+  }
+
   function measure() {
     const v_m = vx * mPerPx;
     const widthM = (xRight - barX) * mPerPx;
-    const phi = B * widthM * ELL;
-    const emf = B * ELL * v_m;
-    const I = emf / R;
-    const F = -B * I * ELL;
+    const L = inductance(widthM);
+    const dLdt = -dInductance(widthM) * v_m;
+    const phiB = B * widthM * ELL;
+    const phiI = L * loopI;
+    const phi = phiB + phiI;
+    const emfMot = B * ELL * v_m;
+    const emfExt = emfMot - widthM * ELL * dBdt;
+    const emf = emfExt - L * dIdt - loopI * dLdt;
+    const I = loopI;
+    const F = -B * I * ELL - 0.5 * I * I * dInductance(widthM);
+    const Bavg = widthM > 1e-8 ? phiI / (widthM * ELL) : 0;
     const widthPx = xRight - barX;
     const LextPx = 2 * widthPx + H;
     const Lpx = LextPx + H;
-    const dV = Lpx > 0 ? I * R * (LextPx / Lpx) : 0;
-    return { v_m, widthM, phi, emf, I, F, vBot: dV / 2, vTop: -dV / 2, LextPx, widthPx };
+    const dV = Lpx > 0 ? emfMot * (LextPx / Lpx) : 0;
+    return { v_m, widthM, phi, phiB, phiI, emf, I, F, Bavg, vBot: dV / 2, vTop: -dV / 2, LextPx, widthPx };
   }
 
   function vExt(dist, m) {
@@ -878,17 +1023,65 @@
     ];
   }
 
+  function bFromPointer(e) {
+    const rect = bEl.getBoundingClientRect();
+    const t = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0;
+    return clamp(-1 + clamp(t, 0, 1) * 2, -1, 1);
+  }
+
+  function placeFinger() {
+    const f = clamp((bTarget + 1) / 2, 0, 1);
+    bFinger.style.left = "calc(9px + (100% - 18px) * " + f + ")";
+  }
+
+  function showField() {
+    writingB = true;
+    bEl.value = String(B);
+    writingB = false;
+  }
+
+  function stepField(realDt) {
+    if (!bDragging) {
+      bVel = 0;
+      return;
+    }
+    const dt = Math.min(Math.max(realDt, 0), 0.05);
+    bVel += (SPRING_K * (bTarget - B) - DRAG_DAMP * bVel) * dt;
+    B += bVel * dt;
+    if (B <= -1) { B = -1; if (bVel < 0) bVel = 0; }
+    else if (B >= 1) { B = 1; if (bVel > 0) bVel = 0; }
+  }
+
+  let writingB = false;
+
+  function stepLockedDrag(realDt) {
+    const dt = Math.min(Math.max(realDt, 0), 0.05);
+    const goal = clamp(targetX, xMin, xMax);
+    lockVel += (SPRING_K * (goal - barX) - DRAG_DAMP * lockVel) * dt;
+    barX += lockVel * dt;
+    if (barX <= xMin) { barX = xMin; if (lockVel < 0) lockVel = 0; }
+    else if (barX >= xMax) { barX = xMax; if (lockVel > 0) lockVel = 0; }
+  }
+
   function step(hSim, ts) {
+    if (barLocked) {
+      // Niente forza di Lorentz. Se la mano tiene la barretta, la posizione
+      // è già aggiornata in tempo reale, con la stessa molla del cursore di B.
+      if (!dragging) vx = 0;
+      circuitStep(hSim);
+      return;
+    }
     if (motor && !dragging) {
       motor.phase = (motor.phase + MOTOR_OMEGA * hSim) % (Math.PI * 2);
       barX = motorCenter + motorAmp * Math.sin(motor.phase);
       vx = motorAmp * MOTOR_OMEGA * Math.cos(motor.phase);
+      circuitStep(hSim);
       return;
     }
-    const b2 = B * B;
-    const tau = b2 < 1e-10 ? Infinity : (MASS * R) / (b2 * ELL * ELL);
-    let ax = 0;
-    if (tau < Infinity) ax -= vx / tau;
+    circuitStep(hSim);
+    const widthM = (xRight - barX) * mPerPx;
+    const F = -B * loopI * ELL - 0.5 * loopI * loopI * dInductance(widthM);
+    let ax = F / (MASS * mPerPx);
     if (dragging) {
       const ts2 = ts * ts;
       ax += (SPRING_K * (targetX - barX)) / ts2 - (DRAG_DAMP * vx) / ts;
@@ -918,11 +1111,19 @@
 
   function integrate(realDt) {
     const ts = playbackOf(timeScale);
+    if (barLocked && dragging) {
+      stepLockedDrag(realDt);
+      vx = paused || ts <= 1e-6 ? 0 : lockVel / ts;
+    } else if (barLocked) {
+      lockVel = 0;
+      vx = 0;
+    }
     if (paused) {
-      if (dragging) {
+      if (dragging && !barLocked) {
         barX = clamp(targetX, xMin, xMax);
         vx = 0;
       }
+      circuitStep(0.05);
       return;
     }
     const n = Math.max(1, Math.ceil(realDt / 0.005));
@@ -1086,8 +1287,40 @@
     ctx.stroke();
   }
 
-  function bMark() {
-    return 6.2 + 5.8 * Math.min(1, Math.abs(B));
+  function fieldMark(mag) {
+    return 6.2 + 5.8 * Math.min(1, Math.abs(mag));
+  }
+
+  function biRgb(b) {
+    const t = clamp(b / B_IND_VIS, -1, 1);
+    const end = t >= 0 ? [242, 214, 84] : [214, 148, 42];
+    const u = Math.abs(t);
+    const z = [154, 146, 112];
+    return [
+      Math.round(z[0] + (end[0] - z[0]) * u),
+      Math.round(z[1] + (end[1] - z[1]) * u),
+      Math.round(z[2] + (end[2] - z[2]) * u),
+    ];
+  }
+
+  function drawBSymbol(x, y, size, outward) {
+    if (outward) {
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, size * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const inset = size * 0.58;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.moveTo(x - inset, y - inset);
+      ctx.lineTo(x + inset, y + inset);
+      ctx.moveTo(x + inset, y - inset);
+      ctx.lineTo(x - inset, y + inset);
+      ctx.stroke();
+    }
   }
 
   function drawField() {
@@ -1099,28 +1332,37 @@
     ctx.fillStyle = col;
     ctx.lineWidth = 2.2;
     const step = 54;
-    const size = bMark();
-    for (let y = yTop - 8; y <= yBot + 28; y += step) {
+    const size = fieldMark(mag);
+    for (let y = yTop - 8 + step; y <= yBot + 28; y += step) {
       for (let x = xRailL + 8; x <= xRight - 16; x += step) {
         if (Math.hypot(x - xAm, y - amY) < amR + 16) continue;
         if (Math.abs(x - barX) < barW && y > yTop - 6 && y < yBot + 6) continue;
-        if (B > 0) {
-          ctx.beginPath();
-          ctx.arc(x, y, size, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(x, y, size * 0.28, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          const inset = size * 0.58;
-          ctx.beginPath();
-          ctx.arc(x, y, size, 0, Math.PI * 2);
-          ctx.moveTo(x - inset, y - inset);
-          ctx.lineTo(x + inset, y + inset);
-          ctx.moveTo(x + inset, y - inset);
-          ctx.lineTo(x - inset, y + inset);
-          ctx.stroke();
-        }
+        drawBSymbol(x, y, size, B > 0);
+      }
+    }
+  }
+
+  function drawInduced(m) {
+    if (!showBind) return;
+    const mag = Math.min(1, Math.abs(m.Bavg) / B_IND_VIS);
+    if (mag < 0.02) return;
+    const alpha = 0.28 + 0.55 * mag;
+    const col = rgba(biRgb(m.Bavg), alpha);
+    ctx.strokeStyle = col;
+    ctx.fillStyle = col;
+    ctx.lineWidth = 2.2;
+    const step = 54;
+    const size = fieldMark(mag);
+    const left = barX + barW / 2 + 6;
+    const right = xRight - 12;
+    const top = yTop + 10;
+    const bot = yBot - 10;
+    for (let y = yTop - 8 + step / 2; y <= yBot + 28; y += step) {
+      if (y < top || y > bot) continue;
+      for (let x = xRailL + 8 + step / 2; x <= xRight - 16; x += step) {
+        if (x < left || x > right) continue;
+        if (Math.hypot(x - xAm, y - amY) < amR + 16) continue;
+        drawBSymbol(x, y, size, m.Bavg > 0);
       }
     }
   }
@@ -1132,8 +1374,9 @@
     const x0 = barX + barW / 2;
     const w = xRight - x0;
     if (w <= 1) return;
+    const Btot = m.widthM > 1e-8 ? m.phi / (m.widthM * ELL) : B;
     ctx.save();
-    ctx.fillStyle = rgba(bRgb(B), 0.05 + 0.26 * span);
+    ctx.fillStyle = rgba(bRgb(Btot), 0.05 + 0.26 * span);
     ctx.fillRect(x0, yTop, w, H);
     ctx.restore();
   }
@@ -1198,9 +1441,9 @@
     text = String(text).replace("\u2212", "-");
     const padX = 14;
     const h = 40;
-    const w = Math.ceil(ctx.measureText("-00.000 A").width) + padX * 2;
+    const w = Math.ceil(ctx.measureText("-000.000 A").width) + padX * 2;
     const x = xAm - w / 2;
-    const y = amY - amR - 12 - h;
+    const y = amY + amR + 10;
     roundRect(x, y, w, h, 4);
     ctx.fillStyle = "#000";
     ctx.fill();
@@ -1275,20 +1518,20 @@
     const dx = x1 - x0;
     const dy = y1 - y0;
     const L = Math.hypot(dx, dy);
-    if (L < 6) return;
+    if (L < 0.6) return;
     const ux = dx / L;
     const uy = dy / L;
-    const s = Math.max(bMark(), 9.1);
+    const head = Math.min(20, L * 0.34);
+    const wing = head * 0.45;
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = s * 0.7;
+    ctx.lineWidth = Math.min(6.5, Math.max(0.8, L * 0.042));
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    const head = s * 2.4;
-    const wing = s * 1.05;
+    const shaft = Math.max(0, L - head * 0.62);
     ctx.beginPath();
     ctx.moveTo(x0, y0);
-    ctx.lineTo(x1 - ux * head * 0.7, y1 - uy * head * 0.7);
+    ctx.lineTo(x0 + ux * shaft, y0 + uy * shaft);
     ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -1298,40 +1541,43 @@
     ctx.fill();
   }
 
-  function drawVectors(m) {
-    const mid = (yTop + yBot) / 2;
-    const vLen = Math.abs(m.v_m) < 0.03 ? 0 : 32 + Math.min(1.1, Math.abs(m.v_m) / 0.7) * 125;
-    const fLen = Math.abs(m.F) < 0.0015 ? 0 : 32 + Math.min(1.1, Math.abs(m.F) / 0.035) * 125;
+  function drawVectorLabel(text, x, y, dir, color, len) {
+    const a = Math.min(1, len / 48);
+    if (a < 0.08) return;
     ctx.save();
+    ctx.globalAlpha = a;
     ctx.font = "600 23px Segoe UI, sans-serif";
     ctx.textBaseline = "middle";
-    if (vLen > 0) {
+    ctx.textAlign = dir > 0 ? "left" : "right";
+    ctx.lineWidth = 5;
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(0,0,0,0.65)";
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  function drawVectors(m) {
+    const mid = (yTop + yBot) / 2;
+    const vLen = Math.abs(m.v_m) * V_ARROW;
+    const fLen = Math.abs(m.F) * F_ARROW;
+    if (vLen >= 0.6) {
       const y = mid - 32;
       const dir = m.v_m > 0 ? 1 : -1;
       const x0 = barX + dir * (barW / 2 + 10);
       const x1 = x0 + dir * vLen;
       drawArrow(x0, y, x1, y, "#ff5a5a");
-      ctx.textAlign = dir > 0 ? "left" : "right";
-      ctx.strokeStyle = "rgba(0,0,0,0.65)";
-      ctx.lineWidth = 5;
-      ctx.strokeText("v", x1 + dir * 16, y);
-      ctx.fillStyle = "#ff5a5a";
-      ctx.fillText("v", x1 + dir * 16, y);
+      drawVectorLabel("v", x1 + dir * 14, y, dir, "#ff5a5a", vLen);
     }
-    if (fLen > 0) {
+    if (fLen >= 0.6) {
       const y = mid + 32;
       const dir = m.F > 0 ? 1 : -1;
       const x0 = barX + dir * (barW / 2 + 10);
       const x1 = x0 + dir * fLen;
       drawArrow(x0, y, x1, y, "#4aa6ff");
-      ctx.textAlign = dir > 0 ? "left" : "right";
-      ctx.strokeStyle = "rgba(0,0,0,0.65)";
-      ctx.lineWidth = 5;
-      ctx.strokeText("F", x1 + dir * 16, y);
-      ctx.fillStyle = "#4aa6ff";
-      ctx.fillText("F", x1 + dir * 16, y);
+      drawVectorLabel("F", x1 + dir * 14, y, dir, "#4aa6ff", fLen);
     }
-    ctx.restore();
   }
 
   function drawCharges(I) {
@@ -1396,6 +1642,13 @@
     ctx.strokeText(text, 78, 78);
     ctx.fillStyle = cssRgb(bRgb(B));
     ctx.fillText(text, 78, 78);
+    if (showBind) {
+      const symI = m.Bavg > 5e-8 ? "⊙" : m.Bavg < -5e-8 ? "⊗" : "○";
+      const textI = symI + "   B ind = " + signed(m.Bavg * 1e6, 1, "μT").replace("\u00a0", " ");
+      ctx.strokeText(textI, 78, 44);
+      ctx.fillStyle = cssRgb(biRgb(m.Bavg));
+      ctx.fillText(textI, 78, 44);
+    }
     ctx.restore();
 
     if (hint > 0.02) {
@@ -1405,7 +1658,9 @@
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
       ctx.fillStyle = "rgba(255,255,255,0.78)";
-      ctx.fillText("Trascina la barretta e rilasciala: non c’è attrito, la frena solo la forza magnetica.", 72, 600);
+      ctx.fillText(barLocked
+        ? "Barretta bloccata: segue la mano con un breve ritardo e la forza magnetica non la sposta."
+        : "Trascina la barretta e rilasciala: non c’è attrito, la frena solo la forza magnetica.", 72, 600);
       ctx.restore();
     }
   }
@@ -1422,6 +1677,7 @@
 
     drawFlux(m);
     drawField();
+    drawInduced(m);
     drawWires(m);
     drawAmmeter();
     drawBar(m);
@@ -1508,7 +1764,9 @@
     tctx.lineJoin = "round";
     tctx.lineCap = "round";
     const series = [
-      { key: "phi", scale: P_SCALE, color: "#e070d0", dash: [] },
+      { key: "phiB", scale: P_SCALE, color: "#e070d0", dash: [] },
+      { key: "phi", scale: P_SCALE, color: "#f2f2f2", dash: [5, 4] },
+      { key: "phiI", scale: P_IND_SCALE, color: "#e6c84a", dash: [] },
       { key: "v", scale: V_SCALE, color: "#49c6ff", dash: [] },
       { key: "emf", scale: E_SCALE, color: "#ffb03a", dash: [] },
       { key: "I", scale: I_SCALE, color: "#5ddeaf", dash: [5, 4] },
@@ -1543,10 +1801,12 @@
     valV.textContent = signed(m.v_m, 2, "m/s");
     valE.textContent = signed(m.emf, 3, "V");
     valI.textContent = signed(m.I, 3, "A");
+    valPB.textContent = signed(m.phiB * 1000, 1, "mWb");
+    valPI.textContent = signed(m.phiI * 1e6, 2, "μWb");
     valP.textContent = signed(m.phi * 1000, 1, "mWb");
   }
 
-  const shown = { v: true, emf: true, I: true, phi: true };
+  const shown = { v: true, emf: true, I: true, phiB: true, phiI: true, phi: true };
   document.getElementById("panel").addEventListener("click", (e) => {
     const el = e.target.closest("[data-series]");
     if (!el || !shown.hasOwnProperty(el.dataset.series)) return;
@@ -1559,22 +1819,31 @@
   });
 
   let motor = null;
+  let barLocked = false;
   const motorBtn = document.getElementById("motorBtn");
+  const lockBtn = document.getElementById("lockBtn");
+
+  const kickLeftBtn = document.getElementById("kickLeft");
+  const kickRightBtn = document.getElementById("kickRight");
 
   function kick(dir) {
+    if (barLocked || motor) return;
     vx += dir * IMPULSE / mPerPx;
   }
 
-  function setMotorUi() {
-    const on = !!motor;
-    motorBtn.classList.toggle("is-on", on);
-    motorBtn.textContent = on ? "Ferma il motore" : "Motore oscillante";
-    motorBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  function setCommandUi() {
+    const kicksOff = !!motor || barLocked;
+    motorBtn.classList.toggle("is-on", !!motor);
+    motorBtn.setAttribute("aria-pressed", motor ? "true" : "false");
+    lockBtn.classList.toggle("is-on", barLocked);
+    lockBtn.setAttribute("aria-pressed", barLocked ? "true" : "false");
+    kickLeftBtn.disabled = kicksOff;
+    kickRightBtn.disabled = kicksOff;
   }
 
   function stopMotor() {
     motor = null;
-    setMotorUi();
+    setCommandUi();
   }
 
   function syncMotorPhase() {
@@ -1589,9 +1858,21 @@
   }
 
   function startMotor() {
+    barLocked = false;
+    lockVel = 0;
     motor = { phase: 0 };
     syncMotorPhase();
-    setMotorUi();
+    setCommandUi();
+  }
+
+  function setLocked(on) {
+    barLocked = on;
+    if (on) {
+      motor = null;
+      vx = 0;
+      lockVel = 0;
+    }
+    setCommandUi();
   }
 
   function reset() {
@@ -1601,6 +1882,10 @@
     dragging = false;
     simTime = 0;
     needle = 0;
+    dBdt = 0;
+    bTrack = B;
+    loopI = 0;
+    dIdt = 0;
     hint = 1;
     hist.length = 0;
     stopMotor();
@@ -1625,11 +1910,64 @@
     pauseBtn.setAttribute("title", paused ? "Riprendi" : "Pausa");
   });
   document.getElementById("resetBtn").addEventListener("click", reset);
-  document.getElementById("kickLeft").addEventListener("click", () => kick(-1));
-  document.getElementById("kickRight").addEventListener("click", () => kick(1));
+  kickLeftBtn.addEventListener("click", () => kick(-1));
+  kickRightBtn.addEventListener("click", () => kick(1));
   motorBtn.addEventListener("click", () => {
     if (motor) stopMotor();
     else startMotor();
+  });
+  lockBtn.addEventListener("click", () => {
+    setLocked(!barLocked);
+  });
+  function bindView(btn) {
+    btn.addEventListener("click", () => {
+      const on = !btn.classList.contains("is-on");
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  bindView(potEl);
+  bindView(fluxEl);
+  bindView(bindEl);
+
+  function endFieldDrag() {
+    if (!bDragging) return;
+    bDragging = false;
+    bVel = 0;
+    bWrap.classList.remove("is-drag");
+  }
+  bEl.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    bDragging = true;
+    bTarget = bFromPointer(e);
+    bWrap.classList.add("is-drag");
+    placeFinger();
+    try { bEl.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  });
+  bEl.addEventListener("pointermove", (e) => {
+    if (!bDragging) return;
+    bTarget = bFromPointer(e);
+    placeFinger();
+  });
+  bEl.addEventListener("pointerup", endFieldDrag);
+  bEl.addEventListener("pointercancel", endFieldDrag);
+  bEl.addEventListener("input", () => {
+    if (bDragging || writingB) return;
+    B = clamp(+bEl.value, -1, 1);
+    bTarget = B;
+    bVel = 0;
+    bTrack = B;
+  });
+  bEl.addEventListener("keydown", (e) => {
+    let dir = 0;
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") dir = 1;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowDown") dir = -1;
+    else return;
+    e.preventDefault();
+    B = clamp(B + dir * 0.01, -1, 1);
+    bTarget = B;
+    bVel = 0;
   });
 
   canvas.addEventListener("pointerdown", (e) => {
@@ -1658,7 +1996,7 @@
     if (!dragging) return;
     dragging = false;
     hint = 0;
-    if (motor) syncMotorPhase();
+    if (motor && !barLocked) syncMotorPhase();
     canvas.style.cursor = hover ? "grab" : "default";
   }
   canvas.addEventListener("pointerup", endDrag);
@@ -1722,13 +2060,26 @@
   function frame(now) {
     const realDt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
-    B = +bEl.value;
     timeScale = +timeEl.value;
-    showPot = potEl.checked;
-    showFlux = fluxEl.checked;
+    showPot = potEl.classList.contains("is-on");
+    showFlux = fluxEl.classList.contains("is-on");
+    showBind = bindEl.classList.contains("is-on");
+
+    stepField(realDt);
+    showField();
+    if (bDragging) placeFinger();
+
+    const simDt = paused ? 0 : realDt * playbackOf(timeScale);
+    if (simDt > 1e-5) {
+      const raw = (B - bTrack) / simDt;
+      const blend = 1 - Math.exp(-realDt / 0.05);
+      dBdt += (raw - dBdt) * blend;
+    } else {
+      dBdt = 0;
+    }
+    bTrack = B;
 
     integrate(realDt);
-    const simDt = paused ? 0 : realDt * playbackOf(timeScale);
     simTime += simDt;
     const m = measure();
     updateCharges(simDt, m.I);
@@ -1738,7 +2089,7 @@
     needle += (goal - needle) * k;
 
     if (simDt > 0) {
-      hist.push({ t: simTime, v: m.v_m, emf: m.emf, I: m.I, phi: m.phi });
+      hist.push({ t: simTime, v: m.v_m, emf: m.emf, I: m.I, phi: m.phi, phiB: m.phiB, phiI: m.phiI });
       const tMin = simTime - WINDOW - 0.05;
       while (hist.length > 2 && hist[0].t < tMin) hist.shift();
     }
