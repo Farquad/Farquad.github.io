@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="../theme.js"></script>
+  <title>Traspositore di accordi</title>
+  <link rel="shortcut icon" href="../favicon.ico" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #f0883e;
+      --accent-dim: rgba(240, 136, 62, 0.16);
+      --input: #0d1117;
+      --danger: #f85149;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    body {
+      min-height: 100dvh;
+    }
+
+    .app {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px 18px 14px;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .lede {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 8px 10px;
+      margin-left: auto;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    select, button, textarea {
+      font: inherit;
+      color: var(--text);
+    }
+
+    select {
+      appearance: none;
+      background: var(--panel) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%238b949e' d='M1 1l5 5 5-5'/></svg>") no-repeat right 10px center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 32px 8px 10px;
+      min-width: 9.2rem;
+      line-height: 1.2;
+    }
+
+    select:focus, button:focus-visible, textarea:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .swap {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .swap:hover, .btn:hover { border-color: #6e7681; }
+
+    .interval {
+      align-self: center;
+      min-width: 12rem;
+      padding-bottom: 6px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .interval strong { color: var(--text); font-weight: 600; }
+
+    .panes {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .pane {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .pane-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pane-bar h2 {
+      margin: 0;
+      flex: 1;
+      font-size: 0.78rem;
+      font-weight: 650;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--input);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 0.92rem;
+    }
+
+    .btn.primary {
+      background: var(--accent-dim);
+      border-color: #9e4c16;
+      color: #ffd8a8;
+    }
+
+    .sheet, .sheet-out {
+      flex: 1;
+      min-height: 0;
+      margin: 0;
+      padding: 14px 16px 18px;
+      border: 0;
+      resize: none;
+      background: var(--input);
+      color: var(--text);
+      font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+      font-size: 15px;
+      line-height: 1.55;
+      tab-size: 4;
+      white-space: pre;
+      overflow: auto;
+    }
+
+    .sheet-out:empty::before {
+      content: "Il testo trasposto appare qui";
+      color: var(--muted);
+    }
+
+    .chord {
+      color: #ffd8a8;
+      background: var(--accent-dim);
+      border-radius: 3px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 860px) {
+      .app { height: auto; min-height: 100dvh; }
+      .controls { margin-left: 0; }
+      .panes { grid-template-columns: 1fr; }
+      .pane { min-height: 280px; }
+      .interval { min-width: 0; padding-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Traspositore di accordi</h1>
+        <p class="lede">Il testo resta com’è. Si spostano solo i simboli riconosciuti come accordi.</p>
+      </div>
+      <div class="controls">
+        <label>Da
+          <select id="from"></select>
+        </label>
+        <button type="button" class="swap" id="swap" aria-label="Inverti le note" title="Inverti le note">⇄</button>
+        <label>A
+          <select id="to"></select>
+        </label>
+        <div class="interval" id="interval" aria-live="polite"></div>
+      </div>
+    </header>
+
+    <div class="panes">
+      <section class="pane">
+        <div class="pane-bar">
+          <h2>Input</h2>
+          <button type="button" class="btn" id="example">Esempio</button>
+        </div>
+        <textarea id="input" class="sheet" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off" autocorrect="off" placeholder="Incolla qui testo e accordi. Esempio:&#10;&#10;Do        Sol        Lam       Fa&#10;Quando sei lontana&#10;&#10;Am7   D7   Gmaj7"></textarea>
+      </section>
+      <section class="pane">
+        <div class="pane-bar">
+          <h2>Output</h2>
+          <button type="button" class="btn primary" id="copy">Copia</button>
+        </div>
+        <pre id="output" class="sheet-out" tabindex="0"></pre>
+      </section>
+    </div>
+    <p class="hint">Una riga di soli accordi (Do Sol Lam Fa, oppure C G Am) si traspone per intero. Nel testo si spostano gli accordi con suffisso, diesis o bemolle, il basso dopo la barra e quelli tra parentesi: Lam, Do7, Fa#, Sol/Si, Dosus3, [Do]. Lettere A–G e nomi Do, Re, Mi, Fa, Sol, La, Si.</p>
+  </div>
+
+  <script>
+"use strict";
+
+/* Riconoscimento:
+   - radice inglese A–G o italiana Do Re Mi Fa Sol La Si, con # b ♯ ♭ (anche doppi);
+   - il suffisso non si traspone: m, min, maj, sus3, add9, dim, 7b5, /basso…;
+   - riga di accordi se, tolti etichette e suffissi staccati, restano solo accordi
+     e c’è abbastanza segnale (maiuscole, un suffisso, oppure una scala in minuscolo);
+   - nel testo, solo accordi non ambigui: suffisso, alterazione, basso o parentesi. */
+
+var PITCHES = [
+  { id: "0n", pc: 0, kind: "nat", glyph: "", label: "Do / C" },
+  { id: "1s", pc: 1, kind: "sharp", glyph: "#", label: "Do# / C#" },
+  { id: "1f", pc: 1, kind: "flat", glyph: "b", label: "Reb / Db" },
+  { id: "2n", pc: 2, kind: "nat", glyph: "", label: "Re / D" },
+  { id: "3s", pc: 3, kind: "sharp", glyph: "#", label: "Re# / D#" },
+  { id: "3f", pc: 3, kind: "flat", glyph: "b", label: "Mib / Eb" },
+  { id: "4n", pc: 4, kind: "nat", glyph: "", label: "Mi / E" },
+  { id: "5n", pc: 5, kind: "nat", glyph: "", label: "Fa / F" },
+  { id: "6s", pc: 6, kind: "sharp", glyph: "#", label: "Fa# / F#" },
+  { id: "6f", pc: 6, kind: "flat", glyph: "b", label: "Solb / Gb" },
+  { id: "7n", pc: 7, kind: "nat", glyph: "", label: "Sol / G" },
+  { id: "8s", pc: 8, kind: "sharp", glyph: "#", label: "Sol# / G#" },
+  { id: "8f", pc: 8, kind: "flat", glyph: "b", label: "Lab / Ab" },
+  { id: "9n", pc: 9, kind: "nat", glyph: "", label: "La / A" },
+  { id: "10s", pc: 10, kind: "sharp", glyph: "#", label: "La# / A#" },
+  { id: "10f", pc: 10, kind: "flat", glyph: "b", label: "Sib / Bb" },
+  { id: "11n", pc: 11, kind: "nat", glyph: "", label: "Si / B" }
+];
+
+var EN_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+var ITA = [
+  { name: "Sol", pc: 7 },
+  { name: "Do", pc: 0 },
+  { name: "Re", pc: 2 },
+  { name: "Mi", pc: 4 },
+  { name: "Fa", pc: 5 },
+  { name: "La", pc: 9 },
+  { name: "Si", pc: 11 }
+];
+var EN_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+var EN_FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+var IT_SHARP = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
+var IT_FLAT = ["Do", "Reb", "Re", "Mib", "Mi", "Fa", "Solb", "Sol", "Lab", "La", "Sib", "Si"];
+var INTERVALS = [
+  "unisono",
+  "seconda minore",
+  "seconda maggiore",
+  "terza minore",
+  "terza maggiore",
+  "quarta giusta",
+  "tritono",
+  "quinta giusta",
+  "sesta minore",
+  "sesta maggiore",
+  "settima minore",
+  "settima maggiore"
+];
+var SECTION = /^(intro|outro|verse|verses|chorus|bridge|strofa|strofe|ritornello|refrain|pre-?chorus|instrumental|assolo|intermezzo|introduzione|capotasto|capo|interlude|turnaround|vamp|breakdown)$/i;
+var STOP = { la: 1, si: 1, mi: 1, e: 1, a: 1, ed: 1, oh: 1, ah: 1 };
+var LEAD_RE = /^[\[\(\{"'«“„|·•]+/;
+var TRAIL_RE = /[\]\)\}"'»”.,;:!?…|·•]+$/;
+var SUFFIX_CHUNKS = [
+  /^maggiore/i, /^minore/i, /^major/i, /^minor/i, /^magg/i,
+  /^maj/i, /^min/i, /^mag/i, /^dim/i, /^aug/i,
+  /^sus\d*/i, /^add\d+/i, /^omit\d+/i, /^no\d+/i,
+  /^°/, /^ø/, /^\+/, /^Δ/, /^-/,
+  /^[#b♯♭]\d+/,
+  /^\d+/,
+  /^\/\d+/,
+  /^[mM]/,
+  /^[()]/
+];
+
+var EXAMPLE = [
+  "Do            Sol           Lam          Fa",
+  "Quando sei lontana",
+  "",
+  "Rem           Sol           Do",
+  "sogno ancora te",
+  "",
+  "Intro: Am7  D7  Gmaj7  C6/9",
+  "F#m7b5   B7   Em",
+  "Dosus3   Sol/Si",
+  "",
+  "[Am]Testo con [G]accordi segnati e un Lam nel mezzo."
+].join("\n");
+
+function mod12(n) {
+  return ((n % 12) + 12) % 12;
+}
+
+function parseAccidental(s) {
+  if (s.indexOf("##") === 0) return { semis: 2, glyph: "#", len: 2, kind: "sharp" };
+  if (s.indexOf("♯♯") === 0) return { semis: 2, glyph: "♯", len: 2, kind: "sharp" };
+  if (s.indexOf("bb") === 0) return { semis: -2, glyph: "b", len: 2, kind: "flat" };
+  if (s.indexOf("♭♭") === 0) return { semis: -2, glyph: "♭", len: 2, kind: "flat" };
+  var c = s.charAt(0);
+  if (c === "#") return { semis: 1, glyph: "#", len: 1, kind: "sharp" };
+  if (c === "♯") return { semis: 1, glyph: "♯", len: 1, kind: "sharp" };
+  if (c === "b") return { semis: -1, glyph: "b", len: 1, kind: "flat" };
+  if (c === "♭") return { semis: -1, glyph: "♭", len: 1, kind: "flat" };
+  return { semis: 0, glyph: "", len: 0, kind: "nat" };
+}
+
+function caseStyleOf(letters) {
+  if (letters === letters.toLowerCase()) return "lower";
+  if (letters === letters.toUpperCase()) return "upper";
+  return "title";
+}
+
+function parseRoot(s) {
+  if (!s || !/^[A-Za-z]/.test(s)) return null;
+  var i, note, slice, acc;
+  for (i = 0; i < ITA.length; i++) {
+    note = ITA[i];
+    if (s.length < note.name.length) continue;
+    slice = s.slice(0, note.name.length);
+    if (slice.toLowerCase() !== note.name.toLowerCase()) continue;
+    acc = parseAccidental(s.slice(note.name.length));
+    return {
+      system: "it",
+      pc: mod12(note.pc + acc.semis),
+      acc: acc,
+      caseStyle: caseStyleOf(slice),
+      rest: s.slice(note.name.length + acc.len)
+    };
+  }
+  var letter = s.charAt(0).toUpperCase();
+  if (!Object.prototype.hasOwnProperty.call(EN_PC, letter)) return null;
+  acc = parseAccidental(s.slice(1));
+  return {
+    system: "en",
+    pc: mod12(EN_PC[letter] + acc.semis),
+    acc: acc,
+    caseStyle: s.charAt(0) === s.charAt(0).toLowerCase() ? "lower" : "upper",
+    rest: s.slice(1 + acc.len)
+  };
+}
+
+function parseSuffix(s) {
+  var i = 0;
+  if (s === "") return true;
+  while (i < s.length) {
+    var rest = s.slice(i);
+    var matched = false;
+    var k, m;
+    for (k = 0; k < SUFFIX_CHUNKS.length; k++) {
+      m = rest.match(SUFFIX_CHUNKS[k]);
+      if (m) {
+        i += m[0].length;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) return false;
+  }
+  return true;
+}
+
+function parseSingle(s) {
+  if (!s) return null;
+  var slash = s.lastIndexOf("/");
+  if (slash > 0) {
+    var left = s.slice(0, slash);
+    var right = s.slice(slash + 1);
+    var main = parseRoot(left);
+    var bass = parseRoot(right);
+    if (main && bass && left.indexOf("/") === -1 && parseSuffix(main.rest) && parseSuffix(bass.rest)) {
+      return { root: main, suffix: main.rest, bass: bass, bassSuffix: bass.rest, sequence: null, seps: null };
+    }
+  }
+  var root = parseRoot(s);
+  if (!root || !parseSuffix(root.rest)) return null;
+  return { root: root, suffix: root.rest, bass: null, bassSuffix: "", sequence: null, seps: null };
+}
+
+function parseChord(s) {
+  if (!s) return null;
+  if (/[-|]/.test(s)) {
+    var bits = s.split(/([-|])/);
+    if (bits.length >= 3) {
+      var chords = [];
+      var seps = [];
+      var ok = true;
+      var i;
+      for (i = 0; i < bits.length; i++) {
+        if (i % 2 === 0) {
+          var part = parseSingle(bits[i]);
+          if (!part) { ok = false; break; }
+          chords.push(part);
+        } else {
+          seps.push(bits[i]);
+        }
+      }
+      if (ok && chords.length >= 2) {
+        return { root: null, suffix: "", bass: null, bassSuffix: "", sequence: chords, seps: seps };
+      }
+    }
+  }
+  return parseSingle(s);
+}
+
+function musicallyStrong(ch) {
+  if (!ch) return false;
+  if (ch.sequence) {
+    var i;
+    for (i = 0; i < ch.sequence.length; i++) {
+      if (musicallyStrong(ch.sequence[i])) return true;
+      if (ch.sequence[i].root.system === "en") return true;
+    }
+    return false;
+  }
+  if (ch.root.acc.glyph) return true;
+  if (ch.suffix) return true;
+  if (ch.bass) return true;
+  return false;
+}
+
+function isLowerChord(ch) {
+  if (!ch) return false;
+  if (ch.sequence) {
+    var i;
+    for (i = 0; i < ch.sequence.length; i++) {
+      if (ch.sequence[i].root.caseStyle !== "lower") return false;
+    }
+    return true;
+  }
+  return ch.root.caseStyle === "lower";
+}
+
+function peel(token) {
+  var lead = "";
+  var trail = "";
+  var core = token;
+  var guard = 0;
+  while (guard++ < 8) {
+    var lm = core.match(LEAD_RE);
+    var tm = core.match(TRAIL_RE);
+    if (!lm && !tm) break;
+    if (lm) {
+      lead += lm[0];
+      core = core.slice(lm[0].length);
+    }
+    if (tm && core.length) {
+      trail = tm[0] + trail;
+      core = core.slice(0, core.length - tm[0].length);
+    }
+  }
+  return { lead: lead, core: core, trail: trail };
+}
+
+function isExplicit(peeled) {
+  return /[\[\]\(\)\{\}]/.test(peeled.lead + peeled.trail);
+}
+
+function isIgnorable(core, raw) {
+  if (!core) return true;
+  if (/^\d+$/.test(core)) return true;
+  if (/^x\d+$/i.test(core)) return true;
+  if (/^(n\.?c\.?|nc|n\/c)$/i.test(core)) return true;
+  if (/^[-–—|·•/\\*+=~%]+$/.test(core)) return true;
+  if (/:\s*$/.test(raw)) return true;
+  if (SECTION.test(core)) return true;
+  if (parseSuffix(core)) return true;
+  return false;
+}
+
+function inspect(raw) {
+  var peeled = peel(raw);
+  if (!peeled.core) return { kind: "skip", peeled: peeled, parsed: null };
+  var parsed = parseChord(peeled.core);
+  if (parsed) {
+    var strong = musicallyStrong(parsed) || isExplicit(peeled);
+    if (strong) return { kind: "strong", peeled: peeled, parsed: parsed };
+    if (isLowerChord(parsed)) return { kind: "weak-lower", peeled: peeled, parsed: parsed };
+    return { kind: "weak-upper", peeled: peeled, parsed: parsed };
+  }
+  if (isIgnorable(peeled.core, raw)) return { kind: "ignore", peeled: peeled, parsed: null };
+  return { kind: "other", peeled: peeled, parsed: null };
+}
+
+function lineIsChords(infos) {
+  var other = 0;
+  var strong = 0;
+  var upperWeak = 0;
+  var lowerWeak = 0;
+  var lowerCores = [];
+  var i;
+  for (i = 0; i < infos.length; i++) {
+    var k = infos[i].kind;
+    if (k === "skip" || k === "ignore") continue;
+    if (k === "other") other++;
+    else if (k === "strong") strong++;
+    else if (k === "weak-upper") upperWeak++;
+    else if (k === "weak-lower") {
+      lowerWeak++;
+      lowerCores.push(infos[i].peeled.core);
+    }
+  }
+  if (other > 0) return false;
+  if (strong >= 1) return true;
+  if (upperWeak >= 2) return true;
+  if (upperWeak >= 1 && lowerWeak === 0) return true;
+  if (lowerWeak >= 3) {
+    for (i = 0; i < lowerCores.length; i++) {
+      if (!STOP[lowerCores[i].toLowerCase()]) return true;
+    }
+  }
+  return false;
+}
+
+function preferAcc(dest, stats) {
+  if (dest.kind === "flat") return "flat";
+  if (dest.kind === "sharp") return "sharp";
+  if (dest.pc === 5) return "flat";
+  if (dest.pc === 0) {
+    stats = stats || { flat: 0, sharp: 0 };
+    if (stats.flat > stats.sharp) return "flat";
+  }
+  return "sharp";
+}
+
+function tallyChord(ch, stats) {
+  function note(root) {
+    if (!root || !root.acc) return;
+    if (root.acc.kind === "flat") stats.flat++;
+    else if (root.acc.kind === "sharp") stats.sharp++;
+  }
+  if (!ch) return;
+  if (ch.sequence) {
+    var i;
+    for (i = 0; i < ch.sequence.length; i++) {
+      note(ch.sequence[i].root);
+      note(ch.sequence[i].bass);
+    }
+    return;
+  }
+  note(ch.root);
+  note(ch.bass);
+}
+
+function countAccidentals(text) {
+  var stats = { flat: 0, sharp: 0 };
+  var lines = String(text).split(/\r?\n/);
+  var re = /\[([^\[\]\n]+)\]|\(([^()\n]+)\)|\{([^{}\n]+)\}/g;
+  var L, i, m, info, inner;
+  for (L = 0; L < lines.length; L++) {
+    var parts = lines[L].split(/\s+/);
+    for (i = 0; i < parts.length; i++) {
+      if (!parts[i]) continue;
+      info = inspect(parts[i]);
+      if (info.parsed) {
+        tallyChord(info.parsed, stats);
+      } else {
+        re.lastIndex = 0;
+        while ((m = re.exec(parts[i]))) {
+          inner = m[1] != null ? m[1] : (m[2] != null ? m[2] : m[3]);
+          tallyChord(parseChord(inner.trim()), stats);
+        }
+      }
+    }
+  }
+  return stats;
+}
+
+function chordGlyph(ch, prefer) {
+  var list = [];
+  function take(root) {
+    if (!root || !root.acc || !root.acc.glyph) return;
+    if (root.acc.kind === prefer || (prefer === "sharp" && root.acc.kind === "sharp") || (prefer === "flat" && root.acc.kind === "flat")) {
+      list.push(root.acc.glyph.charAt(0));
+    }
+  }
+  if (ch.sequence) {
+    var i;
+    for (i = 0; i < ch.sequence.length; i++) {
+      take(ch.sequence[i].root);
+      take(ch.sequence[i].bass);
+    }
+  } else {
+    take(ch.root);
+    take(ch.bass);
+  }
+  return list.length ? list[0] : "";
+}
+
+function outputGlyph(prefer, dest, sample) {
+  if (prefer === "flat") {
+    if (sample === "♭" || dest.glyph === "♭") return "♭";
+    return "b";
+  }
+  if (sample === "♯" || dest.glyph === "♯") return "♯";
+  return "#";
+}
+
+function formatNote(root, pc, prefer, glyph) {
+  var table = root.system === "it"
+    ? (prefer === "flat" ? IT_FLAT : IT_SHARP)
+    : (prefer === "flat" ? EN_FLAT : EN_SHARP);
+  var name = table[mod12(pc)];
+  if (glyph === "♯") name = name.replace(/#/g, "♯");
+  else if (glyph === "♭") name = name.replace(/b/g, "♭");
+  if (root.system === "en") {
+    var head = name.charAt(0);
+    head = root.caseStyle === "lower" ? head.toLowerCase() : head.toUpperCase();
+    return head + name.slice(1);
+  }
+  if (root.caseStyle === "lower") return name.toLowerCase();
+  if (root.caseStyle === "upper") return name.toUpperCase();
+  return name;
+}
+
+function formatSingle(ch, delta, prefer, glyph) {
+  var out = formatNote(ch.root, ch.root.pc + delta, prefer, glyph) + ch.suffix;
+  if (ch.bass) {
+    out += "/" + formatNote(ch.bass, ch.bass.pc + delta, prefer, glyph) + (ch.bassSuffix || "");
+  }
+  return out;
+}
+
+function formatChord(ch, delta, dest, prefer) {
+  prefer = prefer || preferAcc(dest);
+  var glyph = outputGlyph(prefer, dest, chordGlyph(ch, prefer));
+  if (ch.sequence) {
+    var out = "";
+    var i;
+    for (i = 0; i < ch.sequence.length; i++) {
+      out += formatSingle(ch.sequence[i], delta, prefer, glyph);
+      if (i < ch.seps.length) out += ch.seps[i];
+    }
+    return out;
+  }
+  return formatSingle(ch, delta, prefer, glyph);
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderCore(info, delta, dest, prefer) {
+  var core = info.peeled.core;
+  var text = delta === 0 ? core : formatChord(info.parsed, delta, dest, prefer);
+  return {
+    text: info.peeled.lead + text + info.peeled.trail,
+    html: escapeHtml(info.peeled.lead) + '<span class="chord">' + escapeHtml(text) + "</span>" + escapeHtml(info.peeled.trail)
+  };
+}
+
+function renderEmbedded(raw, delta, dest, prefer) {
+  var re = /\[([^\[\]\n]+)\]|\(([^()\n]+)\)|\{([^{}\n]+)\}/g;
+  var plain = "";
+  var html = "";
+  var last = 0;
+  var m;
+  var any = false;
+  while ((m = re.exec(raw))) {
+    any = true;
+    var inner = m[1] != null ? m[1] : (m[2] != null ? m[2] : m[3]);
+    var leadSpace = "";
+    var trailSpace = "";
+    var body = inner;
+    var sm = inner.match(/^(\s*)([\s\S]*?)(\s*)$/);
+    if (sm) {
+      leadSpace = sm[1];
+      body = sm[2];
+      trailSpace = sm[3];
+    }
+    var parsed = parseChord(body);
+    plain += raw.slice(last, m.index);
+    html += escapeHtml(raw.slice(last, m.index));
+    if (!parsed) {
+      plain += m[0];
+      html += escapeHtml(m[0]);
+    } else {
+      var open = m[0].charAt(0);
+      var close = m[0].charAt(m[0].length - 1);
+      var text = delta === 0 ? body : formatChord(parsed, delta, dest, prefer);
+      var shown = open + leadSpace + text + trailSpace + close;
+      plain += shown;
+      html += '<span class="chord">' + escapeHtml(shown) + "</span>";
+    }
+    last = m.index + m[0].length;
+  }
+  if (!any) return null;
+  plain += raw.slice(last);
+  html += escapeHtml(raw.slice(last));
+  return { text: plain, html: html };
+}
+
+function shouldTranspose(info, chordLine) {
+  if (!info.parsed) return false;
+  if (info.kind === "strong") return true;
+  if (chordLine && (info.kind === "weak-upper" || info.kind === "weak-lower")) return true;
+  return false;
+}
+
+function transposeLine(line, delta, dest, prefer) {
+  var parts = line.split(/(\s+)/);
+  var infos = [];
+  var i;
+  for (i = 0; i < parts.length; i++) {
+    if (/^\s+$/.test(parts[i]) || parts[i] === "") infos.push(null);
+    else infos.push(inspect(parts[i]));
+  }
+  var present = [];
+  for (i = 0; i < infos.length; i++) if (infos[i]) present.push(infos[i]);
+  var chordLine = lineIsChords(present);
+  var plain = "";
+  var html = "";
+  for (i = 0; i < parts.length; i++) {
+    if (!infos[i]) {
+      plain += parts[i];
+      html += escapeHtml(parts[i]);
+      continue;
+    }
+    if (shouldTranspose(infos[i], chordLine)) {
+      var rendered = renderCore(infos[i], delta, dest, prefer);
+      if (chordLine && i + 1 < parts.length && /^\s+$/.test(parts[i + 1])) {
+        var grow = rendered.text.length - parts[i].length;
+        if (grow < 0) {
+          parts[i + 1] = new Array(-grow + 1).join(" ") + parts[i + 1];
+        } else if (grow > 0) {
+          var spaces = (parts[i + 1].match(/^ +/) || [""])[0].length;
+          var take = Math.min(grow, Math.max(0, spaces - 1));
+          if (take > 0) parts[i + 1] = parts[i + 1].slice(take);
+        }
+      }
+      plain += rendered.text;
+      html += rendered.html;
+      continue;
+    }
+    var embedded = renderEmbedded(parts[i], delta, dest, prefer);
+    if (embedded) {
+      plain += embedded.text;
+      html += embedded.html;
+    } else {
+      plain += parts[i];
+      html += escapeHtml(parts[i]);
+    }
+  }
+  return { plain: plain, html: html };
+}
+
+function transposeAll(text, from, dest) {
+  var delta = mod12(dest.pc - from.pc);
+  var prefer = preferAcc(dest, countAccidentals(text));
+  var pieces = String(text).split(/(\r?\n)/);
+  var plain = "";
+  var html = "";
+  var i;
+  for (i = 0; i < pieces.length; i++) {
+    if (/^\r?\n$/.test(pieces[i])) {
+      plain += pieces[i];
+      html += pieces[i];
+    } else {
+      var line = transposeLine(pieces[i], delta, dest, prefer);
+      plain += line.plain;
+      html += line.html;
+    }
+  }
+  return { plain: plain, html: html, delta: delta };
+}
+
+function intervalLabel(delta) {
+  if (delta === 0) return "<strong>Unisono</strong> · il testo resta uguale";
+  var n = delta === 1 ? "1 semitono" : delta + " semitoni";
+  return "<strong>+" + n + "</strong> · " + INTERVALS[delta];
+}
+
+var plainOutput = "";
+
+function selectedNote(select) {
+  var o = select.options[select.selectedIndex];
+  return {
+    pc: Number(o.getAttribute("data-pc")),
+    kind: o.getAttribute("data-kind"),
+    glyph: o.getAttribute("data-glyph") || ""
+  };
+}
+
+function fillSelect(select) {
+  var html = "";
+  var i;
+  for (i = 0; i < PITCHES.length; i++) {
+    var p = PITCHES[i];
+    html += '<option value="' + p.id + '" data-pc="' + p.pc + '" data-kind="' + p.kind + '" data-glyph="' + p.glyph + '">' + p.label + "</option>";
+  }
+  select.innerHTML = html;
+}
+
+function render() {
+  var input = document.getElementById("input");
+  var output = document.getElementById("output");
+  var from = selectedNote(document.getElementById("from"));
+  var to = selectedNote(document.getElementById("to"));
+  var result = transposeAll(input.value, from, to);
+  plainOutput = result.plain;
+  output.innerHTML = result.html;
+  document.getElementById("interval").innerHTML = intervalLabel(result.delta);
+}
+
+function flash(btn, message) {
+  var previous = btn.getAttribute("data-label") || btn.textContent;
+  btn.setAttribute("data-label", previous);
+  btn.textContent = message;
+  clearTimeout(btn._t);
+  btn._t = setTimeout(function () { btn.textContent = previous; }, 1400);
+}
+
+function copyWithCommand(text) {
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.top = "0";
+  ta.style.left = "0";
+  ta.style.width = "1px";
+  ta.style.height = "1px";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  var done = false;
+  try { done = document.execCommand("copy"); } catch (e) { done = false; }
+  document.body.removeChild(ta);
+  return done;
+}
+
+function selectOutput() {
+  var out = document.getElementById("output");
+  var range = document.createRange();
+  range.selectNodeContents(out);
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function copyOutput() {
+  var btn = document.getElementById("copy");
+  var text = plainOutput;
+  if (!text) {
+    flash(btn, "Vuoto");
+    return;
+  }
+  var copied = copyWithCommand(text);
+  if (copied) {
+    flash(btn, "Copiato");
+    return;
+  }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(function () {
+      flash(btn, "Copiato");
+    }, function () {
+      selectOutput();
+      flash(btn, "Selezionato");
+    });
+    return;
+  }
+  selectOutput();
+  flash(btn, "Selezionato");
+}
+
+function bindScroll() {
+  var input = document.getElementById("input");
+  var output = document.getElementById("output");
+  var lock = false;
+  function sync(from, to) {
+    if (lock) return;
+    lock = true;
+    to.scrollTop = from.scrollTop;
+    to.scrollLeft = from.scrollLeft;
+    lock = false;
+  }
+  input.addEventListener("scroll", function () { sync(input, output); });
+  output.addEventListener("scroll", function () { sync(output, input); });
+}
+
+function init() {
+  var from = document.getElementById("from");
+  var to = document.getElementById("to");
+  fillSelect(from);
+  fillSelect(to);
+  from.value = "0n";
+  to.value = "2n";
+  from.addEventListener("change", render);
+  to.addEventListener("change", render);
+  document.getElementById("input").addEventListener("input", render);
+  document.getElementById("swap").addEventListener("click", function () {
+    var a = from.value;
+    from.value = to.value;
+    to.value = a;
+    render();
+  });
+  document.getElementById("copy").addEventListener("click", copyOutput);
+  document.getElementById("example").addEventListener("click", function () {
+    var input = document.getElementById("input");
+    input.value = EXAMPLE;
+    render();
+    input.focus();
+  });
+  bindScroll();
+  render();
+}
+
+if (typeof document !== "undefined") init();
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    transposeAll: transposeAll,
+    parseChord: parseChord,
+    PITCHES: PITCHES
+  };
+}
+  </script>
+</body>
+</html>
