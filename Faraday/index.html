@@ -1345,14 +1345,14 @@
   function drawInduced(m) {
     if (!showBind) return;
     const mag = Math.min(1, Math.abs(m.Bavg) / B_IND_VIS);
-    if (mag < 0.02) return;
-    const alpha = 0.28 + 0.55 * mag;
+    if (mag < 0.004) return;
+    const alpha = 0.83 * mag;
     const col = rgba(biRgb(m.Bavg), alpha);
     ctx.strokeStyle = col;
     ctx.fillStyle = col;
-    ctx.lineWidth = 2.2;
+    const size = 12 * mag;
+    ctx.lineWidth = 2.2 * mag;
     const step = 54;
-    const size = fieldMark(mag);
     const left = barX + barW / 2 + 6;
     const right = xRight - 12;
     const top = yTop + 10;
